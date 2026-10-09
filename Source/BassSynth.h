@@ -49,6 +49,7 @@ struct BassParams
     float glideMs = 50.0f;
     float velocitySens = 0.5f;
     float accent = 0.0f;
+    float accentSweep = 0.0f;   // 0 = plain accent, 1 = accents build up like the 303's sweep circuit
     float pitchEnvSemis = 0.0f; // start offset, decays to 0
     float pitchEnvDecayMs = 60.0f;
     float click = 0.0f;
@@ -499,6 +500,7 @@ public:
         lfo.reset();
         pitchEnv = 0.0f;
         clickEnv = 0.0f;
+        sweepState = 0.0f;
     }
 
     void setParams (const BassParams& p)
@@ -510,6 +512,8 @@ public:
         detuneRatio = std::exp2 (p.detuneCents / 1200.0f);
         pitchEnvCoef = Envelope::coefFor (p.pitchEnvDecayMs, fs);
         clickCoef = Envelope::coefFor (8.0f, fs);
+        sweepChargeCoef = std::exp (-1.0f / (0.02f * fs));
+        sweepDischargeCoef = std::exp (-1.0f / (0.4f * fs));
         distortion.setTone (p.distTone);
     }
 
@@ -591,7 +595,7 @@ public:
         const float driveMakeup = 1.0f / (1.0f + params.drive * 2.0f);
         const float targetLogCutoff = std::log2 (params.cutoffHz);
         const float accentAmount = accented ? params.accent : 0.0f;
-        const float envOctaves = params.envAmount * 7.0f + accentAmount * 3.0f;
+        const float envOctaves = params.envAmount * 7.0f;
         const float accentGain = 1.0f + accentAmount * 0.5f;
         const float lfoOctaves = params.lfoDepth * 6.0f;
         const float maxCutoff = std::min (20000.0f, 0.45f * fs);
@@ -621,8 +625,17 @@ public:
             const float osc = 0.5f * (osc1.next (inc, params.wave) + osc2.next (inc * detuneRatio, params.wave));
             const float x = osc + params.sub * subOsc.next (inc * 0.5f, subWave);
 
-            const float fe = filterEnv.next() * velScale;
-            const float logFc = logCutoff + envOctaves * fe + lfoOctaves * lfoValue
+            const float envValue = filterEnv.next();
+            const float fe = envValue * velScale;
+
+            // Accent sweep: accented envelopes charge a slow-discharging "capacitor",
+            // so accents in quick succession open the filter further and further.
+            const float accentInput = accented ? envValue : 0.0f;
+            sweepState += (accentInput - sweepState) * (1.0f - (accentInput > sweepState ? sweepChargeCoef : sweepDischargeCoef));
+            const float accentShape = accented ? (1.0f - params.accentSweep) * envValue + params.accentSweep * 1.6f * sweepState
+                                               : 0.0f;
+
+            const float logFc = logCutoff + envOctaves * fe + accentAmount * 3.0f * accentShape + lfoOctaves * lfoValue
                                 + params.keyTrack * (pitch - 36.0f) / 12.0f;
             const float cutoff = std::clamp (std::exp2 (logFc), 10.0f, maxCutoff);
             float y = useDiode
@@ -670,6 +683,7 @@ private:
     float targetNote = 36.0f, currentNote = 36.0f;
     float glideCoef = 0.0f, detuneRatio = 1.0f, bend = 0.0f, velScale = 1.0f;
     bool accented = false;
+    float sweepState = 0.0f, sweepChargeCoef = 0.0f, sweepDischargeCoef = 0.0f;
     float logCutoff = 8.6f, cutoffSmoothCoef = 0.0f;
     float pitchEnv = 0.0f, pitchEnvCoef = 0.0f;
     float clickEnv = 0.0f, clickCoef = 0.0f, clickState = 0.0f, clickLowpass = 0.5f;

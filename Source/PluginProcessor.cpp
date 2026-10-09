@@ -122,6 +122,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
     params.push_back (floatParam ("glide", "Glide", skewedRange (0.0f, 1000.0f, 100.0f), 50.0f, "ms"));
     params.push_back (floatParam ("velocity", "Velocity Sens", { 0.0f, 1.0f }, 0.5f));
     params.push_back (floatParam ("accent", "Accent", { 0.0f, 1.0f }, 0.0f));
+    params.push_back (floatParam ("accentSweep", "Accent Sweep", { 0.0f, 1.0f }, 0.0f));
 
     params.push_back (floatParam ("pitchEnv", "Pitch Env", { -24.0f, 24.0f }, 0.0f, "st"));
     params.push_back (floatParam ("pitchDecay", "Pitch Decay", skewedRange (5.0f, 1000.0f, 100.0f), 60.0f, "ms"));

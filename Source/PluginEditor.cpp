@@ -36,7 +36,7 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
                             lfoRateControl = knob ("lfoRate", "Rate"), knob ("lfoDepth", "Depth"),
                             toggle ("lfoRetrig", "Retrig") } },
         { "PLAY", { knob ("glide", "Glide"), knob ("velocity", "Velocity"), knob ("accent", "Accent"),
-                    knob ("volume", "Volume") } },
+                    knob ("accentSweep", "Sweep"), knob ("volume", "Volume") } },
     };
 
     presetBox.onChange = [this]

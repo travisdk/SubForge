@@ -13,7 +13,7 @@ constexpr float kPi = 3.14159265358979f;
 
 struct BassParams
 {
-    int wave = 0;          // 0 saw, 1 square, 2 pulse 25%, 3 sine
+    int wave = 0;          // 0 saw, 1 square, 2 pulse 25%, 3 sine, 4 triangle
     int octave = 0;        // -2..+1
     float sub = 0.5f;      // sub oscillator level
     int subWave = 0;       // 0 sine, 1 square
@@ -47,13 +47,29 @@ inline float polyBlep (float t, float dt)
     return 0.0f;
 }
 
+// Integrated polyBlep, smooths slope discontinuities (triangle corners).
+inline float polyBlamp (float t, float dt)
+{
+    if (t < dt)
+    {
+        t = t / dt - 1.0f;
+        return -t * t * t / 3.0f;
+    }
+    if (t > 1.0f - dt)
+    {
+        t = (t - 1.0f) / dt + 1.0f;
+        return t * t * t / 3.0f;
+    }
+    return 0.0f;
+}
+
 struct Oscillator
 {
     float phase = 0.0f;
 
     void reset() { phase = 0.0f; }
 
-    // wave: 0 saw, 1 square, 2 pulse 25%, 3 sine
+    // wave: 0 saw, 1 square, 2 pulse 25%, 3 sine, 4 triangle
     float next (float inc, int wave)
     {
         const float t = phase;
@@ -66,6 +82,14 @@ struct Oscillator
         else if (wave == 3)
         {
             out = std::sin (2.0f * kPi * t);
+        }
+        else if (wave == 4)
+        {
+            float t2 = t + 0.5f;
+            if (t2 >= 1.0f)
+                t2 -= 1.0f;
+            out = 1.0f - 4.0f * std::abs (t - 0.5f);
+            out += 4.0f * inc * (polyBlamp (t, inc) - polyBlamp (t2, inc));
         }
         else
         {

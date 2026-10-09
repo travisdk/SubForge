@@ -50,7 +50,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
     std::vector<std::unique_ptr<RangedAudioParameter>> params;
 
     params.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "wave", 1 }, "Wave",
-                                                              StringArray { "Saw", "Square", "Pulse", "Sine" }, 0));
+                                                              StringArray { "Saw", "Square", "Pulse", "Sine", "Triangle" }, 0));
     params.push_back (std::make_unique<AudioParameterInt> (ParameterID { "octave", 1 }, "Octave", -2, 1, 0));
     params.push_back (floatParam ("detune", "Detune", { 0.0f, 50.0f }, 0.0f, "ct"));
     params.push_back (floatParam ("sub", "Sub Level", { 0.0f, 1.0f }, 0.5f));

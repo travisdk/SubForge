@@ -163,6 +163,25 @@ inline const Preset kPresets[] = {
                            { 1, 0.5f, 0.3f,    0,  60, 0.05f,   0,  7, 2, 0.00f, 0 } },
     { "Tracked Bright",    { 0,  0,  4, 0.3f, 0,   900, 0.25f, 0.25f, 250, 0.20f,   1,  600, 0.85f,  80,   20, 0.4f },
                            { 0, 1.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+
+    // filterMode 3 = Diode (303-style ladder). Its cutoff marks the resonant peak,
+    // so it sits higher than on the other modes for a similar brightness.
+    { "Diode Acid",        { 0,  0,  0, 0.0f, 0,   500, 0.75f, 0.55f, 250, 0.25f,   1, 1500, 0.90f,  15,   60, 0.6f },
+                           { 3, 0.0f, 0.7f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+    { "Diode Squelch",     { 0,  0,  0, 0.0f, 0,   350, 0.92f, 0.70f, 180, 0.35f,   1, 1500, 0.90f,  15,   60, 0.7f },
+                           { 3, 0.2f, 0.8f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+    { "Diode Square Acid", { 1,  0,  0, 0.0f, 0,   600, 0.85f, 0.60f, 250, 0.30f,   1, 1500, 0.90f,  15,   60, 0.6f },
+                           { 3, 0.0f, 0.7f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+    { "Diode Deep Acid",   { 0, -1,  0, 0.2f, 0,   300, 0.80f, 0.50f, 400, 0.30f,   1, 1500, 0.90f,  20,   80, 0.5f },
+                           { 3, 0.0f, 0.6f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+    { "Diode Screamer",    { 0,  0,  0, 0.0f, 0,   900, 0.97f, 0.65f, 200, 0.80f,   1, 1500, 0.90f,  15,   60, 0.7f },
+                           { 3, 0.3f, 1.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+    { "Diode Rubber",      { 0,  0,  0, 0.3f, 0,   250, 0.60f, 0.80f, 350, 0.20f,   1, 1500, 0.90f,  20,  120, 0.5f },
+                           { 3, 0.0f, 0.5f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+    { "Diode Wobble Acid", { 0,  0,  0, 0.0f, 0,   400, 0.85f, 0.30f, 200, 0.40f,   1, 1500, 0.90f,  15,   60, 0.6f },
+                           { 3, 0.0f, 0.6f,    0,  60, 0.00f,   0, 10, 2, 0.40f, 0 } },
+    { "Diode Fat",         { 0,  0,  8, 0.5f, 1,   500, 0.60f, 0.45f, 300, 0.50f,   1,  800, 0.80f,  60,   40, 0.5f },
+                           { 3, 0.3f, 0.4f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
 };
 
 inline constexpr int kNumPresets = (int) (sizeof (kPresets) / sizeof (kPresets[0]));
@@ -278,7 +297,7 @@ inline PatchValues randomPatch (std::mt19937& rng)
     v[pVelocity] = 0.2f + 0.6f * r();
 
     const float m = r();
-    int mode = m < 0.7f ? kLowpass24 : (m < 0.9f ? kLowpass12 : kBandpass12);
+    int mode = m < 0.55f ? kLowpass24 : (m < 0.7f ? kLowpass12 : (m < 0.8f ? kBandpass12 : kDiode303));
     if (mode == kBandpass12)
     {
         // bandpass removes the fundamental, so it needs harmonics to work with
@@ -286,6 +305,10 @@ inline PatchValues randomPatch (std::mt19937& rng)
             mode = kLowpass24;
         else
             v[pCutoff] = std::clamp (v[pCutoff], 150.0f, 700.0f);
+    }
+    else if (mode == kDiode303)
+    {
+        v[pCutoff] = logUniform (200.0f, 1500.0f); // diode cutoff marks the resonant peak, so it sits higher
     }
     v[pFilterMode] = (float) mode;
     v[pKeyTrack] = chance (0.5f) ? 0.0f : 0.6f * r();

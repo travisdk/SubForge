@@ -13,7 +13,7 @@ namespace subforge
 
 constexpr float kPi = 3.14159265358979f;
 
-enum FilterMode { kLowpass24, kLowpass12, kBandpass12 };
+enum FilterMode { kLowpass24, kLowpass12, kBandpass12, kDiode303 }; // kDiode303 shows as "Diode"
 enum LfoShape { kLfoSine, kLfoTriangle, kLfoSawDown, kLfoSquare, kLfoSampleHold };
 
 // LFO sync divisions in quarter-note beats per cycle; index 0 = free running.
@@ -170,6 +170,80 @@ struct LadderFilter
     }
 };
 
+// Zero-delay-feedback diode ladder in the style of the TB-303. The four stages
+// load each other (unlike the transistor ladder), giving a ~18 dB/oct slope and
+// a softer, squelchier resonance. Solved per sample as a tridiagonal system.
+// A highpass in the feedback path thins the resonance at low cutoffs.
+struct DiodeLadderFilter
+{
+    // Linear model: y1' = 2wc (u - 2 y1 + y2), yn' = wc (y(n-1) - 2 yn + y(n+1)), y5 = 0
+    static constexpr float kRates[4] = { 2.0f, 1.0f, 1.0f, 1.0f };
+    // Measured from that model: resonant peak at 1.8978 wc, self-oscillation
+    // at feedback 46.14, passband gain 0.2.
+    static constexpr float kPeakRatio = 1.8978f;
+    static constexpr float kCriticalFeedback = 46.14f;
+    static constexpr float kPassbandGain = 0.2f;
+
+    float s[4] {};
+    float hpState = 0.0f;
+
+    void reset()
+    {
+        std::fill (std::begin (s), std::end (s), 0.0f);
+        hpState = 0.0f;
+    }
+
+    // g = tan (pi * fc / kPeakRatio / fs) puts the resonant peak at fc.
+    // hpG = tan (pi * fh / fs) for the feedback highpass.
+    float process (float x, float g, float k, float hpG)
+    {
+        // (I - g A) y = s + g b u, solved for two right-hand sides at once:
+        // ys from the states, yb from the input column, so y = ys + yb * u.
+        float diag[4], upper[4], ys[4], yb[4];
+        for (int i = 0; i < 4; ++i)
+        {
+            const float gr = g * kRates[i];
+            diag[i] = 1.0f + 2.0f * gr;
+            upper[i] = -gr;
+            ys[i] = s[i];
+            yb[i] = i == 0 ? gr : 0.0f;
+        }
+        for (int i = 1; i < 4; ++i)
+        {
+            const float m = -g * kRates[i] / diag[i - 1];
+            diag[i] -= m * upper[i - 1];
+            ys[i] -= m * ys[i - 1];
+            yb[i] -= m * yb[i - 1];
+        }
+        ys[3] /= diag[3];
+        yb[3] /= diag[3];
+        for (int i = 2; i >= 0; --i)
+        {
+            ys[i] = (ys[i] - upper[i] * ys[i + 1]) / diag[i];
+            yb[i] = (yb[i] - upper[i] * yb[i + 1]) / diag[i];
+        }
+
+        // feedback taken through a TPT one-pole highpass: hp = (1 - Gh) (y4 - hpState)
+        const float Gh = hpG / (1.0f + hpG);
+        const float hpGain = 1.0f - Gh;
+        const float uLinear = (x - k * hpGain * (ys[3] - hpState)) / (1.0f + k * hpGain * yb[3]);
+        const float y4Estimate = ys[3] + yb[3] * uLinear;
+        const float u = std::tanh (x - k * hpGain * (y4Estimate - hpState));
+
+        float y4 = 0.0f;
+        for (int i = 0; i < 4; ++i)
+        {
+            const float y = ys[i] + yb[i] * u;
+            s[i] = 2.0f * y - s[i];
+            y4 = y;
+        }
+
+        const float v = (y4 - hpState) * Gh;
+        hpState += v + v;
+        return y4 / kPassbandGain;
+    }
+};
+
 struct Envelope
 {
     enum class Stage { Idle, Attack, Decay, Release };
@@ -269,6 +343,7 @@ public:
         cutoffSmoothCoef = std::exp (-1.0f / (0.005f * fs));
         lfoSmoothCoef = std::exp (-1.0f / (0.002f * fs));
         clickLowpass = 1.0f - std::exp (-2.0f * kPi * 6000.0f / fs);
+        diodeHighpassG = std::tan (kPi * 60.0f / fs);
         reset();
         setParams (params);
         logCutoff = std::log2 (params.cutoffHz);
@@ -280,6 +355,7 @@ public:
         amp.reset();
         filterEnv.reset();
         ladder.reset();
+        diode.reset();
         osc1.reset();
         osc2.reset();
         subOsc.reset();
@@ -368,8 +444,11 @@ public:
 
     void render (float* out, int numSamples)
     {
-        const float k = params.resonance * 3.95f;
-        const float resoMakeup = 1.0f + 0.5f * k;
+        const bool useDiode = params.filterMode == kDiode303;
+        const float k = useDiode ? params.resonance * DiodeLadderFilter::kCriticalFeedback
+                                 : params.resonance * 3.95f;
+        // the 303 keeps more of its characteristic bass loss as resonance rises
+        const float resoMakeup = useDiode ? 1.0f + 0.6f * params.resonance : 1.0f + 0.5f * k;
         const float driveGain = 1.0f + params.drive * 9.0f;
         const float driveMakeup = 1.0f / (1.0f + params.drive * 2.0f);
         const float targetLogCutoff = std::log2 (params.cutoffHz);
@@ -408,8 +487,10 @@ public:
             const float logFc = logCutoff + envOctaves * fe + lfoOctaves * lfoValue
                                 + params.keyTrack * (pitch - 36.0f) / 12.0f;
             const float cutoff = std::clamp (std::exp2 (logFc), 10.0f, maxCutoff);
-            const float g = std::tan (kPi * cutoff / fs);
-            float y = ladder.process (x * driveGain, g, k, params.filterMode) * resoMakeup * driveMakeup;
+            float y = useDiode
+                ? diode.process (x * driveGain, std::tan (kPi * cutoff / (DiodeLadderFilter::kPeakRatio * fs)), k, diodeHighpassG)
+                : ladder.process (x * driveGain, std::tan (kPi * cutoff / fs), k, params.filterMode);
+            y *= resoMakeup * driveMakeup;
 
             if (clickEnv > 1.0e-4f)
             {
@@ -438,6 +519,7 @@ private:
 
     Oscillator osc1, osc2, subOsc;
     LadderFilter ladder;
+    DiodeLadderFilter diode;
     Envelope amp, filterEnv;
     Lfo lfo;
 
@@ -452,6 +534,7 @@ private:
     float clickEnv = 0.0f, clickCoef = 0.0f, clickState = 0.0f, clickLowpass = 0.5f;
     uint32_t noiseSeed = 0xdeadbeefu;
     float lfoSmoothCoef = 0.0f, tempoBpm = 120.0f;
+    float diodeHighpassG = 0.0f;
 };
 
 } // namespace subforge

@@ -63,7 +63,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
     params.push_back (floatParam ("filterDecay", "Filter Decay", skewedRange (5.0f, 3000.0f, 300.0f), 250.0f, "ms"));
     params.push_back (floatParam ("drive", "Drive", { 0.0f, 1.0f }, 0.2f));
     params.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "filterMode", 1 }, "Filter Mode",
-                                                              StringArray { "LP 24", "LP 12", "BP 12" }, 0));
+                                                              StringArray { "LP 24", "LP 12", "BP 12", "Diode" }, 0));
     params.push_back (floatParam ("keyTrack", "Key Track", { 0.0f, 1.0f }, 0.0f));
 
     params.push_back (floatParam ("attack", "Attack", skewedRange (0.5f, 2000.0f, 50.0f), 1.0f, "ms"));

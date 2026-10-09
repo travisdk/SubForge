@@ -88,6 +88,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
     params.push_back (floatParam ("lfoRate", "LFO Rate", skewedRange (0.05f, 20.0f, 2.0f), 2.0f, "Hz"));
     params.push_back (floatParam ("lfoDepth", "LFO Depth", { 0.0f, 1.0f }, 0.0f));
     params.push_back (std::make_unique<AudioParameterBool> (ParameterID { "lfoRetrig", 1 }, "LFO Retrigger", false));
+
+    params.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "distType", 1 }, "Distortion Type",
+                                                              StringArray { "Off", "Overdrive", "Distortion", "Fuzz", "Tube Amp" }, 0));
+    params.push_back (floatParam ("distDrive", "Distortion Gain", { 0.0f, 1.0f }, 0.5f));
+    params.push_back (floatParam ("distTone", "Distortion Tone", { 0.0f, 1.0f }, 0.5f));
+    params.push_back (floatParam ("distMix", "Distortion Mix", { 0.0f, 1.0f }, 1.0f));
     params.push_back (floatParam ("volume", "Volume", { -36.0f, 6.0f }, -6.0f, "dB"));
 
     return { params.begin(), params.end() };

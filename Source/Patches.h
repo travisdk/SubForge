@@ -21,6 +21,7 @@ enum PatchParam
     pFilterMode = kNumCoreParams, pKeyTrack, pAccent,
     pPitchEnv, pPitchDecay, pClick,
     pLfoShape, pLfoSync, pLfoRate, pLfoDepth, pLfoRetrig,
+    pDistType, pDistDrive, pDistTone, pDistMix,
     kNumPatchParams
 };
 
@@ -35,15 +36,17 @@ inline constexpr const char* kPatchParamIds[kNumPatchParams] = {
     "glide", "velocity",
     "filterMode", "keyTrack", "accent",
     "pitchEnv", "pitchDecay", "click",
-    "lfoShape", "lfoSync", "lfoRate", "lfoDepth", "lfoRetrig"
+    "lfoShape", "lfoSync", "lfoRate", "lfoDepth", "lfoRetrig",
+    "distType", "distDrive", "distTone", "distMix"
 };
 
 using PatchValues = std::array<float, kNumPatchParams>;
 
 // Neutral settings for the extra parameters, so presets that leave them out
-// sound as before: LP24, no key track/accent/pitch env/click, LFO depth 0.
+// sound as before: LP24, no key track/accent/pitch env/click, LFO depth 0, distortion off.
 // Columns: filterMode keyTrack accent | pitchEnv pitchDecay click | lfoShape lfoSync lfoRate lfoDepth lfoRetrig
-inline constexpr std::array<float, kNumExtraParams> kExtraDefaults { 0, 0, 0, 0, 60, 0, 0, 7, 2, 0, 0 };
+//          | distType distDrive distTone distMix
+inline constexpr std::array<float, kNumExtraParams> kExtraDefaults { 0, 0, 0, 0, 60, 0, 0, 7, 2, 0, 0, 0, 0.5f, 0.5f, 1 };
 
 struct Preset
 {
@@ -130,58 +133,76 @@ inline const Preset kPresets[] = {
 
     // lfoSync: 4 = 1/4, 7 = 1/8, 9 = 1/8T, 10 = 1/16 | lfoShape: 0 sine, 1 tri, 2 saw down, 3 square, 4 S&H
     { "Wobble 1/8",        { 0,  0, 10, 0.6f, 0,    80, 0.50f, 0.00f, 200, 0.50f,   2,  800, 0.90f, 100,   20, 0.3f },
-                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.75f, 1 } },
+                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.75f, 1,   0, 0.5f, 0.5f, 1.0f } },
     { "Triplet Wobble",    { 1,  0,  8, 0.6f, 1,   100, 0.45f, 0.00f, 200, 0.60f,   2,  800, 0.90f, 100,   20, 0.3f },
-                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   1,  9, 2, 0.70f, 1 } },
+                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   1,  9, 2, 0.70f, 1,   0, 0.5f, 0.5f, 1.0f } },
     { "Dubstep Growl",     { 0,  0, 20, 0.5f, 1,   300, 0.60f, 0.10f, 200, 0.90f,   2,  800, 0.90f, 100,   30, 0.3f },
-                           { 2, 0.0f, 0.0f,    0,  60, 0.00f,   2, 10, 2, 0.60f, 1 } },
+                           { 2, 0.0f, 0.0f,    0,  60, 0.00f,   2, 10, 2, 0.60f, 1,   0, 0.5f, 0.5f, 1.0f } },
     { "Slow Wub",          { 0,  0, 15, 0.7f, 0,    70, 0.40f, 0.00f, 200, 0.40f,   5,  800, 0.95f, 150,   40, 0.3f },
-                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   0,  4, 2, 0.80f, 0 } },
+                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   0,  4, 2, 0.80f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "S&H Acid",          { 0,  0,  0, 0.0f, 0,   250, 0.80f, 0.40f, 150, 0.40f,   1,  400, 0.60f,  40,   60, 0.6f },
-                           { 0, 0.3f, 0.6f,    0,  60, 0.00f,   4, 10, 2, 0.50f, 0 } },
+                           { 0, 0.3f, 0.6f,    0,  60, 0.00f,   4, 10, 2, 0.50f, 0,   0, 0.5f, 0.5f, 1.0f } },
 
     { "808 Boom",          { 3,  0,  0, 0.5f, 0,  2000, 0.00f, 0.00f, 200, 0.35f,   1, 1500, 0.00f, 800,    0, 0.4f },
-                           { 0, 0.0f, 0.0f,   12,  60, 0.15f,   0,  7, 2, 0.00f, 0 } },
+                           { 0, 0.0f, 0.0f,   12,  60, 0.15f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Kick Bass",         { 4,  0,  0, 0.6f, 0,   600, 0.10f, 0.40f,  80, 0.40f,   1,  400, 0.00f, 120,    0, 0.5f },
-                           { 0, 0.0f, 0.0f,   24,  30, 0.40f,   0,  7, 2, 0.00f, 0 } },
+                           { 0, 0.0f, 0.0f,   24,  30, 0.40f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Punchy Sub",        { 3,  0,  0, 0.8f, 0,  1000, 0.00f, 0.00f, 200, 0.10f,   1,  800, 0.85f, 100,   20, 0.3f },
-                           { 0, 0.0f, 0.0f,    7,  40, 0.10f,   0,  7, 2, 0.00f, 0 } },
+                           { 0, 0.0f, 0.0f,    7,  40, 0.10f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Laser Pluck",       { 1,  0,  0, 0.3f, 0,   300, 0.50f, 0.60f, 100, 0.40f,   1,  300, 0.50f,  60,    0, 0.6f },
-                           { 0, 0.0f, 0.0f,   24, 150, 0.00f,   0,  7, 2, 0.00f, 0 } },
+                           { 0, 0.0f, 0.0f,   24, 150, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Rising Growl",      { 0,  0, 12, 0.4f, 1,   500, 0.50f, 0.30f, 250, 0.70f,   3,  700, 0.85f, 120,   30, 0.4f },
-                           { 0, 0.0f, 0.0f,  -12, 150, 0.00f,   0,  7, 2, 0.00f, 0 } },
+                           { 0, 0.0f, 0.0f,  -12, 150, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Clicky Pluck",      { 0,  0,  0, 0.5f, 0,   200, 0.30f, 0.65f, 110, 0.25f,   1,  250, 0.00f,  80,    0, 0.6f },
-                           { 0, 0.3f, 0.0f,    0,  60, 0.50f,   0,  7, 2, 0.00f, 0 } },
+                           { 0, 0.3f, 0.0f,    0,  60, 0.50f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
 
     { "Acid Accent",       { 0,  0,  0, 0.0f, 0,   280, 0.78f, 0.55f, 200, 0.35f,   1,  400, 0.60f,  40,   60, 0.7f },
-                           { 0, 0.3f, 0.8f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+                           { 0, 0.3f, 0.8f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Acid 12dB",         { 0,  0,  0, 0.1f, 0,   300, 0.85f, 0.60f, 200, 0.30f,   1,  400, 0.60f,  40,   70, 0.6f },
-                           { 1, 0.2f, 0.5f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+                           { 1, 0.2f, 0.5f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Bandpass Funk",     { 1,  0,  0, 0.5f, 0,   400, 0.50f, 0.60f, 150, 0.30f,   1,  300, 0.40f,  60,    0, 0.7f },
-                           { 2, 0.4f, 0.5f,    0,  60, 0.10f,   0,  7, 2, 0.00f, 0 } },
+                           { 2, 0.4f, 0.5f,    0,  60, 0.10f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Fat 12dB Moog",     { 0,  0,  7, 0.6f, 1,   350, 0.40f, 0.45f, 300, 0.35f,   2,  600, 0.70f, 100,   40, 0.4f },
-                           { 1, 0.5f, 0.3f,    0,  60, 0.05f,   0,  7, 2, 0.00f, 0 } },
+                           { 1, 0.5f, 0.3f,    0,  60, 0.05f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Tracked Bright",    { 0,  0,  4, 0.3f, 0,   900, 0.25f, 0.25f, 250, 0.20f,   1,  600, 0.85f,  80,   20, 0.4f },
-                           { 0, 1.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+                           { 0, 1.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
 
     // filterMode 3 = Diode (303-style ladder). Its cutoff marks the resonant peak,
     // so it sits higher than on the other modes for a similar brightness.
     { "Diode Acid",        { 0,  0,  0, 0.0f, 0,   500, 0.75f, 0.55f, 250, 0.25f,   1, 1500, 0.90f,  15,   60, 0.6f },
-                           { 3, 0.0f, 0.7f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+                           { 3, 0.0f, 0.7f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Diode Squelch",     { 0,  0,  0, 0.0f, 0,   350, 0.92f, 0.70f, 180, 0.35f,   1, 1500, 0.90f,  15,   60, 0.7f },
-                           { 3, 0.2f, 0.8f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+                           { 3, 0.2f, 0.8f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Diode Square Acid", { 1,  0,  0, 0.0f, 0,   600, 0.85f, 0.60f, 250, 0.30f,   1, 1500, 0.90f,  15,   60, 0.6f },
-                           { 3, 0.0f, 0.7f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+                           { 3, 0.0f, 0.7f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Diode Deep Acid",   { 0, -1,  0, 0.2f, 0,   300, 0.80f, 0.50f, 400, 0.30f,   1, 1500, 0.90f,  20,   80, 0.5f },
-                           { 3, 0.0f, 0.6f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+                           { 3, 0.0f, 0.6f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Diode Screamer",    { 0,  0,  0, 0.0f, 0,   900, 0.97f, 0.65f, 200, 0.80f,   1, 1500, 0.90f,  15,   60, 0.7f },
-                           { 3, 0.3f, 1.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+                           { 3, 0.3f, 1.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Diode Rubber",      { 0,  0,  0, 0.3f, 0,   250, 0.60f, 0.80f, 350, 0.20f,   1, 1500, 0.90f,  20,  120, 0.5f },
-                           { 3, 0.0f, 0.5f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+                           { 3, 0.0f, 0.5f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Diode Wobble Acid", { 0,  0,  0, 0.0f, 0,   400, 0.85f, 0.30f, 200, 0.40f,   1, 1500, 0.90f,  15,   60, 0.6f },
-                           { 3, 0.0f, 0.6f,    0,  60, 0.00f,   0, 10, 2, 0.40f, 0 } },
+                           { 3, 0.0f, 0.6f,    0,  60, 0.00f,   0, 10, 2, 0.40f, 0,   0, 0.5f, 0.5f, 1.0f } },
     { "Diode Fat",         { 0,  0,  8, 0.5f, 1,   500, 0.60f, 0.45f, 300, 0.50f,   1,  800, 0.80f,  60,   40, 0.5f },
-                           { 3, 0.3f, 0.4f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+                           { 3, 0.3f, 0.4f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f } },
+
+    // distType: 1 overdrive, 2 distortion, 3 fuzz, 4 tube amp
+    { "Acid Thru Distortion", { 0,  0,  0, 0.0f, 0,  350, 0.90f, 0.70f, 180, 0.20f,   1, 1500, 0.90f,  15,   60, 0.7f },
+                           { 3, 0.2f, 0.8f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   2, 0.60f, 0.45f, 1.0f } },
+    { "Acid Thru Fuzz",    { 0,  0,  0, 0.0f, 0,   400, 0.85f, 0.65f, 220, 0.20f,   1, 1500, 0.90f,  15,   60, 0.7f },
+                           { 3, 0.0f, 0.7f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   3, 0.70f, 0.40f, 1.0f } },
+    { "Acid Overdriven",   { 0,  0,  0, 0.0f, 0,   300, 0.80f, 0.60f, 250, 0.25f,   1, 1500, 0.90f,  15,   60, 0.6f },
+                           { 0, 0.2f, 0.7f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   1, 0.55f, 0.55f, 1.0f } },
+    { "Acid Tube Amp",     { 1,  0,  0, 0.0f, 0,   600, 0.85f, 0.55f, 250, 0.30f,   1, 1500, 0.90f,  15,   60, 0.6f },
+                           { 3, 0.0f, 0.7f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   4, 0.75f, 0.60f, 1.0f } },
+    { "Muff Bass",         { 0,  0,  0, 0.6f, 0,   800, 0.20f, 0.30f, 300, 0.10f,   2,  700, 0.85f,  80,    0, 0.4f },
+                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   3, 0.60f, 0.35f, 0.8f } },
+    { "Tube Reese",        { 0,  0, 18, 0.4f, 0,   900, 0.20f, 0.10f, 400, 0.20f,   3,  800, 0.90f, 150,   30, 0.2f },
+                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   4, 0.60f, 0.50f, 1.0f } },
+    { "Parallel Dirt Sub", { 3,  0,  0, 0.8f, 0,  1500, 0.00f, 0.00f, 200, 0.00f,   1,  800, 0.85f, 100,   20, 0.3f },
+                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   2, 0.80f, 0.40f, 0.4f } },
+    { "Crunchy Square",    { 1,  0,  0, 0.4f, 1,   500, 0.30f, 0.50f, 200, 0.20f,   1,  500, 0.70f,  80,    0, 0.6f },
+                           { 1, 0.3f, 0.3f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   1, 0.70f, 0.65f, 1.0f } },
 };
 
 inline constexpr int kNumPresets = (int) (sizeof (kPresets) / sizeof (kPresets[0]));
@@ -216,6 +237,10 @@ inline BassParams toBassParams (const PatchValues& v, float gain)
     p.lfoRateHz = v[pLfoRate];
     p.lfoDepth = v[pLfoDepth];
     p.lfoRetrigger = v[pLfoRetrig] >= 0.5f;
+    p.distType = (int) v[pDistType];
+    p.distDrive = v[pDistDrive];
+    p.distTone = v[pDistTone];
+    p.distMix = v[pDistMix];
     p.gain = gain;
     return p;
 }
@@ -327,6 +352,11 @@ inline PatchValues randomPatch (std::mt19937& rng)
     v[pLfoRate] = logUniform (0.5f, 8.0f);
     v[pLfoDepth] = chance (0.75f) ? 0.0f : 0.2f + 0.6f * r();
     v[pLfoRetrig] = chance (0.5f) ? 1.0f : 0.0f;
+
+    v[pDistType] = chance (0.65f) ? (float) kDistOff : (float) std::uniform_int_distribution<int> (1, 4) (rng);
+    v[pDistDrive] = 0.2f + 0.7f * r();
+    v[pDistTone] = 0.3f + 0.5f * r();
+    v[pDistMix] = 0.6f + 0.4f * r();
     return v;
 }
 

@@ -27,6 +27,9 @@ private:
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sliderAttachment;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> boxAttachment;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> toggleAttachment;
+
+        // relative width; drop-downs need more room for their text than knobs
+        int weight() const { return kind == Kind::Choice ? 14 : 10; }
     };
 
     struct Section
@@ -34,6 +37,14 @@ private:
         juce::String title;
         std::vector<Control*> controls;
         juce::Rectangle<int> bounds {};
+
+        int weight() const
+        {
+            int total = 0;
+            for (auto* control : controls)
+                total += control->weight();
+            return total;
+        }
     };
 
     Control* addControl (Kind kind, const char* paramId, const juce::String& text);

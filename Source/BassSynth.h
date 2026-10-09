@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <initializer_list>
 #include <iterator>
 
 // Monophonic bass voice: two detunable oscillators + sub, multimode ladder
@@ -15,6 +16,7 @@ constexpr float kPi = 3.14159265358979f;
 
 enum FilterMode { kLowpass24, kLowpass12, kBandpass12, kDiode303 }; // kDiode303 shows as "Diode"
 enum LfoShape { kLfoSine, kLfoTriangle, kLfoSawDown, kLfoSquare, kLfoSampleHold };
+enum DistortionType { kDistOff, kDistOverdrive, kDistDistortion, kDistFuzz, kDistTubeAmp };
 
 // LFO sync divisions in quarter-note beats per cycle; index 0 = free running.
 inline constexpr float kLfoSyncBeats[] = { 0.0f, 8.0f, 4.0f, 2.0f, 1.0f, 1.5f, 2.0f / 3.0f,
@@ -55,6 +57,10 @@ struct BassParams
     float lfoRateHz = 2.0f;
     float lfoDepth = 0.0f;      // 0..1, opens the filter up to 6 octaves
     bool lfoRetrigger = false;
+    int distType = kDistOff;
+    float distDrive = 0.5f;
+    float distTone = 0.5f;
+    float distMix = 1.0f;
     float gain = 0.5f;
 };
 
@@ -244,6 +250,135 @@ struct DiodeLadderFilter
     }
 };
 
+// TPT one-pole lowpass; G = g / (1 + g) with g = tan (pi * fc / fs).
+struct OnePole
+{
+    float s = 0.0f;
+
+    static float coefFor (float hz, float fs)
+    {
+        const float g = std::tan (kPi * std::min (hz, 0.45f * fs) / fs);
+        return g / (1.0f + g);
+    }
+
+    float lowpass (float x, float G)
+    {
+        const float v = (x - s) * G;
+        const float y = v + s;
+        s = y + v;
+        return y;
+    }
+
+    float highpass (float x, float G) { return x - lowpass (x, G); }
+};
+
+// Pedal/amp stage after the voice, modelled loosely on the boxes 303 lines were
+// run through: a mid-boosted overdrive, a high-gain hard-clipping distortion,
+// a two-stage fuzz with a mid-scoop tone control, and an asymmetric tube amp
+// with a simple cabinet rolloff. Runs at the oversampled rate.
+struct Distortion
+{
+    OnePole preHighpass, toneA, toneB, dcBlocker, cabA, cabB, fuzzLow, fuzzHigh;
+    float preG = 0.0f, toneG = 0.0f, dcG = 0.0f, cabG = 0.0f, fuzzLowG = 0.0f, fuzzHighG = 0.0f;
+    float fs = 44100.0f;
+
+    void prepare (float sampleRate)
+    {
+        fs = sampleRate;
+        preG = OnePole::coefFor (700.0f, fs);
+        dcG = OnePole::coefFor (20.0f, fs);
+        cabG = OnePole::coefFor (4500.0f, fs);
+        fuzzLowG = OnePole::coefFor (500.0f, fs);
+        fuzzHighG = OnePole::coefFor (1500.0f, fs);
+        reset();
+    }
+
+    void reset()
+    {
+        for (auto* filter : { &preHighpass, &toneA, &toneB, &dcBlocker, &cabA, &cabB, &fuzzLow, &fuzzHigh })
+            filter->s = 0.0f;
+    }
+
+    void setTone (float tone) { toneG = OnePole::coefFor (800.0f * std::pow (20.0f, tone), fs); } // 800 Hz..16 kHz
+
+    // Smooth hard clipper: linear in the middle, flat beyond +-1.5 -> +-1.
+    static float cubicClip (float x)
+    {
+        x = std::clamp (x, -1.5f, 1.5f);
+        return x - (4.0f / 27.0f) * x * x * x;
+    }
+
+    // Asymmetric tube-like curve: the negative half clips earlier and harder.
+    static float tubeCurve (float x) { return x >= 0.0f ? std::tanh (x) : std::tanh (1.6f * x) / 1.6f; }
+
+    float process (float x, int type, float drive, float tone, float mix)
+    {
+        if (type == kDistOff)
+            return x;
+
+        const float d2 = drive * drive;
+        float y;
+        switch (type)
+        {
+            case kDistOverdrive:
+            {
+                const float presence = preHighpass.highpass (x, preG);
+                const float in = (x + 2.0f * presence) * (1.0f + 40.0f * d2);
+                y = std::tanh (in + 0.3f) - std::tanh (0.3f);
+                break;
+            }
+            case kDistDistortion:
+                y = cubicClip (x * (1.0f + 300.0f * d2));
+                break;
+            case kDistFuzz:
+            {
+                const float first = std::tanh (x * (1.0f + 150.0f * d2));
+                y = std::tanh (3.0f * first + 0.2f) - std::tanh (0.2f);
+                break;
+            }
+            default: // kDistTubeAmp
+                y = tubeCurve (x * (1.0f + 20.0f * d2) + 0.25f) - tubeCurve (0.25f);
+                y = cabB.lowpass (cabA.lowpass (y, cabG), cabG);
+                break;
+        }
+
+        y = dcBlocker.highpass (y, dcG);
+
+        if (type == kDistFuzz)
+        {
+            // Muff-style tone: blend from dark lowpass to thin highpass, scooped in between
+            const float low = fuzzLow.lowpass (y, fuzzLowG);
+            const float high = fuzzHigh.highpass (y, fuzzHighG);
+            y = (1.0f - tone) * low + tone * high * 1.5f;
+        }
+        else
+        {
+            y = toneB.lowpass (toneA.lowpass (y, toneG), toneG);
+        }
+
+        y *= makeupGain (type, drive);
+        return x + mix * (y - x);
+    }
+
+    // Keeps the level roughly constant across the Gain knob. Measured with a
+    // filtered saw bass at typical voice level, see the levels test.
+    static float makeupGain (int type, float drive)
+    {
+        // rows: off, overdrive, distortion, fuzz, tube amp | columns: drive 0, .25, .5, .75, 1
+        static constexpr float table[5][5] = {
+            { 1.00f, 1.00f, 1.00f, 1.00f, 1.00f },
+            { 1.26f, 0.51f, 0.33f, 0.29f, 0.27f },
+            { 1.16f, 0.29f, 0.26f, 0.25f, 0.25f },
+            { 1.16f, 0.60f, 0.54f, 0.52f, 0.51f },
+            { 1.30f, 0.71f, 0.46f, 0.39f, 0.36f },
+        };
+        const float pos = std::clamp (drive, 0.0f, 1.0f) * 4.0f;
+        const int i = std::min (3, (int) pos);
+        const float frac = pos - (float) i;
+        return table[type][i] + frac * (table[type][i + 1] - table[type][i]);
+    }
+};
+
 struct Envelope
 {
     enum class Stage { Idle, Attack, Decay, Release };
@@ -344,6 +479,7 @@ public:
         lfoSmoothCoef = std::exp (-1.0f / (0.002f * fs));
         clickLowpass = 1.0f - std::exp (-2.0f * kPi * 6000.0f / fs);
         diodeHighpassG = std::tan (kPi * 60.0f / fs);
+        distortion.prepare (fs);
         reset();
         setParams (params);
         logCutoff = std::log2 (params.cutoffHz);
@@ -356,6 +492,7 @@ public:
         filterEnv.reset();
         ladder.reset();
         diode.reset();
+        distortion.reset();
         osc1.reset();
         osc2.reset();
         subOsc.reset();
@@ -373,6 +510,7 @@ public:
         detuneRatio = std::exp2 (p.detuneCents / 1200.0f);
         pitchEnvCoef = Envelope::coefFor (p.pitchEnvDecayMs, fs);
         clickCoef = Envelope::coefFor (8.0f, fs);
+        distortion.setTone (p.distTone);
     }
 
     // Call once per block before rendering. Locks a synced LFO to the host
@@ -501,7 +639,9 @@ public:
                 clickEnv *= clickCoef;
             }
 
-            out[i] = y * amp.next() * velScale * accentGain * params.gain;
+            const float voice = y * amp.next() * velScale * accentGain;
+            out[i] = distortion.process (voice, params.distType, params.distDrive, params.distTone, params.distMix)
+                     * params.gain;
         }
     }
 
@@ -520,6 +660,7 @@ private:
     Oscillator osc1, osc2, subOsc;
     LadderFilter ladder;
     DiodeLadderFilter diode;
+    Distortion distortion;
     Envelope amp, filterEnv;
     Lfo lfo;
 

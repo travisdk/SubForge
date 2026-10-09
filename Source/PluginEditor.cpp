@@ -41,9 +41,11 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
         { "FILTER", { choice ("filterMode", "Mode"), knob ("cutoff", "Cutoff"), knob ("resonance", "Resonance"),
                       knob ("envAmount", "Env Amt"), knob ("filterDecay", "F. Decay"), knob ("drive", "Drive"),
                       knob ("keyTrack", "Key Track") } },
-        { "AMP", { knob ("attack", "Attack"), knob ("decay", "Decay"), knob ("sustain", "Sustain"),
+        { "AMP ENV", { knob ("attack", "Attack"), knob ("decay", "Decay"), knob ("sustain", "Sustain"),
                    knob ("release", "Release") } },
         { "PITCH & CLICK", { knob ("pitchEnv", "Pitch Env"), knob ("pitchDecay", "P. Decay"), knob ("click", "Click") } },
+        { "DISTORTION", { choice ("distType", "Type"), knob ("distDrive", "Gain"), knob ("distTone", "Tone"),
+                          knob ("distMix", "Mix") } },
         { "LFO > CUTOFF", { choice ("lfoShape", "Shape"), choice ("lfoSync", "Sync"),
                             lfoRateControl = knob ("lfoRate", "Rate"), knob ("lfoDepth", "Depth"),
                             toggle ("lfoRetrig", "Retrig") } },
@@ -166,11 +168,12 @@ void SubForgeEditor::layoutSection (Section& section, juce::Rectangle<int> area)
 {
     section.bounds = area;
     auto content = area.reduced (6).withTrimmedTop (22);
-    const int cellWidth = content.getWidth() / (int) section.controls.size();
+    const int contentWidth = content.getWidth();
+    const int totalWeight = section.weight();
 
     for (auto* control : section.controls)
     {
-        auto cell = content.removeFromLeft (cellWidth).reduced (4, 0);
+        auto cell = content.removeFromLeft (contentWidth * control->weight() / totalWeight).reduced (4, 0);
         control->label.setBounds (cell.removeFromTop (20));
 
         switch (control->kind)
@@ -188,19 +191,19 @@ void SubForgeEditor::layoutSection (Section& section, juce::Rectangle<int> area)
     }
 }
 
-// Sections in a row share its width in proportion to their number of controls.
+// Sections in a row share its width in proportion to their controls' weights.
 void SubForgeEditor::layoutRow (std::initializer_list<Section*> row, juce::Rectangle<int> area)
 {
-    int totalControls = 0;
+    int totalWeight = 0;
     for (auto* section : row)
-        totalControls += (int) section->controls.size();
+        totalWeight += section->weight();
 
     const int available = area.getWidth() - kMargin * ((int) row.size() - 1);
     int index = 0;
     for (auto* section : row)
     {
         const bool last = ++index == (int) row.size();
-        const int width = last ? area.getWidth() : available * (int) section->controls.size() / totalControls;
+        const int width = last ? area.getWidth() : available * section->weight() / totalWeight;
         layoutSection (*section, area.removeFromLeft (width));
         area.removeFromLeft (kMargin);
     }
@@ -232,6 +235,6 @@ void SubForgeEditor::resized()
     };
 
     layoutRow ({ &sections[0], &sections[1] }, nextRow());
-    layoutRow ({ &sections[2], &sections[3] }, nextRow());
-    layoutRow ({ &sections[4], &sections[5] }, nextRow());
+    layoutRow ({ &sections[2], &sections[3], &sections[4] }, nextRow());
+    layoutRow ({ &sections[5], &sections[6] }, nextRow());
 }

@@ -143,6 +143,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
     params.push_back (floatParam ("distDrive", "Distortion Gain", { 0.0f, 1.0f }, 0.5f));
     params.push_back (floatParam ("distTone", "Distortion Tone", { 0.0f, 1.0f }, 0.5f));
     params.push_back (floatParam ("distMix", "Distortion Mix", { 0.0f, 1.0f }, 1.0f));
+
+    // Controller routing is part of the instance (and user presets), not of factory/random patches.
+    const StringArray modDestinations { "Off", "Cutoff", "LFO", "Reso", "Dist", "Vibrato" };
+    params.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "wheelDest", 1 }, "Mod Wheel Dest",
+                                                              modDestinations, subforge::kModLfoDepth));
+    params.push_back (floatParam ("wheelAmount", "Mod Wheel Amount", { -1.0f, 1.0f }, 0.5f));
+    params.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "aftertouchDest", 1 }, "Aftertouch Dest",
+                                                              modDestinations, subforge::kModCutoff));
+    params.push_back (floatParam ("aftertouchAmount", "Aftertouch Amount", { -1.0f, 1.0f }, 0.3f));
     params.push_back (floatParam ("volume", "Volume", { -36.0f, 6.0f }, -6.0f, "dB"));
 
     return { params.begin(), params.end() };
@@ -150,8 +159,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
 
 subforge::BassParams SubForgeProcessor::readParams() const
 {
-    return subforge::toBassParams (currentPatch(),
-                                   juce::Decibels::decibelsToGain (apvts.getRawParameterValue ("volume")->load()));
+    auto get = [this] (const char* id) { return apvts.getRawParameterValue (id)->load(); };
+
+    auto p = subforge::toBassParams (currentPatch(), juce::Decibels::decibelsToGain (get ("volume")));
+    p.wheelDest = (int) get ("wheelDest");
+    p.wheelAmount = get ("wheelAmount");
+    p.aftertouchDest = (int) get ("aftertouchDest");
+    p.aftertouchAmount = get ("aftertouchAmount");
+    return p;
 }
 
 void SubForgeProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
@@ -181,6 +196,12 @@ void SubForgeProcessor::handleMidi (const juce::MidiMessage& message)
         synth.allNotesOff();
     else if (message.isPitchWheel())
         synth.setPitchBend ((float) (message.getPitchWheelValue() - 8192) / 8192.0f * 2.0f);
+    else if (message.isControllerOfType (1))
+        synth.setModWheel ((float) message.getControllerValue() / 127.0f);
+    else if (message.isChannelPressure())
+        synth.setAftertouch ((float) message.getChannelPressureValue() / 127.0f);
+    else if (message.isAftertouch()) // polyphonic pressure: a mono voice just follows the latest
+        synth.setAftertouch ((float) message.getAfterTouchValue() / 127.0f);
 }
 
 void SubForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)

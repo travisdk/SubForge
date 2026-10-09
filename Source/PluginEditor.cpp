@@ -35,6 +35,8 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
         { "LFO > CUTOFF", { choice ("lfoShape", "Shape"), choice ("lfoSync", "Sync"),
                             lfoRateControl = knob ("lfoRate", "Rate"), knob ("lfoDepth", "Depth"),
                             toggle ("lfoRetrig", "Retrig") } },
+        { "MOD", { choice ("wheelDest", "Wheel"), knob ("wheelAmount", "Amount"),
+                   choice ("aftertouchDest", "Aftertouch"), knob ("aftertouchAmount", "Amount") } },
         { "PLAY", { knob ("glide", "Glide"), knob ("velocity", "Velocity"), knob ("accent", "Accent"),
                     knob ("accentSweep", "Sweep"), knob ("volume", "Volume") } },
     };
@@ -411,5 +413,5 @@ void SubForgeEditor::resized()
 
     layoutRow ({ &sections[0], &sections[1] }, nextRow());
     layoutRow ({ &sections[2], &sections[3], &sections[4] }, nextRow());
-    layoutRow ({ &sections[5], &sections[6] }, nextRow());
+    layoutRow ({ &sections[5], &sections[6], &sections[7] }, nextRow());
 }

@@ -17,6 +17,7 @@ constexpr float kPi = 3.14159265358979f;
 enum FilterMode { kLowpass24, kLowpass12, kBandpass12, kDiode303 }; // kDiode303 shows as "Diode"
 enum LfoShape { kLfoSine, kLfoTriangle, kLfoSawDown, kLfoSquare, kLfoSampleHold };
 enum DistortionType { kDistOff, kDistOverdrive, kDistDistortion, kDistFuzz, kDistTubeAmp };
+enum ModDestination { kModOff, kModCutoff, kModLfoDepth, kModResonance, kModDistGain, kModVibrato, kNumModDestinations };
 
 // LFO sync divisions in quarter-note beats per cycle; index 0 = free running.
 inline constexpr float kLfoSyncBeats[] = { 0.0f, 8.0f, 4.0f, 2.0f, 1.0f, 1.5f, 2.0f / 3.0f,
@@ -50,6 +51,10 @@ struct BassParams
     float velocitySens = 0.5f;
     float accent = 0.0f;
     float accentSweep = 0.0f;   // 0 = plain accent, 1 = accents build up like the 303's sweep circuit
+    int wheelDest = kModLfoDepth; // mod wheel and aftertouch routing, amounts -1..1
+    float wheelAmount = 0.5f;
+    int aftertouchDest = kModCutoff;
+    float aftertouchAmount = 0.3f;
     float pitchEnvSemis = 0.0f; // start offset, decays to 0
     float pitchEnvDecayMs = 60.0f;
     float click = 0.0f;
@@ -512,6 +517,7 @@ public:
         detuneRatio = std::exp2 (p.detuneCents / 1200.0f);
         pitchEnvCoef = Envelope::coefFor (p.pitchEnvDecayMs, fs);
         clickCoef = Envelope::coefFor (8.0f, fs);
+        modSmoothCoef = std::exp (-1.0f / (0.01f * fs));
         sweepChargeCoef = std::exp (-1.0f / (0.02f * fs));
         sweepDischargeCoef = std::exp (-1.0f / (0.4f * fs));
         distortion.setTone (p.distTone);
@@ -531,6 +537,8 @@ public:
     }
 
     void setPitchBend (float semitones) { bend = semitones; }
+    void setModWheel (float value) { wheelTarget = value; }      // 0..1
+    void setAftertouch (float value) { aftertouchTarget = value; } // 0..1
 
     void noteOn (int note, float velocity)
     {
@@ -587,17 +595,13 @@ public:
     void render (float* out, int numSamples)
     {
         const bool useDiode = params.filterMode == kDiode303;
-        const float k = useDiode ? params.resonance * DiodeLadderFilter::kCriticalFeedback
-                                 : params.resonance * 3.95f;
-        // the 303 keeps more of its characteristic bass loss as resonance rises
-        const float resoMakeup = useDiode ? 1.0f + 0.6f * params.resonance : 1.0f + 0.5f * k;
+        const float maxFeedback = useDiode ? DiodeLadderFilter::kCriticalFeedback : 3.95f;
         const float driveGain = 1.0f + params.drive * 9.0f;
         const float driveMakeup = 1.0f / (1.0f + params.drive * 2.0f);
         const float targetLogCutoff = std::log2 (params.cutoffHz);
         const float accentAmount = accented ? params.accent : 0.0f;
         const float envOctaves = params.envAmount * 7.0f;
         const float accentGain = 1.0f + accentAmount * 0.5f;
-        const float lfoOctaves = params.lfoDepth * 6.0f;
         const float maxCutoff = std::min (20000.0f, 0.45f * fs);
         const int subWave = params.subWave == 0 ? 3 : 1;
 
@@ -609,6 +613,8 @@ public:
         {
             logCutoff = targetLogCutoff + (logCutoff - targetLogCutoff) * cutoffSmoothCoef;
             const float lfoValue = lfo.next (lfoInc, params.lfoShape, lfoSmoothCoef);
+            wheelValue = wheelTarget + (wheelValue - wheelTarget) * modSmoothCoef;
+            aftertouchValue = aftertouchTarget + (aftertouchValue - aftertouchTarget) * modSmoothCoef;
 
             if (! amp.isActive())
             {
@@ -616,8 +622,24 @@ public:
                 continue;
             }
 
+            float mod[kNumModDestinations] {};
+            mod[std::clamp (params.wheelDest, 0, kNumModDestinations - 1)] += wheelValue * params.wheelAmount;
+            mod[std::clamp (params.aftertouchDest, 0, kNumModDestinations - 1)] += aftertouchValue * params.aftertouchAmount;
+
+            vibratoPhase += 5.5f / fs;
+            if (vibratoPhase >= 1.0f)
+                vibratoPhase -= 1.0f;
+            const float vibrato = mod[kModVibrato] * 0.6f * std::sin (2.0f * kPi * vibratoPhase);
+
+            const float resonance = std::clamp (params.resonance + mod[kModResonance], 0.0f, 1.0f);
+            const float k = resonance * maxFeedback;
+            // the 303 keeps more of its characteristic bass loss as resonance rises
+            const float resoMakeup = useDiode ? 1.0f + 0.6f * resonance : 1.0f + 0.5f * k;
+            const float lfoOctaves = std::clamp (params.lfoDepth + mod[kModLfoDepth], 0.0f, 1.0f) * 6.0f;
+            const float distDrive = std::clamp (params.distDrive + mod[kModDistGain], 0.0f, 1.0f);
+
             currentNote = targetNote + (currentNote - targetNote) * glideCoef;
-            const float pitch = currentNote + bend + 12.0f * (float) params.octave;
+            const float pitch = currentNote + bend + 12.0f * (float) params.octave + vibrato;
             pitchEnv *= pitchEnvCoef;
             const float oscPitch = pitch + params.pitchEnvSemis * pitchEnv;
             const float inc = std::min (0.45f, 440.0f * std::exp2 ((oscPitch - 69.0f) / 12.0f) / fs);
@@ -636,7 +658,7 @@ public:
                                                : 0.0f;
 
             const float logFc = logCutoff + envOctaves * fe + accentAmount * 3.0f * accentShape + lfoOctaves * lfoValue
-                                + params.keyTrack * (pitch - 36.0f) / 12.0f;
+                                + params.keyTrack * (pitch - 36.0f) / 12.0f + mod[kModCutoff] * 4.0f;
             const float cutoff = std::clamp (std::exp2 (logFc), 10.0f, maxCutoff);
             float y = useDiode
                 ? diode.process (x * driveGain, std::tan (kPi * cutoff / (DiodeLadderFilter::kPeakRatio * fs)), k, diodeHighpassG)
@@ -653,7 +675,7 @@ public:
             }
 
             const float voice = y * amp.next() * velScale * accentGain;
-            out[i] = distortion.process (voice, params.distType, params.distDrive, params.distTone, params.distMix)
+            out[i] = distortion.process (voice, params.distType, distDrive, params.distTone, params.distMix)
                      * params.gain;
         }
     }
@@ -683,6 +705,8 @@ private:
     float targetNote = 36.0f, currentNote = 36.0f;
     float glideCoef = 0.0f, detuneRatio = 1.0f, bend = 0.0f, velScale = 1.0f;
     bool accented = false;
+    float wheelTarget = 0.0f, wheelValue = 0.0f, aftertouchTarget = 0.0f, aftertouchValue = 0.0f;
+    float modSmoothCoef = 0.0f, vibratoPhase = 0.0f;
     float sweepState = 0.0f, sweepChargeCoef = 0.0f, sweepDischargeCoef = 0.0f;
     float logCutoff = 8.6f, cutoffSmoothCoef = 0.0f;
     float pitchEnv = 0.0f, pitchEnvCoef = 0.0f;

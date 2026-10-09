@@ -16,6 +16,13 @@ public:
     void resized() override;
 
 private:
+    // Small gear icon that opens the settings menu.
+    struct SettingsButton : juce::Button
+    {
+        SettingsButton() : juce::Button ("Settings") {}
+        void paintButton (juce::Graphics&, bool isHighlighted, bool isDown) override;
+    };
+
     enum class Kind { Knob, Choice, Toggle };
 
     struct Control
@@ -59,6 +66,8 @@ private:
     void timerCallback() override;
     void refreshPresetBox();
     void stepPreset (int delta);
+    void showSettingsMenu();
+    void applyAccent (juce::Colour accent);
 
     SubForgeProcessor& processor;
     SubForgeLookAndFeel lookAndFeel;
@@ -70,6 +79,8 @@ private:
     juce::ComboBox presetBox;
     juce::TextButton prevButton { "<" }, nextButton { ">" };
     juce::TextButton randomButton { "Randomize" }, mutateButton { "Mutate" };
+    SettingsButton settingsButton;
+    juce::PropertiesFile settings;
     juce::Rectangle<int> headerArea;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubForgeEditor)

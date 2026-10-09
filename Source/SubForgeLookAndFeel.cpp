@@ -13,18 +13,36 @@ SubForgeLookAndFeel::SubForgeLookAndFeel()
     setColour (juce::Slider::textBoxTextColourId, P::text);
     setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
     setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
-    setColour (juce::Slider::textBoxHighlightColourId, P::accent.withAlpha (0.4f));
     setColour (juce::TextEditor::backgroundColourId, P::field);
     setColour (juce::TextEditor::textColourId, P::text);
-    setColour (juce::TextEditor::highlightColourId, P::accent.withAlpha (0.4f));
-    setColour (juce::TextEditor::focusedOutlineColourId, P::accent);
-    setColour (juce::CaretComponent::caretColourId, P::accent);
     setColour (juce::ComboBox::textColourId, P::text);
     setColour (juce::PopupMenu::textColourId, P::text);
     setColour (juce::PopupMenu::highlightedTextColourId, P::text);
     setColour (juce::TextButton::buttonColourId, P::field);
     setColour (juce::TextButton::textColourOffId, P::text);
     setColour (juce::TextButton::textColourOnId, P::text);
+    setAccent (accentChoices().front().colour);
+}
+
+const std::vector<SubForgeLookAndFeel::AccentChoice>& SubForgeLookAndFeel::accentChoices()
+{
+    static const std::vector<AccentChoice> choices {
+        { "Orange", juce::Colour (0xffff8a3d) }, { "Amber", juce::Colour (0xffffc23d) },
+        { "Lime", juce::Colour (0xff9be15d) },   { "Mint", juce::Colour (0xff3ddca0) },
+        { "Cyan", juce::Colour (0xff3dc8ff) },   { "Blue", juce::Colour (0xff5b8cff) },
+        { "Violet", juce::Colour (0xffa77bff) }, { "Pink", juce::Colour (0xffff5fa2) },
+        { "Red", juce::Colour (0xffff5252) },
+    };
+    return choices;
+}
+
+void SubForgeLookAndFeel::setAccent (juce::Colour newAccent)
+{
+    accent = newAccent;
+    setColour (juce::Slider::textBoxHighlightColourId, accent.withAlpha (0.4f));
+    setColour (juce::TextEditor::highlightColourId, accent.withAlpha (0.4f));
+    setColour (juce::TextEditor::focusedOutlineColourId, accent);
+    setColour (juce::CaretComponent::caretColourId, accent);
 }
 
 void SubForgeLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
@@ -52,7 +70,7 @@ void SubForgeLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int
         juce::Path value;
         value.addCentredArc (centre.x, centre.y, ringRadius, ringRadius, 0.0f,
                              juce::jmin (fromAngle, angle), juce::jmax (fromAngle, angle), true);
-        g.setColour (hot ? P::accent.brighter (0.25f) : P::accent);
+        g.setColour (hot ? accent.brighter (0.25f) : accent);
         g.strokePath (value, ringStroke);
     }
 
@@ -92,7 +110,7 @@ void SubForgeLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height
 
     g.setColour (P::field);
     g.fillRoundedRectangle (bounds, 4.0f);
-    g.setColour (hot ? P::accent.withAlpha (0.7f) : P::panelEdge.brighter (0.15f));
+    g.setColour (hot ? accent.withAlpha (0.7f) : P::panelEdge.brighter (0.15f));
     g.drawRoundedRectangle (bounds, 4.0f, 1.0f);
 
     const float cx = (float) width - 12.0f, cy = (float) height * 0.5f;
@@ -100,7 +118,7 @@ void SubForgeLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height
     chevron.startNewSubPath (cx - 4.0f, cy - 2.0f);
     chevron.lineTo (cx, cy + 2.0f);
     chevron.lineTo (cx + 4.0f, cy - 2.0f);
-    g.setColour (P::accent);
+    g.setColour (accent);
     g.strokePath (chevron, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 }
 
@@ -132,17 +150,29 @@ void SubForgeLookAndFeel::drawPopupMenuItem (juce::Graphics& g, const juce::Rect
     auto r = area.reduced (3, 1);
     if (isHighlighted && isActive)
     {
-        g.setColour (P::accent.withAlpha (0.22f));
+        g.setColour (accent.withAlpha (0.22f));
         g.fillRoundedRectangle (r.toFloat(), 3.0f);
     }
 
-    if (isTicked)
+    const juce::Point<float> marker { (float) r.getX() + 10.0f, (float) r.getCentreY() };
+    if (textColour != nullptr)
     {
-        g.setColour (P::accent);
-        g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre ({ (float) r.getX() + 10.0f, (float) r.getCentreY() }));
+        // colour swatch item, ringed when it is the current choice
+        g.setColour (*textColour);
+        g.fillEllipse (juce::Rectangle<float> (10.0f, 10.0f).withCentre (marker));
+        if (isTicked)
+        {
+            g.setColour (P::text);
+            g.drawEllipse (juce::Rectangle<float> (15.0f, 15.0f).withCentre (marker), 1.5f);
+        }
+    }
+    else if (isTicked)
+    {
+        g.setColour (accent);
+        g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre (marker));
     }
 
-    g.setColour (isActive ? (isTicked ? P::accent : P::text) : P::dimText);
+    g.setColour (isActive ? (isTicked && textColour == nullptr ? accent : P::text) : P::dimText);
     g.setFont (getPopupMenuFont());
     g.drawFittedText (text, r.withTrimmedLeft (20).withTrimmedRight (6), juce::Justification::centredLeft, 1);
 }
@@ -170,9 +200,9 @@ void SubForgeLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButto
 
     if (button.getToggleState())
     {
-        g.setColour (P::accent.withAlpha (0.18f));
+        g.setColour (accent.withAlpha (0.18f));
         g.fillEllipse (led.expanded (5.0f));
-        g.setColour (P::accent);
+        g.setColour (accent);
         g.fillEllipse (led);
         g.setColour (juce::Colours::white.withAlpha (0.45f));
         g.fillEllipse (led.reduced (4.0f).translated (-1.5f, -1.5f));
@@ -181,7 +211,15 @@ void SubForgeLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButto
     {
         g.setColour (P::field);
         g.fillEllipse (led);
-        g.setColour (isHighlighted ? P::accent.withAlpha (0.7f) : P::panelEdge.brighter (0.3f));
+        g.setColour (isHighlighted ? accent.withAlpha (0.7f) : P::panelEdge.brighter (0.3f));
         g.drawEllipse (led.reduced (0.5f), 1.0f);
     }
+}
+
+void SubForgeLookAndFeel::drawPopupMenuSectionHeader (juce::Graphics& g, const juce::Rectangle<int>& area,
+                                                     const juce::String& sectionName)
+{
+    g.setColour (P::dimText);
+    g.setFont (boldFont (10.5f).withExtraKerningFactor (0.12f));
+    g.drawText (sectionName.toUpperCase(), area.reduced (10, 0), juce::Justification::bottomLeft);
 }

@@ -16,14 +16,23 @@ public:
         static inline const juce::Colour track { 0xff343842 };
         static inline const juce::Colour knobTop { 0xff464b57 };
         static inline const juce::Colour knobBottom { 0xff24272e };
-        static inline const juce::Colour accent { 0xffff8a3d };
         static inline const juce::Colour text { 0xffe8e8ea };
         static inline const juce::Colour dimText { 0xff8d939e };
     };
 
     static constexpr int kKnobSize = 50;
 
+    struct AccentChoice
+    {
+        const char* name;
+        juce::Colour colour;
+    };
+    static const std::vector<AccentChoice>& accentChoices(); // first entry is the default
+
     SubForgeLookAndFeel();
+
+    juce::Colour getAccent() const { return accent; }
+    void setAccent (juce::Colour newAccent);
 
     juce::Font regularFont (float height) const { return juce::Font (medium).withHeight (height); }
     juce::Font boldFont (float height) const { return juce::Font (bold).withHeight (height); }
@@ -43,6 +52,8 @@ public:
                             const juce::String& shortcutKeyText, const juce::Drawable* icon,
                             const juce::Colour* textColour) override;
     juce::Font getPopupMenuFont() override { return regularFont (14.0f); }
+    void drawPopupMenuSectionHeader (juce::Graphics&, const juce::Rectangle<int>& area,
+                                     const juce::String& sectionName) override;
 
     void drawButtonBackground (juce::Graphics&, juce::Button&, const juce::Colour& backgroundColour,
                                bool isHighlighted, bool isDown) override;
@@ -54,4 +65,5 @@ public:
 
 private:
     juce::Typeface::Ptr medium, bold;
+    juce::Colour accent;
 };

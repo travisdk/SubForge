@@ -11,12 +11,29 @@ constexpr int kSectionTitleHeight = 22;
 constexpr int kLabelHeight = 16;
 constexpr int kValueHeight = 16;
 constexpr int kKnobSize = SubForgeLookAndFeel::kKnobSize;
+
+// Global (not per-project) preferences: ~/.config/SubForge/SubForge.settings on Linux.
+juce::PropertiesFile::Options settingsOptions()
+{
+    juce::PropertiesFile::Options options;
+    options.applicationName = "SubForge";
+   #if JUCE_LINUX
+    options.folderName = ".config/SubForge"; // JUCE puts Linux settings straight under ~ otherwise
+   #else
+    options.folderName = "SubForge";
+   #endif
+    options.filenameSuffix = "settings";
+    options.osxLibrarySubFolder = "Application Support";
+    return options;
+}
 } // namespace
 
 SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
-    : AudioProcessorEditor (&p), processor (p)
+    : AudioProcessorEditor (&p), processor (p), settings (settingsOptions())
 {
     setLookAndFeel (&lookAndFeel);
+    lookAndFeel.setAccent (juce::Colour::fromString (
+        settings.getValue ("accentColour", SubForgeLookAndFeel::accentChoices().front().colour.toString())));
 
     sections = {
         { "OSCILLATOR", { choice ("wave", "Wave"), knob ("octave", "Octave"), knob ("detune", "Detune"),
@@ -47,10 +64,12 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
     nextButton.onClick = [this] { stepPreset (1); };
     randomButton.onClick = [this] { processor.randomizePatch(); };
     mutateButton.onClick = [this] { processor.mutatePatch(); };
-    randomButton.setColour (juce::TextButton::buttonColourId, P::accent);
+    randomButton.setColour (juce::TextButton::buttonColourId, lookAndFeel.getAccent());
     randomButton.setColour (juce::TextButton::textColourOffId, P::background);
+    settingsButton.onClick = [this] { showSettingsMenu(); };
 
-    for (auto* c : std::initializer_list<juce::Component*> { &presetBox, &prevButton, &nextButton, &randomButton, &mutateButton })
+    for (auto* c : std::initializer_list<juce::Component*> { &presetBox, &prevButton, &nextButton, &randomButton,
+                                                              &mutateButton, &settingsButton })
         addAndMakeVisible (c);
 
     processor.addChangeListener (this);
@@ -134,12 +153,74 @@ void SubForgeEditor::stepPreset (int delta)
     processor.loadPreset ((processor.getCurrentProgram() + delta + n) % n);
 }
 
+void SubForgeEditor::showSettingsMenu()
+{
+    juce::PopupMenu menu;
+    menu.setLookAndFeel (&lookAndFeel);
+    menu.addSectionHeader ("Accent colour");
+
+    const auto& choices = SubForgeLookAndFeel::accentChoices();
+    for (size_t i = 0; i < choices.size(); ++i)
+    {
+        juce::PopupMenu::Item item (choices[i].name);
+        item.itemID = (int) i + 1;
+        item.colour = choices[i].colour;
+        item.isTicked = choices[i].colour == lookAndFeel.getAccent();
+        menu.addItem (item);
+    }
+
+    // open below the gear, right-aligned with it so it stays inside the editor
+    constexpr int menuWidth = 170;
+    const auto gear = settingsButton.getScreenBounds();
+    const auto target = juce::Rectangle<int> (gear.getRight() - menuWidth, gear.getY(), menuWidth, gear.getHeight());
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (target).withMinimumWidth (menuWidth),
+                        [safeThis = juce::Component::SafePointer<SubForgeEditor> (this)] (int result)
+                        {
+                            if (safeThis != nullptr && result > 0)
+                                safeThis->applyAccent (SubForgeLookAndFeel::accentChoices()[(size_t) result - 1].colour);
+                        });
+}
+
+void SubForgeEditor::applyAccent (juce::Colour accent)
+{
+    lookAndFeel.setAccent (accent);
+    randomButton.setColour (juce::TextButton::buttonColourId, accent);
+    sendLookAndFeelChange();
+    repaint();
+
+    settings.setValue ("accentColour", accent.toString());
+    settings.saveIfNeeded();
+}
+
+void SubForgeEditor::SettingsButton::paintButton (juce::Graphics& g, bool isHighlighted, bool isDown)
+{
+    const auto centre = getLocalBounds().toFloat().getCentre();
+    const float outer = 9.0f, toothLength = 3.0f, toothWidth = 3.6f;
+
+    juce::Path gear;
+    gear.addEllipse (juce::Rectangle<float> (2.0f * (outer - toothLength + 0.5f), 2.0f * (outer - toothLength + 0.5f))
+                         .withCentre (centre));
+    for (int i = 0; i < 8; ++i)
+    {
+        juce::Path tooth;
+        tooth.addRoundedRectangle (centre.x - toothWidth * 0.5f, centre.y - outer, toothWidth, toothLength + 1.0f, 1.0f);
+        tooth.applyTransform (juce::AffineTransform::rotation ((float) i * juce::MathConstants<float>::pi / 4.0f,
+                                                               centre.x, centre.y));
+        gear.addPath (tooth);
+    }
+
+    g.setColour (isDown || isHighlighted ? P::text : P::dimText);
+    g.fillPath (gear);
+    g.setColour (P::background);
+    g.fillEllipse (juce::Rectangle<float> (6.0f, 6.0f).withCentre (centre));
+}
+
 void SubForgeEditor::paint (juce::Graphics& g)
 {
     g.fillAll (P::background);
 
     auto title = headerArea.withTrimmedLeft (kMargin + 2);
-    g.setColour (P::accent);
+    g.setColour (lookAndFeel.getAccent());
     g.setFont (lookAndFeel.boldFont (20.0f).withExtraKerningFactor (0.08f));
     g.drawText ("SUBFORGE", title, juce::Justification::centredLeft);
     g.setColour (P::dimText);
@@ -154,7 +235,7 @@ void SubForgeEditor::paint (juce::Graphics& g)
         g.setColour (P::panelEdge);
         g.drawRoundedRectangle (bounds.reduced (0.5f), 6.0f, 1.0f);
 
-        g.setColour (P::accent);
+        g.setColour (lookAndFeel.getAccent());
         g.fillRoundedRectangle (bounds.getX() + 10.0f, bounds.getY() + 8.0f, 3.0f, 9.0f, 1.5f);
         g.setColour (P::dimText);
         g.setFont (lookAndFeel.boldFont (10.5f).withExtraKerningFactor (0.12f));
@@ -216,6 +297,8 @@ void SubForgeEditor::resized()
     headerArea = area.removeFromTop (kHeaderHeight);
 
     auto header = headerArea.reduced (kMargin, 10);
+    settingsButton.setBounds (header.removeFromRight (28));
+    header.removeFromRight (8);
     mutateButton.setBounds (header.removeFromRight (76));
     header.removeFromRight (6);
     randomButton.setBounds (header.removeFromRight (96));

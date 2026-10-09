@@ -14,6 +14,7 @@ add_subdirectory(${CLAP_JUCE_EXTENSIONS_DIR} clap-juce-extensions EXCLUDE_FROM_A
 
 juce_add_plugin(SubForge
     COMPANY_NAME "Henrik Juhl"
+    BUNDLE_ID dk.hjuhl.subforge
     PLUGIN_MANUFACTURER_CODE Hjuh
     PLUGIN_CODE SbFg
     PRODUCT_NAME "SubForge"
@@ -26,7 +27,13 @@ juce_add_plugin(SubForge
 
 target_sources(SubForge PRIVATE
     Source/PluginProcessor.cpp
-    Source/PluginEditor.cpp)
+    Source/PluginEditor.cpp
+    Source/SubForgeLookAndFeel.cpp)
+
+juce_add_binary_data(SubForgeAssets SOURCES
+    Resources/Fonts/Inter-Medium.otf
+    Resources/Fonts/Inter-Bold.otf)
+set_target_properties(SubForgeAssets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 target_compile_definitions(SubForge PUBLIC
     JUCE_WEB_BROWSER=0
@@ -35,6 +42,7 @@ target_compile_definitions(SubForge PUBLIC
 
 target_link_libraries(SubForge
     PRIVATE
+        SubForgeAssets
         juce::juce_audio_utils
         juce::juce_dsp
     PUBLIC

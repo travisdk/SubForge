@@ -2,39 +2,22 @@
 
 namespace
 {
-const juce::Colour background { 0xff1b1d22 };
-const juce::Colour panel { 0xff262931 };
-const juce::Colour outline { 0xff3a3e48 };
-const juce::Colour accent { 0xffff8a3d };
-const juce::Colour text { 0xffe6e6e6 };
-const juce::Colour dimText { 0xff9aa0aa };
+using P = SubForgeLookAndFeel::Palette;
 
-constexpr int kHeaderHeight = 52;
-constexpr int kMargin = 12;
+constexpr int kHeaderHeight = 48;
+constexpr int kMargin = 10;
+constexpr int kRowHeight = 128;
+constexpr int kSectionTitleHeight = 22;
+constexpr int kLabelHeight = 16;
+constexpr int kValueHeight = 16;
+constexpr int kKnobSize = SubForgeLookAndFeel::kKnobSize;
 } // namespace
 
 SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
-    lookAndFeel.setColour (juce::Slider::rotarySliderFillColourId, accent);
-    lookAndFeel.setColour (juce::Slider::rotarySliderOutlineColourId, outline);
-    lookAndFeel.setColour (juce::Slider::thumbColourId, accent);
-    lookAndFeel.setColour (juce::Slider::textBoxTextColourId, text);
-    lookAndFeel.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    lookAndFeel.setColour (juce::ComboBox::backgroundColourId, outline);
-    lookAndFeel.setColour (juce::ComboBox::outlineColourId, outline);
-    lookAndFeel.setColour (juce::ComboBox::textColourId, text);
-    lookAndFeel.setColour (juce::ComboBox::arrowColourId, accent);
-    lookAndFeel.setColour (juce::PopupMenu::backgroundColourId, panel);
-    lookAndFeel.setColour (juce::PopupMenu::highlightedBackgroundColourId, accent.withAlpha (0.35f));
-    lookAndFeel.setColour (juce::TextButton::buttonColourId, outline);
-    lookAndFeel.setColour (juce::TextButton::textColourOffId, text);
-    lookAndFeel.setColour (juce::ToggleButton::tickColourId, accent);
-    lookAndFeel.setColour (juce::ToggleButton::tickDisabledColourId, dimText);
-    lookAndFeel.setColour (juce::Label::textColourId, dimText);
     setLookAndFeel (&lookAndFeel);
 
-    lfoRateControl = nullptr;
     sections = {
         { "OSCILLATOR", { choice ("wave", "Wave"), knob ("octave", "Octave"), knob ("detune", "Detune"),
                           knob ("sub", "Sub"), choice ("subWave", "Sub Wave") } },
@@ -42,7 +25,7 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
                       knob ("envAmount", "Env Amt"), knob ("filterDecay", "F. Decay"), knob ("drive", "Drive"),
                       knob ("keyTrack", "Key Track") } },
         { "AMP ENV", { knob ("attack", "Attack"), knob ("decay", "Decay"), knob ("sustain", "Sustain"),
-                   knob ("release", "Release") } },
+                       knob ("release", "Release") } },
         { "PITCH & CLICK", { knob ("pitchEnv", "Pitch Env"), knob ("pitchDecay", "P. Decay"), knob ("click", "Click") } },
         { "DISTORTION", { choice ("distType", "Type"), knob ("distDrive", "Gain"), knob ("distTone", "Tone"),
                           knob ("distMix", "Mix") } },
@@ -64,7 +47,8 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
     nextButton.onClick = [this] { stepPreset (1); };
     randomButton.onClick = [this] { processor.randomizePatch(); };
     mutateButton.onClick = [this] { processor.mutatePatch(); };
-    randomButton.setColour (juce::TextButton::buttonColourId, accent.darker (0.3f));
+    randomButton.setColour (juce::TextButton::buttonColourId, P::accent);
+    randomButton.setColour (juce::TextButton::textColourOffId, P::background);
 
     for (auto* c : std::initializer_list<juce::Component*> { &presetBox, &prevButton, &nextButton, &randomButton, &mutateButton })
         addAndMakeVisible (c);
@@ -73,7 +57,7 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
     refreshPresetBox();
     timerCallback();
     startTimerHz (10);
-    setSize (1000, 660);
+    setSize (900, kHeaderHeight + 3 * kRowHeight + 3 * kMargin);
 }
 
 SubForgeEditor::~SubForgeEditor()
@@ -91,12 +75,17 @@ SubForgeEditor::Control* SubForgeEditor::addControl (Kind kind, const char* para
     switch (kind)
     {
         case Kind::Knob:
+        {
             control->slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-            control->slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 76, 18);
+            control->slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 80, kValueHeight);
+            // set on the slider itself: its text box is created before our look-and-feel applies
             control->slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
             control->sliderAttachment = std::make_unique<APVTS::SliderAttachment> (processor.apvts, paramId, control->slider);
+            auto* param = processor.apvts.getParameter (paramId);
+            control->slider.setDoubleClickReturnValue (true, param->convertFrom0to1 (param->getDefaultValue()));
             addAndMakeVisible (control->slider);
             break;
+        }
         case Kind::Choice:
             if (auto* param = dynamic_cast<juce::AudioParameterChoice*> (processor.apvts.getParameter (paramId)))
                 control->box.addItemList (param->choices, 1);
@@ -147,19 +136,29 @@ void SubForgeEditor::stepPreset (int delta)
 
 void SubForgeEditor::paint (juce::Graphics& g)
 {
-    g.fillAll (background);
+    g.fillAll (P::background);
 
-    g.setColour (accent);
-    g.setFont (juce::Font (24.0f, juce::Font::bold));
-    g.drawText ("SubForge", headerArea.withTrimmedLeft (kMargin), juce::Justification::centredLeft);
+    auto title = headerArea.withTrimmedLeft (kMargin + 2);
+    g.setColour (P::accent);
+    g.setFont (lookAndFeel.boldFont (20.0f).withExtraKerningFactor (0.08f));
+    g.drawText ("SUBFORGE", title, juce::Justification::centredLeft);
+    g.setColour (P::dimText);
+    g.setFont (lookAndFeel.regularFont (11.0f).withExtraKerningFactor (0.1f));
+    g.drawText ("MONO BASS SYNTH", title.withTrimmedLeft (122), juce::Justification::centredLeft);
 
     for (const auto& section : sections)
     {
-        g.setColour (panel);
-        g.fillRoundedRectangle (section.bounds.toFloat(), 8.0f);
-        g.setColour (dimText);
-        g.setFont (juce::Font (13.0f, juce::Font::bold));
-        g.drawText (section.title, section.bounds.withHeight (26).withTrimmedLeft (10),
+        const auto bounds = section.bounds.toFloat();
+        g.setColour (P::panel);
+        g.fillRoundedRectangle (bounds, 6.0f);
+        g.setColour (P::panelEdge);
+        g.drawRoundedRectangle (bounds.reduced (0.5f), 6.0f, 1.0f);
+
+        g.setColour (P::accent);
+        g.fillRoundedRectangle (bounds.getX() + 10.0f, bounds.getY() + 8.0f, 3.0f, 9.0f, 1.5f);
+        g.setColour (P::dimText);
+        g.setFont (lookAndFeel.boldFont (10.5f).withExtraKerningFactor (0.12f));
+        g.drawText (section.title, section.bounds.withHeight (kSectionTitleHeight + 3).withTrimmedLeft (19),
                     juce::Justification::centredLeft);
     }
 }
@@ -167,25 +166,27 @@ void SubForgeEditor::paint (juce::Graphics& g)
 void SubForgeEditor::layoutSection (Section& section, juce::Rectangle<int> area)
 {
     section.bounds = area;
-    auto content = area.reduced (6).withTrimmedTop (22);
+    auto content = area.reduced (6, 4).withTrimmedTop (kSectionTitleHeight);
     const int contentWidth = content.getWidth();
     const int totalWeight = section.weight();
 
     for (auto* control : section.controls)
     {
-        auto cell = content.removeFromLeft (contentWidth * control->weight() / totalWeight).reduced (4, 0);
-        control->label.setBounds (cell.removeFromTop (20));
+        auto cell = content.removeFromLeft (contentWidth * control->weight() / totalWeight).reduced (3, 0);
+        control->label.setBounds (cell.removeFromTop (kLabelHeight));
+        const auto knobArea = cell.removeFromTop (kKnobSize + kValueHeight);
+        const int knobCentreY = knobArea.getY() + kKnobSize / 2;
 
         switch (control->kind)
         {
             case Kind::Knob:
-                control->slider.setBounds (cell);
+                control->slider.setBounds (knobArea);
                 break;
             case Kind::Choice:
-                control->box.setBounds (cell.withSizeKeepingCentre (cell.getWidth(), 26).translated (0, -10));
+                control->box.setBounds (cell.getX(), knobCentreY - 12, cell.getWidth(), 24);
                 break;
             case Kind::Toggle:
-                control->toggle.setBounds (cell.withSizeKeepingCentre (28, 28).translated (0, -10));
+                control->toggle.setBounds (juce::Rectangle<int> (28, 28).withCentre ({ cell.getCentreX(), knobCentreY }));
                 break;
         }
     }
@@ -214,22 +215,22 @@ void SubForgeEditor::resized()
     auto area = getLocalBounds();
     headerArea = area.removeFromTop (kHeaderHeight);
 
-    auto header = headerArea.reduced (kMargin, 12);
-    mutateButton.setBounds (header.removeFromRight (80));
+    auto header = headerArea.reduced (kMargin, 10);
+    mutateButton.setBounds (header.removeFromRight (76));
     header.removeFromRight (6);
-    randomButton.setBounds (header.removeFromRight (100));
-    header.removeFromRight (16);
+    randomButton.setBounds (header.removeFromRight (96));
+    header.removeFromRight (14);
     nextButton.setBounds (header.removeFromRight (28));
+    header.removeFromRight (4);
     presetBox.setBounds (header.removeFromRight (220));
+    header.removeFromRight (4);
     prevButton.setBounds (header.removeFromRight (28));
 
     area.reduce (kMargin, 0);
-    area.removeFromBottom (kMargin);
-    const int rowHeight = (area.getHeight() - 2 * kMargin) / 3;
 
     auto nextRow = [&]
     {
-        auto row = area.removeFromTop (rowHeight);
+        auto row = area.removeFromTop (kRowHeight);
         area.removeFromTop (kMargin);
         return row;
     };

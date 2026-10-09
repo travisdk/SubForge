@@ -2,6 +2,7 @@
 
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "PluginProcessor.h"
+#include "SubForgeLookAndFeel.h"
 
 class SubForgeEditor : public juce::AudioProcessorEditor,
                        private juce::ChangeListener,
@@ -60,7 +61,7 @@ private:
     void stepPreset (int delta);
 
     SubForgeProcessor& processor;
-    juce::LookAndFeel_V4 lookAndFeel;
+    SubForgeLookAndFeel lookAndFeel;
 
     std::vector<std::unique_ptr<Control>> controls;
     std::vector<Section> sections;

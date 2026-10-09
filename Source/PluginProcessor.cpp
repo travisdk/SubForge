@@ -36,12 +36,60 @@ std::unique_ptr<juce::AudioParameterFloat> floatParam (const char* id, const cha
                                                             .withStringFromValueFunction (toText)
                                                             .withValueFromStringFunction (fromText));
 }
+// Global (not per-project) preferences: ~/.config/SubForge/SubForge.settings on Linux.
+juce::PropertiesFile::Options settingsOptions()
+{
+    juce::PropertiesFile::Options options;
+    options.applicationName = "SubForge";
+   #if JUCE_LINUX
+    options.folderName = ".config/SubForge"; // JUCE puts Linux settings straight under ~ otherwise
+   #else
+    options.folderName = "SubForge";
+   #endif
+    options.filenameSuffix = "settings";
+    options.osxLibrarySubFolder = "Application Support";
+    return options;
+}
+// JUCE's Linux File::moveToTrash() skips the .trashinfo file, so file managers
+// can't show or restore the file. This follows the freedesktop.org trash spec.
+bool moveToTrash (const juce::File& file)
+{
+   #if JUCE_LINUX
+    const auto dataHome = juce::SystemStats::getEnvironmentVariable ("XDG_DATA_HOME", {});
+    const auto trash = (dataHome.isNotEmpty() ? juce::File (dataHome)
+                                              : juce::File::getSpecialLocation (juce::File::userHomeDirectory)
+                                                    .getChildFile (".local/share"))
+                           .getChildFile ("Trash");
+    const auto files = trash.getChildFile ("files"), info = trash.getChildFile ("info");
+
+    if (files.createDirectory() && info.createDirectory())
+    {
+        const auto target = files.getNonexistentChildFile (file.getFileNameWithoutExtension(), file.getFileExtension(), false);
+        const auto infoFile = info.getChildFile (target.getFileName() + ".trashinfo");
+        auto segments = juce::StringArray::fromTokens (file.getFullPathName(), "/", {});
+        for (auto& segment : segments)
+            segment = juce::URL::addEscapeChars (segment, false); // escape the parts, keep the slashes
+        const auto infoText = "[Trash Info]\nPath=" + segments.joinIntoString ("/")
+                              + "\nDeletionDate=" + juce::Time::getCurrentTime().formatted ("%Y-%m-%dT%H:%M:%S") + "\n";
+
+        if (infoFile.replaceWithText (infoText))
+        {
+            if (file.moveFileTo (target))
+                return true;
+            infoFile.deleteFile();
+        }
+    }
+   #endif
+    return file.moveToTrash();
+}
 } // namespace
 
 SubForgeProcessor::SubForgeProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
-      apvts (*this, nullptr, "PARAMS", createParameterLayout())
+      apvts (*this, nullptr, "PARAMS", createParameterLayout()),
+      settings (settingsOptions())
 {
+    rescanUserPresets();
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createParameterLayout()
@@ -203,6 +251,120 @@ const juce::String SubForgeProcessor::getProgramName (int index)
     return juce::isPositiveAndBelow (index, subforge::kNumPresets) ? subforge::kPresets[index].name : "";
 }
 
+juce::String SubForgeProcessor::getEntryName (int index) const
+{
+    if (isUserEntry (index))
+        return userPresets[index - subforge::kNumPresets].getFileNameWithoutExtension();
+    return juce::isPositiveAndBelow (index, subforge::kNumPresets) ? subforge::kPresets[index].name : "";
+}
+
+juce::File SubForgeProcessor::defaultPresetFolder()
+{
+    return juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("SubForge/Presets");
+}
+
+juce::File SubForgeProcessor::getPresetFolder() const
+{
+    const auto custom = settings.getValue ("presetFolder");
+    return custom.isNotEmpty() ? juce::File (custom) : defaultPresetFolder();
+}
+
+void SubForgeProcessor::setPresetFolder (const juce::File& folder)
+{
+    settings.setValue ("presetFolder", folder == juce::File() ? juce::String() : folder.getFullPathName());
+    settings.saveIfNeeded();
+    if (isUserEntry (currentEntry))
+        currentEntry = 0;
+    rescanUserPresets();
+}
+
+juce::File SubForgeProcessor::presetFileFor (const juce::String& name) const
+{
+    return getPresetFolder().getChildFile (juce::File::createLegalFileName (name.trim()) + kPresetExtension);
+}
+
+void SubForgeProcessor::rescanUserPresets()
+{
+    const auto currentFile = isUserEntry (currentEntry) ? userPresets[currentEntry - subforge::kNumPresets] : juce::File();
+
+    userPresets = getPresetFolder().findChildFiles (juce::File::findFiles, false, juce::String ("*") + kPresetExtension);
+    std::sort (userPresets.begin(), userPresets.end(), [] (const juce::File& a, const juce::File& b)
+               { return a.getFileNameWithoutExtension().compareNatural (b.getFileNameWithoutExtension()) < 0; });
+
+    if (currentFile != juce::File())
+    {
+        const int index = userPresets.indexOf (currentFile);
+        currentEntry = index >= 0 ? subforge::kNumPresets + index : 0;
+    }
+    sendChangeMessage();
+}
+
+void SubForgeProcessor::setParameterValue (juce::RangedAudioParameter& param, float value)
+{
+    param.beginChangeGesture();
+    param.setValueNotifyingHost (param.convertTo0to1 (value));
+    param.endChangeGesture();
+}
+
+// A user preset stores every parameter as a plain value, including volume:
+// unlike factory presets it is restored exactly as it was saved.
+bool SubForgeProcessor::saveUserPreset (const juce::String& name)
+{
+    const auto file = presetFileFor (name);
+    if (! file.getParentDirectory().createDirectory())
+        return false;
+
+    juce::XmlElement xml ("SubForgePreset");
+    xml.setAttribute ("version", 1);
+    xml.setAttribute ("name", name.trim());
+    for (auto* p : getParameters())
+        if (auto* param = dynamic_cast<juce::RangedAudioParameter*> (p))
+        {
+            auto* element = xml.createNewChildElement ("Param");
+            element->setAttribute ("id", param->paramID);
+            element->setAttribute ("value", param->convertFrom0to1 (param->getValue()));
+        }
+
+    if (! xml.writeTo (file))
+        return false;
+
+    patchName = file.getFileNameWithoutExtension();
+    currentEntry = -1;
+    rescanUserPresets();
+    currentEntry = subforge::kNumPresets + userPresets.indexOf (file);
+    sendChangeMessage();
+    return true;
+}
+
+bool SubForgeProcessor::loadUserPresetFile (const juce::File& file)
+{
+    const auto xml = juce::parseXML (file);
+    if (xml == nullptr || ! xml->hasTagName ("SubForgePreset"))
+        return false;
+
+    // parameters missing from older files fall back to their defaults
+    for (auto* p : getParameters())
+        if (auto* param = dynamic_cast<juce::RangedAudioParameter*> (p))
+        {
+            float value = param->convertFrom0to1 (param->getDefaultValue());
+            if (auto* element = xml->getChildByAttribute ("id", param->paramID))
+                value = (float) element->getDoubleAttribute ("value", value);
+            setParameterValue (*param, value);
+        }
+    return true;
+}
+
+void SubForgeProcessor::deleteUserPreset (int index)
+{
+    if (! isUserEntry (index))
+        return;
+
+    moveToTrash (userPresets[index - subforge::kNumPresets]);
+    if (currentEntry == index)
+        currentEntry = 0;
+    rescanUserPresets();
+}
+
 subforge::PatchValues SubForgeProcessor::currentPatch() const
 {
     subforge::PatchValues values {};
@@ -213,27 +375,29 @@ subforge::PatchValues SubForgeProcessor::currentPatch() const
 
 void SubForgeProcessor::applyPatch (const subforge::PatchValues& values)
 {
-    auto set = [this] (const char* id, float value)
-    {
-        auto* param = apvts.getParameter (id);
-        param->beginChangeGesture();
-        param->setValueNotifyingHost (param->convertTo0to1 (value));
-        param->endChangeGesture();
-    };
-
     for (int i = 0; i < subforge::kNumPatchParams; ++i)
-        set (subforge::kPatchParamIds[i], values[(size_t) i]);
-    set ("volume", subforge::normalizedVolumeDb (values));
+        setParameterValue (*apvts.getParameter (subforge::kPatchParamIds[i]), values[(size_t) i]);
+    setParameterValue (*apvts.getParameter ("volume"), subforge::normalizedVolumeDb (values));
 }
 
-void SubForgeProcessor::loadPreset (int index)
+void SubForgeProcessor::loadEntry (int index)
 {
-    if (! juce::isPositiveAndBelow (index, subforge::kNumPresets))
+    if (isUserEntry (index))
+    {
+        if (! loadUserPresetFile (userPresets[index - subforge::kNumPresets]))
+            return;
+    }
+    else if (juce::isPositiveAndBelow (index, subforge::kNumPresets))
+    {
+        applyPatch (subforge::kPresets[index].values());
+    }
+    else
+    {
         return;
+    }
 
-    currentPreset = index;
-    patchName = subforge::kPresets[index].name;
-    applyPatch (subforge::kPresets[index].values());
+    currentEntry = index;
+    patchName = getEntryName (index);
     sendChangeMessage();
 }
 
@@ -281,7 +445,7 @@ void SubForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
     state.setProperty ("patchName", patchName, nullptr);
-    state.setProperty ("presetIndex", currentPreset, nullptr);
+    state.setProperty ("presetIndex", isUserEntry (currentEntry) ? 0 : currentEntry, nullptr);
 
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
@@ -295,7 +459,10 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
         {
             auto state = juce::ValueTree::fromXml (*xml);
             patchName = state.getProperty ("patchName", "Init").toString();
-            currentPreset = juce::jlimit (0, subforge::kNumPresets - 1, (int) state.getProperty ("presetIndex", 0));
+            currentEntry = juce::jlimit (0, subforge::kNumPresets - 1, (int) state.getProperty ("presetIndex", 0));
+            for (int i = subforge::kNumPresets; i < getNumEntries(); ++i)
+                if (getEntryName (i) == patchName)
+                    currentEntry = i; // a user preset of that name is the better match
             apvts.replaceState (state);
             sendChangeMessage();
         }

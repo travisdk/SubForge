@@ -12,28 +12,14 @@ constexpr int kLabelHeight = 16;
 constexpr int kValueHeight = 16;
 constexpr int kKnobSize = SubForgeLookAndFeel::kKnobSize;
 
-// Global (not per-project) preferences: ~/.config/SubForge/SubForge.settings on Linux.
-juce::PropertiesFile::Options settingsOptions()
-{
-    juce::PropertiesFile::Options options;
-    options.applicationName = "SubForge";
-   #if JUCE_LINUX
-    options.folderName = ".config/SubForge"; // JUCE puts Linux settings straight under ~ otherwise
-   #else
-    options.folderName = "SubForge";
-   #endif
-    options.filenameSuffix = "settings";
-    options.osxLibrarySubFolder = "Application Support";
-    return options;
-}
 } // namespace
 
 SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
-    : AudioProcessorEditor (&p), processor (p), settings (settingsOptions())
+    : AudioProcessorEditor (&p), processor (p)
 {
     setLookAndFeel (&lookAndFeel);
     lookAndFeel.setAccent (juce::Colour::fromString (
-        settings.getValue ("accentColour", SubForgeLookAndFeel::accentChoices().front().colour.toString())));
+        processor.getSettings().getValue ("accentColour", SubForgeLookAndFeel::accentChoices().front().colour.toString())));
 
     sections = {
         { "OSCILLATOR", { choice ("wave", "Wave"), knob ("octave", "Octave"), knob ("detune", "Detune"),
@@ -53,13 +39,12 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
                     knob ("volume", "Volume") } },
     };
 
-    for (int i = 0; i < subforge::kNumPresets; ++i)
-        presetBox.addItem (subforge::kPresets[i].name, i + 1);
     presetBox.onChange = [this]
     {
         if (const int id = presetBox.getSelectedId(); id > 0)
-            processor.loadPreset (id - 1);
+            processor.loadEntry (id - 1);
     };
+    saveButton.onClick = [this] { showSaveDialog(); };
     prevButton.onClick = [this] { stepPreset (-1); };
     nextButton.onClick = [this] { stepPreset (1); };
     randomButton.onClick = [this] { processor.randomizePatch(); };
@@ -68,11 +53,12 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
     randomButton.setColour (juce::TextButton::textColourOffId, P::background);
     settingsButton.onClick = [this] { showSettingsMenu(); };
 
-    for (auto* c : std::initializer_list<juce::Component*> { &presetBox, &prevButton, &nextButton, &randomButton,
-                                                              &mutateButton, &settingsButton })
+    for (auto* c : std::initializer_list<juce::Component*> { &presetBox, &prevButton, &nextButton, &saveButton,
+                                                              &randomButton, &mutateButton, &settingsButton })
         addAndMakeVisible (c);
 
     processor.addChangeListener (this);
+    processor.rescanUserPresets(); // pick up files added since the plugin was loaded
     refreshPresetBox();
     timerCallback();
     startTimerHz (10);
@@ -136,12 +122,22 @@ void SubForgeEditor::timerCallback()
     lfoRateControl->slider.setAlpha (freeRunning ? 1.0f : 0.35f);
 }
 
+// Rebuilt on every change: factory presets, then a "User" section for saved files.
 void SubForgeEditor::refreshPresetBox()
 {
-    const auto name = processor.getPatchName();
-    const int index = processor.getCurrentProgram();
+    presetBox.clear (juce::dontSendNotification);
+    presetBox.addSectionHeading ("Factory");
+    for (int i = 0; i < processor.getNumEntries(); ++i)
+    {
+        if (i == subforge::kNumPresets)
+            presetBox.addSectionHeading ("User");
+        presetBox.addItem (processor.getEntryName (i), i + 1);
+    }
 
-    if (name == subforge::kPresets[index].name)
+    const auto name = processor.getPatchName();
+    const int index = processor.getCurrentEntry();
+
+    if (name == processor.getEntryName (index))
         presetBox.setSelectedId (index + 1, juce::dontSendNotification);
     else
         presetBox.setText (name, juce::dontSendNotification);
@@ -149,8 +145,85 @@ void SubForgeEditor::refreshPresetBox()
 
 void SubForgeEditor::stepPreset (int delta)
 {
-    const int n = subforge::kNumPresets;
-    processor.loadPreset ((processor.getCurrentProgram() + delta + n) % n);
+    const int n = processor.getNumEntries();
+    processor.loadEntry ((processor.getCurrentEntry() + delta + n) % n);
+}
+
+void SubForgeEditor::showSaveDialog()
+{
+    auto suggestion = processor.getPatchName().trimCharactersAtEnd (" *");
+    if (! processor.isUserEntry (processor.getCurrentEntry()))
+        suggestion = "My " + suggestion;
+
+    auto* window = new juce::AlertWindow ("Save preset", "Saved to " + processor.getPresetFolder().getFullPathName(),
+                                          juce::MessageBoxIconType::NoIcon);
+    window->setLookAndFeel (&lookAndFeel);
+    window->addTextEditor ("name", suggestion, "Name:");
+    window->addButton ("Save", 1, juce::KeyPress (juce::KeyPress::returnKey));
+    window->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+
+    // shown inside the editor rather than as a separate desktop window, which some hosts bury
+    addAndMakeVisible (window);
+    window->setCentrePosition (getLocalBounds().getCentre());
+    window->enterModalState (true, juce::ModalCallbackFunction::create (
+        [safeThis = juce::Component::SafePointer<SubForgeEditor> (this), window] (int result)
+        {
+            const auto name = window->getTextEditorContents ("name").trim();
+            if (safeThis != nullptr && result == 1 && name.isNotEmpty())
+                safeThis->savePreset (name);
+        }), true);
+
+    if (auto* nameEditor = window->getTextEditor ("name"))
+    {
+        nameEditor->grabKeyboardFocus();
+        nameEditor->selectAll();
+    }
+}
+
+void SubForgeEditor::savePreset (const juce::String& name)
+{
+    auto save = [this, name]
+    {
+        if (! processor.saveUserPreset (name))
+            confirm ("Could not save", "Writing to " + processor.getPresetFolder().getFullPathName() + " failed.", "OK", {});
+    };
+
+    if (processor.userPresetExists (name))
+        confirm ("Overwrite preset?", "\"" + name + "\" already exists.", "Overwrite", save);
+    else
+        save();
+}
+
+// Two-button (or one, without onOk) message shown inside the editor.
+void SubForgeEditor::confirm (const juce::String& title, const juce::String& message, const juce::String& okText,
+                              std::function<void()> onOk)
+{
+    auto* window = new juce::AlertWindow (title, message, juce::MessageBoxIconType::NoIcon);
+    window->setLookAndFeel (&lookAndFeel);
+    window->addButton (okText, 1, juce::KeyPress (juce::KeyPress::returnKey));
+    if (onOk)
+        window->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+
+    addAndMakeVisible (window);
+    window->setCentrePosition (getLocalBounds().getCentre());
+    window->enterModalState (true, juce::ModalCallbackFunction::create (
+        [safeThis = juce::Component::SafePointer<SubForgeEditor> (this), onOk] (int result)
+        {
+            if (safeThis != nullptr && result == 1 && onOk)
+                onOk();
+        }), true);
+}
+
+void SubForgeEditor::choosePresetFolder()
+{
+    folderChooser = std::make_unique<juce::FileChooser> ("Choose preset folder", processor.getPresetFolder());
+    folderChooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
+                                [safeThis = juce::Component::SafePointer<SubForgeEditor> (this)] (const juce::FileChooser& chooser)
+                                {
+                                    const auto folder = chooser.getResult();
+                                    if (safeThis != nullptr && folder.isDirectory())
+                                        safeThis->processor.setPresetFolder (folder);
+                                });
 }
 
 void SubForgeEditor::showSettingsMenu()
@@ -163,22 +236,38 @@ void SubForgeEditor::showSettingsMenu()
     for (size_t i = 0; i < choices.size(); ++i)
     {
         juce::PopupMenu::Item item (choices[i].name);
-        item.itemID = (int) i + 1;
         item.colour = choices[i].colour;
         item.isTicked = choices[i].colour == lookAndFeel.getAccent();
+        item.action = [this, colour = choices[i].colour] { applyAccent (colour); };
         menu.addItem (item);
     }
 
+    const int entry = processor.getCurrentEntry();
+    const bool onUserPreset = processor.isUserEntry (entry);
+    const bool customFolder = processor.getPresetFolder() != SubForgeProcessor::defaultPresetFolder();
+    menu.addSectionHeader ("Presets");
+    menu.addItem ("Open preset folder", [this]
+    {
+        auto folder = processor.getPresetFolder();
+        folder.createDirectory();
+        folder.startAsProcess();
+    });
+    menu.addItem ("Change preset folder...", [this] { choosePresetFolder(); });
+    menu.addItem ("Use default folder", customFolder, false, [this] { processor.setPresetFolder ({}); });
+    menu.addItem ("Rescan presets", [this] { processor.rescanUserPresets(); });
+    menu.addItem ("Delete \"" + (onUserPreset ? processor.getEntryName (entry) : juce::String ("user preset")) + "\"",
+                  onUserPreset, false, [this, entry]
+                  {
+                      confirm ("Delete preset?", "\"" + processor.getEntryName (entry) + "\" will be moved to the trash.",
+                               "Delete", [this, entry] { processor.deleteUserPreset (entry); });
+                  });
+
     // open below the gear, right-aligned with it so it stays inside the editor
-    constexpr int menuWidth = 170;
+    constexpr int menuWidth = 200;
     const auto gear = settingsButton.getScreenBounds();
     const auto target = juce::Rectangle<int> (gear.getRight() - menuWidth, gear.getY(), menuWidth, gear.getHeight());
-    menu.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (target).withMinimumWidth (menuWidth),
-                        [safeThis = juce::Component::SafePointer<SubForgeEditor> (this)] (int result)
-                        {
-                            if (safeThis != nullptr && result > 0)
-                                safeThis->applyAccent (SubForgeLookAndFeel::accentChoices()[(size_t) result - 1].colour);
-                        });
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (target).withMinimumWidth (menuWidth)
+                            .withDeletionCheck (*this));
 }
 
 void SubForgeEditor::applyAccent (juce::Colour accent)
@@ -188,8 +277,8 @@ void SubForgeEditor::applyAccent (juce::Colour accent)
     sendLookAndFeelChange();
     repaint();
 
-    settings.setValue ("accentColour", accent.toString());
-    settings.saveIfNeeded();
+    processor.getSettings().setValue ("accentColour", accent.toString());
+    processor.getSettings().saveIfNeeded();
 }
 
 void SubForgeEditor::SettingsButton::paintButton (juce::Graphics& g, bool isHighlighted, bool isDown)
@@ -303,9 +392,11 @@ void SubForgeEditor::resized()
     header.removeFromRight (6);
     randomButton.setBounds (header.removeFromRight (96));
     header.removeFromRight (14);
+    saveButton.setBounds (header.removeFromRight (56));
+    header.removeFromRight (6);
     nextButton.setBounds (header.removeFromRight (28));
     header.removeFromRight (4);
-    presetBox.setBounds (header.removeFromRight (220));
+    presetBox.setBounds (header.removeFromRight (210));
     header.removeFromRight (4);
     prevButton.setBounds (header.removeFromRight (28));
 

@@ -63,6 +63,10 @@ public:
 
     juce::Font getLabelFont (juce::Label&) override { return regularFont (12.5f); }
 
+    juce::Font getAlertWindowTitleFont() override { return boldFont (15.0f); }
+    juce::Font getAlertWindowMessageFont() override { return regularFont (13.0f); }
+    juce::Font getAlertWindowFont() override { return regularFont (13.0f); }
+
 private:
     juce::Typeface::Ptr medium, bold;
     juce::Colour accent;

@@ -68,6 +68,11 @@ private:
     void stepPreset (int delta);
     void showSettingsMenu();
     void applyAccent (juce::Colour accent);
+    void showSaveDialog();
+    void savePreset (const juce::String& name);
+    void confirm (const juce::String& title, const juce::String& message, const juce::String& okText,
+                  std::function<void()> onOk);
+    void choosePresetFolder();
 
     SubForgeProcessor& processor;
     SubForgeLookAndFeel lookAndFeel;
@@ -78,9 +83,10 @@ private:
 
     juce::ComboBox presetBox;
     juce::TextButton prevButton { "<" }, nextButton { ">" };
+    juce::TextButton saveButton { "Save" };
     juce::TextButton randomButton { "Randomize" }, mutateButton { "Mutate" };
     SettingsButton settingsButton;
-    juce::PropertiesFile settings;
+    std::unique_ptr<juce::FileChooser> folderChooser;
     juce::Rectangle<int> headerArea;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubForgeEditor)

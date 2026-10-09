@@ -21,6 +21,10 @@ SubForgeLookAndFeel::SubForgeLookAndFeel()
     setColour (juce::TextButton::buttonColourId, P::field);
     setColour (juce::TextButton::textColourOffId, P::text);
     setColour (juce::TextButton::textColourOnId, P::text);
+    setColour (juce::TextEditor::outlineColourId, P::panelEdge.brighter (0.2f));
+    setColour (juce::AlertWindow::backgroundColourId, P::panel);
+    setColour (juce::AlertWindow::textColourId, P::text);
+    setColour (juce::AlertWindow::outlineColourId, P::panelEdge.brighter (0.2f));
     setAccent (accentChoices().front().colour);
 }
 

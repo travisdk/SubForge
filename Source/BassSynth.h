@@ -13,7 +13,7 @@ constexpr float kPi = 3.14159265358979f;
 
 struct BassParams
 {
-    int wave = 0;          // 0 saw, 1 square, 2 pulse 25%
+    int wave = 0;          // 0 saw, 1 square, 2 pulse 25%, 3 sine
     int octave = 0;        // -2..+1
     float sub = 0.5f;      // sub oscillator level
     int subWave = 0;       // 0 sine, 1 square

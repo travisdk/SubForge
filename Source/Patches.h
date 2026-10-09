@@ -37,7 +37,7 @@ struct Preset
     PatchValues values;
 };
 
-// wave: 0 saw, 1 square, 2 pulse | subWave: 0 sine, 1 square
+// wave: 0 saw, 1 square, 2 pulse, 3 sine | subWave: 0 sine, 1 square
 // Columns: wave oct detune sub subW | cutoff reso envAmt fDecay drive | att dec sus rel | glide vel
 inline const Preset kPresets[] = {
     { "Init",              { 0,  0,  0, 0.5f, 0,   400, 0.30f, 0.50f, 250, 0.20f,   1,  600, 0.70f,  60,   50, 0.5f } },
@@ -57,6 +57,10 @@ inline const Preset kPresets[] = {
     { "Sub Square",        { 1, -1,  0, 0.6f, 1,    90, 0.05f, 0.10f, 150, 0.15f,   1,  500, 0.90f,  70,    0, 0.3f } },
     { "Soft Sub Swell",    { 0,  0,  0, 1.0f, 0,    50, 0.00f, 0.00f, 200, 0.00f,  80,  800, 0.90f, 300,   40, 0.2f } },
     { "Dub Bass",          { 0,  0,  0, 0.9f, 0,   100, 0.10f, 0.15f, 300, 0.15f,   3,  900, 0.80f, 200,   20, 0.3f } },
+    { "Sine Bass",         { 3,  0,  0, 0.3f, 0,  2000, 0.00f, 0.00f, 200, 0.10f,   2,  800, 0.85f,  90,   30, 0.4f } },
+    { "Driven Sine",       { 3,  0,  0, 0.4f, 0,   600, 0.20f, 0.30f, 200, 0.70f,   1,  600, 0.80f,  80,   20, 0.5f } },
+    { "Sine Pluck",        { 3,  0,  0, 0.5f, 0,   300, 0.30f, 0.60f, 100, 0.50f,   1,  250, 0.00f,  80,    0, 0.6f } },
+    { "Detuned Sines",     { 3,  0, 12, 0.3f, 0,  1500, 0.00f, 0.00f, 200, 0.30f,   2,  800, 0.90f, 120,   40, 0.3f } },
 
     { "Reese",             { 0,  0, 18, 0.4f, 0,   900, 0.15f, 0.10f, 400, 0.30f,   3,  800, 0.90f, 150,   30, 0.2f } },
     { "Dark Reese",        { 0,  0, 25, 0.5f, 0,   400, 0.20f, 0.10f, 500, 0.40f,   5,  800, 0.95f, 200,   40, 0.2f } },
@@ -177,7 +181,7 @@ inline PatchValues randomPatch (std::mt19937& rng)
     PatchValues v {};
 
     const float w = r();
-    v[pWave] = w < 0.5f ? 0.0f : (w < 0.8f ? 1.0f : 2.0f);
+    v[pWave] = w < 0.45f ? 0.0f : (w < 0.72f ? 1.0f : (w < 0.87f ? 2.0f : 3.0f));
     const float o = r();
     v[pOctave] = o < 0.7f ? 0.0f : (o < 0.95f ? -1.0f : 1.0f);
     v[pDetune] = chance (0.55f) ? 0.0f : 2.0f + 28.0f * r();

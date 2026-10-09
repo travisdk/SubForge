@@ -4,7 +4,8 @@
 #include "PluginProcessor.h"
 
 class SubForgeEditor : public juce::AudioProcessorEditor,
-                       private juce::ChangeListener
+                       private juce::ChangeListener,
+                       private juce::Timer
 {
 public:
     explicit SubForgeEditor (SubForgeProcessor&);
@@ -14,27 +15,36 @@ public:
     void resized() override;
 
 private:
+    enum class Kind { Knob, Choice, Toggle };
+
     struct Control
     {
+        Kind kind = Kind::Knob;
         juce::Label label;
         juce::Slider slider;
         juce::ComboBox box;
+        juce::ToggleButton toggle;
         std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> sliderAttachment;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> boxAttachment;
-        bool isChoice = false;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> toggleAttachment;
     };
 
     struct Section
     {
         juce::String title;
         std::vector<Control*> controls;
-        juce::Rectangle<int> bounds;
+        juce::Rectangle<int> bounds {};
     };
 
-    Control* addKnob (const char* paramId, const juce::String& text);
-    Control* addChoice (const char* paramId, const juce::String& text);
+    Control* addControl (Kind kind, const char* paramId, const juce::String& text);
+    Control* knob (const char* paramId, const juce::String& text) { return addControl (Kind::Knob, paramId, text); }
+    Control* choice (const char* paramId, const juce::String& text) { return addControl (Kind::Choice, paramId, text); }
+    Control* toggle (const char* paramId, const juce::String& text) { return addControl (Kind::Toggle, paramId, text); }
+
+    void layoutRow (std::initializer_list<Section*> row, juce::Rectangle<int> area);
     void layoutSection (Section& section, juce::Rectangle<int> area);
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
+    void timerCallback() override;
     void refreshPresetBox();
     void stepPreset (int delta);
 
@@ -43,6 +53,7 @@ private:
 
     std::vector<std::unique_ptr<Control>> controls;
     std::vector<Section> sections;
+    Control* lfoRateControl = nullptr;
 
     juce::ComboBox presetBox;
     juce::TextButton prevButton { "<" }, nextButton { ">" };

@@ -62,6 +62,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
     params.push_back (floatParam ("envAmount", "Env Amount", { 0.0f, 1.0f }, 0.5f));
     params.push_back (floatParam ("filterDecay", "Filter Decay", skewedRange (5.0f, 3000.0f, 300.0f), 250.0f, "ms"));
     params.push_back (floatParam ("drive", "Drive", { 0.0f, 1.0f }, 0.2f));
+    params.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "filterMode", 1 }, "Filter Mode",
+                                                              StringArray { "LP 24", "LP 12", "BP 12" }, 0));
+    params.push_back (floatParam ("keyTrack", "Key Track", { 0.0f, 1.0f }, 0.0f));
 
     params.push_back (floatParam ("attack", "Attack", skewedRange (0.5f, 2000.0f, 50.0f), 1.0f, "ms"));
     params.push_back (floatParam ("decay", "Decay", skewedRange (5.0f, 5000.0f, 400.0f), 600.0f, "ms"));
@@ -70,6 +73,21 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
 
     params.push_back (floatParam ("glide", "Glide", skewedRange (0.0f, 1000.0f, 100.0f), 50.0f, "ms"));
     params.push_back (floatParam ("velocity", "Velocity Sens", { 0.0f, 1.0f }, 0.5f));
+    params.push_back (floatParam ("accent", "Accent", { 0.0f, 1.0f }, 0.0f));
+
+    params.push_back (floatParam ("pitchEnv", "Pitch Env", { -24.0f, 24.0f }, 0.0f, "st"));
+    params.push_back (floatParam ("pitchDecay", "Pitch Decay", skewedRange (5.0f, 1000.0f, 100.0f), 60.0f, "ms"));
+    params.push_back (floatParam ("click", "Click", { 0.0f, 1.0f }, 0.0f));
+
+    StringArray syncNames;
+    for (auto* name : subforge::kLfoSyncNames)
+        syncNames.add (name);
+    params.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "lfoShape", 1 }, "LFO Shape",
+                                                              StringArray { "Sine", "Triangle", "Saw Down", "Square", "S&H" }, 0));
+    params.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "lfoSync", 1 }, "LFO Sync", syncNames, 7));
+    params.push_back (floatParam ("lfoRate", "LFO Rate", skewedRange (0.05f, 20.0f, 2.0f), 2.0f, "Hz"));
+    params.push_back (floatParam ("lfoDepth", "LFO Depth", { 0.0f, 1.0f }, 0.0f));
+    params.push_back (std::make_unique<AudioParameterBool> (ParameterID { "lfoRetrig", 1 }, "LFO Retrigger", false));
     params.push_back (floatParam ("volume", "Volume", { -36.0f, 6.0f }, -6.0f, "dB"));
 
     return { params.begin(), params.end() };
@@ -77,33 +95,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
 
 subforge::BassParams SubForgeProcessor::readParams() const
 {
-    auto get = [this] (const char* id) { return apvts.getRawParameterValue (id)->load(); };
-
-    subforge::BassParams p;
-    p.wave = (int) get ("wave");
-    p.octave = (int) get ("octave");
-    p.detuneCents = get ("detune");
-    p.sub = get ("sub");
-    p.subWave = (int) get ("subWave");
-    p.cutoffHz = get ("cutoff");
-    p.resonance = get ("resonance");
-    p.envAmount = get ("envAmount");
-    p.filterDecayMs = get ("filterDecay");
-    p.drive = get ("drive");
-    p.attackMs = get ("attack");
-    p.decayMs = get ("decay");
-    p.sustain = get ("sustain");
-    p.releaseMs = get ("release");
-    p.glideMs = get ("glide");
-    p.velocitySens = get ("velocity");
-    p.gain = juce::Decibels::decibelsToGain (get ("volume"));
-    return p;
+    return subforge::toBassParams (currentPatch(),
+                                   juce::Decibels::decibelsToGain (apvts.getRawParameterValue ("volume")->load()));
 }
 
-void SubForgeProcessor::prepareToPlay (double sampleRate, int)
+void SubForgeProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    maxBlockSize = juce::jmax (1, samplesPerBlock);
+    oversampler.initProcessing ((size_t) maxBlockSize);
+    oversampler.reset();
+    setLatencySamples (juce::roundToInt (oversampler.getLatencyInSamples()));
+
     synth.setParams (readParams());
-    synth.prepare (sampleRate);
+    synth.prepare (sampleRate * kOversampling);
 }
 
 bool SubForgeProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -129,23 +133,55 @@ void SubForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     juce::ScopedNoDenormals noDenormals;
     synth.setParams (readParams());
 
-    const int numSamples = buffer.getNumSamples();
-    float* left = buffer.getWritePointer (0);
-    int position = 0;
-
-    for (const auto metadata : midi)
+    double bpm = 120.0, ppq = 0.0;
+    bool hasPosition = false;
+    if (auto* hostPlayHead = getPlayHead())
     {
-        const int eventPos = juce::jlimit (0, numSamples, metadata.samplePosition);
-        if (eventPos > position)
+        if (auto position = hostPlayHead->getPosition())
         {
-            synth.render (left + position, eventPos - position);
-            position = eventPos;
+            if (auto hostBpm = position->getBpm())
+                bpm = *hostBpm;
+            if (auto hostPpq = position->getPpqPosition(); hostPpq && position->getIsPlaying())
+            {
+                ppq = *hostPpq;
+                hasPosition = true;
+            }
         }
-        handleMidi (metadata.getMessage());
     }
+    synth.setTransport (bpm, ppq, hasPosition);
 
-    if (position < numSamples)
-        synth.render (left + position, numSamples - position);
+    buffer.clear();
+    const int numSamples = buffer.getNumSamples();
+    auto mono = juce::dsp::AudioBlock<float> (buffer).getSingleChannelBlock (0);
+    auto midiIt = midi.cbegin();
+
+    // The voice runs at kOversampling x the host rate; MIDI positions are scaled to match.
+    for (int start = 0; start < numSamples; start += maxBlockSize)
+    {
+        const int length = juce::jmin (maxBlockSize, numSamples - start);
+        auto chunk = mono.getSubBlock ((size_t) start, (size_t) length);
+        float* up = oversampler.processSamplesUp (chunk).getChannelPointer (0);
+        int position = 0;
+
+        for (; midiIt != midi.cend(); ++midiIt)
+        {
+            const auto metadata = *midiIt;
+            const int eventPos = juce::jlimit (0, numSamples, metadata.samplePosition) - start;
+            if (eventPos >= length)
+                break;
+            if (eventPos > position)
+            {
+                synth.render (up + position * kOversampling, (eventPos - position) * kOversampling);
+                position = eventPos;
+            }
+            handleMidi (metadata.getMessage());
+        }
+
+        if (position < length)
+            synth.render (up + position * kOversampling, (length - position) * kOversampling);
+
+        oversampler.processSamplesDown (chunk);
+    }
 
     for (int ch = 1; ch < buffer.getNumChannels(); ++ch)
         buffer.copyFrom (ch, 0, buffer, 0, 0, numSamples);
@@ -191,7 +227,7 @@ void SubForgeProcessor::loadPreset (int index)
 
     currentPreset = index;
     patchName = subforge::kPresets[index].name;
-    applyPatch (subforge::kPresets[index].values);
+    applyPatch (subforge::kPresets[index].values());
     sendChangeMessage();
 }
 
@@ -213,7 +249,9 @@ void SubForgeProcessor::mutatePatch()
         auto* param = apvts.getParameter (subforge::kPatchParamIds[i]);
         auto& value = values[(size_t) i];
 
-        if (i == subforge::pWave || i == subforge::pSubWave || i == subforge::pOctave)
+        if (dynamic_cast<juce::AudioParameterChoice*> (param) != nullptr
+            || dynamic_cast<juce::AudioParameterInt*> (param) != nullptr
+            || dynamic_cast<juce::AudioParameterBool*> (param) != nullptr)
         {
             // discrete choices only flip occasionally
             if (uniform (rng) < 0.1f)

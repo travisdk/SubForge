@@ -17,8 +17,14 @@ enum PatchParam
     pCutoff, pResonance, pEnvAmount, pFilterDecay, pDrive,
     pAttack, pDecay, pSustain, pRelease,
     pGlide, pVelocity,
+    kNumCoreParams,
+    pFilterMode = kNumCoreParams, pKeyTrack, pAccent,
+    pPitchEnv, pPitchDecay, pClick,
+    pLfoShape, pLfoSync, pLfoRate, pLfoDepth, pLfoRetrig,
     kNumPatchParams
 };
+
+constexpr int kNumExtraParams = kNumPatchParams - kNumCoreParams;
 
 // Parameter IDs in PatchParam order. Volume is not part of a patch: it is
 // derived by normalizedVolumeDb() so every patch plays at a similar level.
@@ -26,15 +32,32 @@ inline constexpr const char* kPatchParamIds[kNumPatchParams] = {
     "wave", "octave", "detune", "sub", "subWave",
     "cutoff", "resonance", "envAmount", "filterDecay", "drive",
     "attack", "decay", "sustain", "release",
-    "glide", "velocity"
+    "glide", "velocity",
+    "filterMode", "keyTrack", "accent",
+    "pitchEnv", "pitchDecay", "click",
+    "lfoShape", "lfoSync", "lfoRate", "lfoDepth", "lfoRetrig"
 };
 
 using PatchValues = std::array<float, kNumPatchParams>;
 
+// Neutral settings for the extra parameters, so presets that leave them out
+// sound as before: LP24, no key track/accent/pitch env/click, LFO depth 0.
+// Columns: filterMode keyTrack accent | pitchEnv pitchDecay click | lfoShape lfoSync lfoRate lfoDepth lfoRetrig
+inline constexpr std::array<float, kNumExtraParams> kExtraDefaults { 0, 0, 0, 0, 60, 0, 0, 7, 2, 0, 0 };
+
 struct Preset
 {
     const char* name;
-    PatchValues values;
+    std::array<float, kNumCoreParams> core;
+    std::array<float, kNumExtraParams> extra = kExtraDefaults;
+
+    PatchValues values() const
+    {
+        PatchValues v {};
+        std::copy (core.begin(), core.end(), v.begin());
+        std::copy (extra.begin(), extra.end(), v.begin() + kNumCoreParams);
+        return v;
+    }
 };
 
 // wave: 0 saw, 1 square, 2 pulse, 3 sine, 4 triangle | subWave: 0 sine, 1 square
@@ -104,6 +127,42 @@ inline const Preset kPresets[] = {
     { "Zap Bass",          { 1,  0,  0, 0.4f, 0,   120, 0.60f, 1.00f,  40, 0.30f,   1,  300, 0.60f,  60,    0, 0.6f } },
     { "Laser Down",        { 0,  0,  0, 0.3f, 0,    80, 0.80f, 1.00f, 250, 0.40f,   1,  400, 0.60f,  60,    0, 0.5f } },
     { "Octave Lead Bass",  { 0,  1,  6, 0.6f, 1,  1200, 0.40f, 0.35f, 300, 0.40f,   2,  600, 0.70f, 120,   90, 0.4f } },
+
+    // lfoSync: 4 = 1/4, 7 = 1/8, 9 = 1/8T, 10 = 1/16 | lfoShape: 0 sine, 1 tri, 2 saw down, 3 square, 4 S&H
+    { "Wobble 1/8",        { 0,  0, 10, 0.6f, 0,    80, 0.50f, 0.00f, 200, 0.50f,   2,  800, 0.90f, 100,   20, 0.3f },
+                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.75f, 1 } },
+    { "Triplet Wobble",    { 1,  0,  8, 0.6f, 1,   100, 0.45f, 0.00f, 200, 0.60f,   2,  800, 0.90f, 100,   20, 0.3f },
+                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   1,  9, 2, 0.70f, 1 } },
+    { "Dubstep Growl",     { 0,  0, 20, 0.5f, 1,   300, 0.60f, 0.10f, 200, 0.90f,   2,  800, 0.90f, 100,   30, 0.3f },
+                           { 2, 0.0f, 0.0f,    0,  60, 0.00f,   2, 10, 2, 0.60f, 1 } },
+    { "Slow Wub",          { 0,  0, 15, 0.7f, 0,    70, 0.40f, 0.00f, 200, 0.40f,   5,  800, 0.95f, 150,   40, 0.3f },
+                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   0,  4, 2, 0.80f, 0 } },
+    { "S&H Acid",          { 0,  0,  0, 0.0f, 0,   250, 0.80f, 0.40f, 150, 0.40f,   1,  400, 0.60f,  40,   60, 0.6f },
+                           { 0, 0.3f, 0.6f,    0,  60, 0.00f,   4, 10, 2, 0.50f, 0 } },
+
+    { "808 Boom",          { 3,  0,  0, 0.5f, 0,  2000, 0.00f, 0.00f, 200, 0.35f,   1, 1500, 0.00f, 800,    0, 0.4f },
+                           { 0, 0.0f, 0.0f,   12,  60, 0.15f,   0,  7, 2, 0.00f, 0 } },
+    { "Kick Bass",         { 4,  0,  0, 0.6f, 0,   600, 0.10f, 0.40f,  80, 0.40f,   1,  400, 0.00f, 120,    0, 0.5f },
+                           { 0, 0.0f, 0.0f,   24,  30, 0.40f,   0,  7, 2, 0.00f, 0 } },
+    { "Punchy Sub",        { 3,  0,  0, 0.8f, 0,  1000, 0.00f, 0.00f, 200, 0.10f,   1,  800, 0.85f, 100,   20, 0.3f },
+                           { 0, 0.0f, 0.0f,    7,  40, 0.10f,   0,  7, 2, 0.00f, 0 } },
+    { "Laser Pluck",       { 1,  0,  0, 0.3f, 0,   300, 0.50f, 0.60f, 100, 0.40f,   1,  300, 0.50f,  60,    0, 0.6f },
+                           { 0, 0.0f, 0.0f,   24, 150, 0.00f,   0,  7, 2, 0.00f, 0 } },
+    { "Rising Growl",      { 0,  0, 12, 0.4f, 1,   500, 0.50f, 0.30f, 250, 0.70f,   3,  700, 0.85f, 120,   30, 0.4f },
+                           { 0, 0.0f, 0.0f,  -12, 150, 0.00f,   0,  7, 2, 0.00f, 0 } },
+    { "Clicky Pluck",      { 0,  0,  0, 0.5f, 0,   200, 0.30f, 0.65f, 110, 0.25f,   1,  250, 0.00f,  80,    0, 0.6f },
+                           { 0, 0.3f, 0.0f,    0,  60, 0.50f,   0,  7, 2, 0.00f, 0 } },
+
+    { "Acid Accent",       { 0,  0,  0, 0.0f, 0,   280, 0.78f, 0.55f, 200, 0.35f,   1,  400, 0.60f,  40,   60, 0.7f },
+                           { 0, 0.3f, 0.8f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+    { "Acid 12dB",         { 0,  0,  0, 0.1f, 0,   300, 0.85f, 0.60f, 200, 0.30f,   1,  400, 0.60f,  40,   70, 0.6f },
+                           { 1, 0.2f, 0.5f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
+    { "Bandpass Funk",     { 1,  0,  0, 0.5f, 0,   400, 0.50f, 0.60f, 150, 0.30f,   1,  300, 0.40f,  60,    0, 0.7f },
+                           { 2, 0.4f, 0.5f,    0,  60, 0.10f,   0,  7, 2, 0.00f, 0 } },
+    { "Fat 12dB Moog",     { 0,  0,  7, 0.6f, 1,   350, 0.40f, 0.45f, 300, 0.35f,   2,  600, 0.70f, 100,   40, 0.4f },
+                           { 1, 0.5f, 0.3f,    0,  60, 0.05f,   0,  7, 2, 0.00f, 0 } },
+    { "Tracked Bright",    { 0,  0,  4, 0.3f, 0,   900, 0.25f, 0.25f, 250, 0.20f,   1,  600, 0.85f,  80,   20, 0.4f },
+                           { 0, 1.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0 } },
 };
 
 inline constexpr int kNumPresets = (int) (sizeof (kPresets) / sizeof (kPresets[0]));
@@ -127,11 +186,22 @@ inline BassParams toBassParams (const PatchValues& v, float gain)
     p.releaseMs = v[pRelease];
     p.glideMs = v[pGlide];
     p.velocitySens = v[pVelocity];
+    p.filterMode = (int) v[pFilterMode];
+    p.keyTrack = v[pKeyTrack];
+    p.accent = v[pAccent];
+    p.pitchEnvSemis = v[pPitchEnv];
+    p.pitchEnvDecayMs = v[pPitchDecay];
+    p.click = v[pClick];
+    p.lfoShape = (int) v[pLfoShape];
+    p.lfoSync = (int) v[pLfoSync];
+    p.lfoRateHz = v[pLfoRate];
+    p.lfoDepth = v[pLfoDepth];
+    p.lfoRetrigger = v[pLfoRetrig] >= 0.5f;
     p.gain = gain;
     return p;
 }
 
-// Renders a held C2 offline and returns {loudest 50 ms RMS, peak}.
+// Renders a held, unaccented C2 offline and returns {loudest 50 ms RMS, peak}.
 inline std::pair<float, float> measureLevel (const PatchValues& v)
 {
     constexpr double sampleRate = 48000.0;
@@ -140,7 +210,7 @@ inline std::pair<float, float> measureLevel (const PatchValues& v)
     BassSynth synth;
     synth.setParams (toBassParams (v, 1.0f));
     synth.prepare (sampleRate);
-    synth.noteOn (36, 0.8f);
+    synth.noteOn (36, 0.75f);
 
     std::vector<float> buffer ((size_t) (sampleRate * 0.8));
     synth.render (buffer.data(), (int) buffer.size());
@@ -206,6 +276,34 @@ inline PatchValues randomPatch (std::mt19937& rng)
 
     v[pGlide] = chance (0.4f) ? 0.0f : logUniform (15.0f, 250.0f);
     v[pVelocity] = 0.2f + 0.6f * r();
+
+    const float m = r();
+    int mode = m < 0.7f ? kLowpass24 : (m < 0.9f ? kLowpass12 : kBandpass12);
+    if (mode == kBandpass12)
+    {
+        // bandpass removes the fundamental, so it needs harmonics to work with
+        if (v[pWave] >= 3.0f)
+            mode = kLowpass24;
+        else
+            v[pCutoff] = std::clamp (v[pCutoff], 150.0f, 700.0f);
+    }
+    v[pFilterMode] = (float) mode;
+    v[pKeyTrack] = chance (0.5f) ? 0.0f : 0.6f * r();
+    v[pAccent] = chance (0.4f) ? 0.0f : 0.3f + 0.7f * r();
+
+    v[pPitchEnv] = 0.0f;
+    if (chance (0.35f))
+        v[pPitchEnv] = chance (0.7f) ? logUniform (2.0f, 24.0f) : -logUniform (1.0f, 12.0f);
+    v[pPitchDecay] = logUniform (10.0f, 200.0f);
+    v[pClick] = chance (0.7f) ? 0.0f : 0.1f + 0.5f * r();
+
+    // LFO stays off most of the time; when on it is usually a synced wobble
+    static constexpr int wobbleSyncs[] = { 4, 6, 7, 8, 9, 10 };
+    v[pLfoShape] = (float) std::uniform_int_distribution<int> (0, 4) (rng);
+    v[pLfoSync] = chance (0.8f) ? (float) wobbleSyncs[std::uniform_int_distribution<int> (0, 5) (rng)] : 0.0f;
+    v[pLfoRate] = logUniform (0.5f, 8.0f);
+    v[pLfoDepth] = chance (0.75f) ? 0.0f : 0.2f + 0.6f * r();
+    v[pLfoRetrig] = chance (0.5f) ? 1.0f : 0.0f;
     return v;
 }
 

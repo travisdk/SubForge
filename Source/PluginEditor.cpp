@@ -29,17 +29,26 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
     lookAndFeel.setColour (juce::PopupMenu::highlightedBackgroundColourId, accent.withAlpha (0.35f));
     lookAndFeel.setColour (juce::TextButton::buttonColourId, outline);
     lookAndFeel.setColour (juce::TextButton::textColourOffId, text);
+    lookAndFeel.setColour (juce::ToggleButton::tickColourId, accent);
+    lookAndFeel.setColour (juce::ToggleButton::tickDisabledColourId, dimText);
     lookAndFeel.setColour (juce::Label::textColourId, dimText);
     setLookAndFeel (&lookAndFeel);
 
+    lfoRateControl = nullptr;
     sections = {
-        { "OSCILLATOR", { addChoice ("wave", "Wave"), addKnob ("octave", "Octave"), addKnob ("detune", "Detune"),
-                          addKnob ("sub", "Sub"), addChoice ("subWave", "Sub Wave") }, {} },
-        { "FILTER", { addKnob ("cutoff", "Cutoff"), addKnob ("resonance", "Resonance"), addKnob ("envAmount", "Env Amt"),
-                      addKnob ("filterDecay", "F. Decay"), addKnob ("drive", "Drive") }, {} },
-        { "AMP", { addKnob ("attack", "Attack"), addKnob ("decay", "Decay"), addKnob ("sustain", "Sustain"),
-                   addKnob ("release", "Release") }, {} },
-        { "PLAY", { addKnob ("glide", "Glide"), addKnob ("velocity", "Velocity"), addKnob ("volume", "Volume") }, {} },
+        { "OSCILLATOR", { choice ("wave", "Wave"), knob ("octave", "Octave"), knob ("detune", "Detune"),
+                          knob ("sub", "Sub"), choice ("subWave", "Sub Wave") } },
+        { "FILTER", { choice ("filterMode", "Mode"), knob ("cutoff", "Cutoff"), knob ("resonance", "Resonance"),
+                      knob ("envAmount", "Env Amt"), knob ("filterDecay", "F. Decay"), knob ("drive", "Drive"),
+                      knob ("keyTrack", "Key Track") } },
+        { "AMP", { knob ("attack", "Attack"), knob ("decay", "Decay"), knob ("sustain", "Sustain"),
+                   knob ("release", "Release") } },
+        { "PITCH & CLICK", { knob ("pitchEnv", "Pitch Env"), knob ("pitchDecay", "P. Decay"), knob ("click", "Click") } },
+        { "LFO > CUTOFF", { choice ("lfoShape", "Shape"), choice ("lfoSync", "Sync"),
+                            lfoRateControl = knob ("lfoRate", "Rate"), knob ("lfoDepth", "Depth"),
+                            toggle ("lfoRetrig", "Retrig") } },
+        { "PLAY", { knob ("glide", "Glide"), knob ("velocity", "Velocity"), knob ("accent", "Accent"),
+                    knob ("volume", "Volume") } },
     };
 
     for (int i = 0; i < subforge::kNumPresets; ++i)
@@ -60,7 +69,9 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
 
     processor.addChangeListener (this);
     refreshPresetBox();
-    setSize (880, 470);
+    timerCallback();
+    startTimerHz (10);
+    setSize (1000, 660);
 }
 
 SubForgeEditor::~SubForgeEditor()
@@ -69,32 +80,35 @@ SubForgeEditor::~SubForgeEditor()
     setLookAndFeel (nullptr);
 }
 
-SubForgeEditor::Control* SubForgeEditor::addKnob (const char* paramId, const juce::String& labelText)
+SubForgeEditor::Control* SubForgeEditor::addControl (Kind kind, const char* paramId, const juce::String& labelText)
 {
+    using APVTS = juce::AudioProcessorValueTreeState;
     auto control = std::make_unique<Control>();
-    control->slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
-    control->slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 76, 18);
-    control->slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
-    control->sliderAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (
-        processor.apvts, paramId, control->slider);
-    control->label.setText (labelText, juce::dontSendNotification);
-    control->label.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (control->slider);
-    addAndMakeVisible (control->label);
-    return controls.emplace_back (std::move (control)).get();
-}
+    control->kind = kind;
 
-SubForgeEditor::Control* SubForgeEditor::addChoice (const char* paramId, const juce::String& labelText)
-{
-    auto control = std::make_unique<Control>();
-    control->isChoice = true;
-    if (auto* choice = dynamic_cast<juce::AudioParameterChoice*> (processor.apvts.getParameter (paramId)))
-        control->box.addItemList (choice->choices, 1);
-    control->boxAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment> (
-        processor.apvts, paramId, control->box);
+    switch (kind)
+    {
+        case Kind::Knob:
+            control->slider.setSliderStyle (juce::Slider::RotaryHorizontalVerticalDrag);
+            control->slider.setTextBoxStyle (juce::Slider::TextBoxBelow, false, 76, 18);
+            control->slider.setColour (juce::Slider::textBoxOutlineColourId, juce::Colours::transparentBlack);
+            control->sliderAttachment = std::make_unique<APVTS::SliderAttachment> (processor.apvts, paramId, control->slider);
+            addAndMakeVisible (control->slider);
+            break;
+        case Kind::Choice:
+            if (auto* param = dynamic_cast<juce::AudioParameterChoice*> (processor.apvts.getParameter (paramId)))
+                control->box.addItemList (param->choices, 1);
+            control->boxAttachment = std::make_unique<APVTS::ComboBoxAttachment> (processor.apvts, paramId, control->box);
+            addAndMakeVisible (control->box);
+            break;
+        case Kind::Toggle:
+            control->toggleAttachment = std::make_unique<APVTS::ButtonAttachment> (processor.apvts, paramId, control->toggle);
+            addAndMakeVisible (control->toggle);
+            break;
+    }
+
     control->label.setText (labelText, juce::dontSendNotification);
     control->label.setJustificationType (juce::Justification::centred);
-    addAndMakeVisible (control->box);
     addAndMakeVisible (control->label);
     return controls.emplace_back (std::move (control)).get();
 }
@@ -102,6 +116,14 @@ SubForgeEditor::Control* SubForgeEditor::addChoice (const char* paramId, const j
 void SubForgeEditor::changeListenerCallback (juce::ChangeBroadcaster*)
 {
     refreshPresetBox();
+}
+
+void SubForgeEditor::timerCallback()
+{
+    // Rate only matters while the LFO runs free
+    const bool freeRunning = processor.apvts.getRawParameterValue ("lfoSync")->load() < 0.5f;
+    lfoRateControl->slider.setEnabled (freeRunning);
+    lfoRateControl->slider.setAlpha (freeRunning ? 1.0f : 0.35f);
 }
 
 void SubForgeEditor::refreshPresetBox()
@@ -151,10 +173,36 @@ void SubForgeEditor::layoutSection (Section& section, juce::Rectangle<int> area)
         auto cell = content.removeFromLeft (cellWidth).reduced (4, 0);
         control->label.setBounds (cell.removeFromTop (20));
 
-        if (control->isChoice)
-            control->box.setBounds (cell.withSizeKeepingCentre (cell.getWidth(), 26).translated (0, -10));
-        else
-            control->slider.setBounds (cell);
+        switch (control->kind)
+        {
+            case Kind::Knob:
+                control->slider.setBounds (cell);
+                break;
+            case Kind::Choice:
+                control->box.setBounds (cell.withSizeKeepingCentre (cell.getWidth(), 26).translated (0, -10));
+                break;
+            case Kind::Toggle:
+                control->toggle.setBounds (cell.withSizeKeepingCentre (28, 28).translated (0, -10));
+                break;
+        }
+    }
+}
+
+// Sections in a row share its width in proportion to their number of controls.
+void SubForgeEditor::layoutRow (std::initializer_list<Section*> row, juce::Rectangle<int> area)
+{
+    int totalControls = 0;
+    for (auto* section : row)
+        totalControls += (int) section->controls.size();
+
+    const int available = area.getWidth() - kMargin * ((int) row.size() - 1);
+    int index = 0;
+    for (auto* section : row)
+    {
+        const bool last = ++index == (int) row.size();
+        const int width = last ? area.getWidth() : available * (int) section->controls.size() / totalControls;
+        layoutSection (*section, area.removeFromLeft (width));
+        area.removeFromLeft (kMargin);
     }
 }
 
@@ -174,18 +222,16 @@ void SubForgeEditor::resized()
 
     area.reduce (kMargin, 0);
     area.removeFromBottom (kMargin);
-    const int rowHeight = (area.getHeight() - kMargin) / 2;
-    auto topRow = area.removeFromTop (rowHeight);
-    area.removeFromTop (kMargin);
-    auto bottomRow = area;
+    const int rowHeight = (area.getHeight() - 2 * kMargin) / 3;
 
-    const int half = (topRow.getWidth() - kMargin) / 2;
-    layoutSection (sections[0], topRow.removeFromLeft (half));
-    topRow.removeFromLeft (kMargin);
-    layoutSection (sections[1], topRow);
+    auto nextRow = [&]
+    {
+        auto row = area.removeFromTop (rowHeight);
+        area.removeFromTop (kMargin);
+        return row;
+    };
 
-    const int ampWidth = (bottomRow.getWidth() - kMargin) * 4 / 7;
-    layoutSection (sections[2], bottomRow.removeFromLeft (ampWidth));
-    bottomRow.removeFromLeft (kMargin);
-    layoutSection (sections[3], bottomRow);
+    layoutRow ({ &sections[0], &sections[1] }, nextRow());
+    layoutRow ({ &sections[2], &sections[3] }, nextRow());
+    layoutRow ({ &sections[4], &sections[5] }, nextRow());
 }

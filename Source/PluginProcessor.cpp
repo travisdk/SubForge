@@ -90,6 +90,7 @@ SubForgeProcessor::SubForgeProcessor()
       settings (settingsOptions())
 {
     rescanUserPresets();
+    rescanUserPatterns();
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createParameterLayout()
@@ -328,14 +329,155 @@ void SubForgeProcessor::buildVoiceMidi (const juce::MidiBuffer& midi, int numSam
 void SubForgeProcessor::randomizePattern()
 {
     pattern.randomize (rng);
+    patternName = "Random " + juce::String (++randomPatternCount);
     sendChangeMessage();
 }
 
 void SubForgeProcessor::clearPattern()
 {
     pattern.clear();
+    patternName = "Empty";
     sendChangeMessage();
 }
+
+juce::String SubForgeProcessor::getPatternEntryName (int index) const
+{
+    if (isUserPatternEntry (index))
+        return userPatterns[index - subforge::kNumFactoryPatterns].getFileNameWithoutExtension();
+    return juce::isPositiveAndBelow (index, subforge::kNumFactoryPatterns) ? subforge::kFactoryPatterns[index].name : "";
+}
+
+juce::File SubForgeProcessor::patternFileFor (const juce::String& name) const
+{
+    return getPatternFolder().getChildFile (juce::File::createLegalFileName (name.trim()) + kPatternExtension);
+}
+
+void SubForgeProcessor::rescanUserPatterns()
+{
+    const auto currentFile = isUserPatternEntry (currentPatternEntry)
+                                 ? userPatterns[currentPatternEntry - subforge::kNumFactoryPatterns] : juce::File();
+
+    userPatterns = getPatternFolder().findChildFiles (juce::File::findFiles, false, juce::String ("*") + kPatternExtension);
+    std::sort (userPatterns.begin(), userPatterns.end(), [] (const juce::File& a, const juce::File& b)
+               { return a.getFileNameWithoutExtension().compareNatural (b.getFileNameWithoutExtension()) < 0; });
+
+    if (currentFile != juce::File())
+    {
+        const int index = userPatterns.indexOf (currentFile);
+        currentPatternEntry = index >= 0 ? subforge::kNumFactoryPatterns + index : -1;
+    }
+    sendChangeMessage();
+}
+
+void SubForgeProcessor::applyPatternSettings (int length, float swing)
+{
+    setParameterValue (*apvts.getParameter ("seqLength"), (float) juce::jlimit (1, subforge::kMaxSteps, length));
+    setParameterValue (*apvts.getParameter ("seqSwing"), juce::jlimit (0.5f, 0.75f, swing));
+}
+
+void SubForgeProcessor::loadPatternEntry (int index)
+{
+    if (isUserPatternEntry (index))
+    {
+        const auto xml = juce::parseXML (userPatterns[index - subforge::kNumFactoryPatterns]);
+        if (xml == nullptr || ! xml->hasTagName ("SubForgePattern")
+            || ! subforge::parseCompactPattern (xml->getStringAttribute ("steps").toRawUTF8(), pattern))
+            return;
+        applyPatternSettings (xml->getIntAttribute ("length", subforge::kMaxSteps),
+                              (float) xml->getDoubleAttribute ("swing", 0.5));
+    }
+    else if (juce::isPositiveAndBelow (index, subforge::kNumFactoryPatterns))
+    {
+        const auto& factory = subforge::kFactoryPatterns[index];
+        subforge::parseCompactPattern (factory.steps, pattern);
+        applyPatternSettings (factory.length, factory.swing);
+    }
+    else
+    {
+        return;
+    }
+
+    currentPatternEntry = index;
+    patternName = getPatternEntryName (index);
+    sendChangeMessage();
+}
+
+bool SubForgeProcessor::saveUserPattern (const juce::String& name)
+{
+    const auto file = patternFileFor (name);
+    if (! file.getParentDirectory().createDirectory())
+        return false;
+
+    juce::XmlElement xml ("SubForgePattern");
+    xml.setAttribute ("version", 1);
+    xml.setAttribute ("name", name.trim());
+    xml.setAttribute ("length", (int) apvts.getRawParameterValue ("seqLength")->load());
+    xml.setAttribute ("swing", apvts.getRawParameterValue ("seqSwing")->load());
+    xml.setAttribute ("steps", juce::String (subforge::toCompactPattern (pattern)));
+    if (! xml.writeTo (file))
+        return false;
+
+    patternName = file.getFileNameWithoutExtension();
+    currentPatternEntry = -1;
+    rescanUserPatterns();
+    currentPatternEntry = subforge::kNumFactoryPatterns + userPatterns.indexOf (file);
+    sendChangeMessage();
+    return true;
+}
+
+void SubForgeProcessor::deleteUserPattern (int index)
+{
+    if (! isUserPatternEntry (index))
+        return;
+
+    moveToTrash (userPatterns[index - subforge::kNumFactoryPatterns]);
+    if (currentPatternEntry == index)
+        currentPatternEntry = -1;
+    rescanUserPatterns();
+}
+
+void SubForgeProcessor::markPatternEdited()
+{
+    if (! patternName.endsWith ("*"))
+    {
+        patternName << " *";
+        sendChangeMessage();
+    }
+}
+
+// One line that is easy to share in a chat or forum post, e.g.
+// "SubForge pattern | length 16 | swing 0.50 | 0a 0 12s - 3a ..."
+juce::String SubForgeProcessor::getPatternAsText() const
+{
+    return "SubForge pattern | length " + juce::String ((int) apvts.getRawParameterValue ("seqLength")->load())
+           + " | swing " + juce::String (apvts.getRawParameterValue ("seqSwing")->load(), 2)
+           + " | " + juce::String (subforge::toCompactPattern (pattern));
+}
+
+// Accepts the line above, or just the sixteen step tokens.
+bool SubForgeProcessor::setPatternFromText (const juce::String& text)
+{
+    auto parts = juce::StringArray::fromTokens (text.trim(), "|", "");
+    parts.trim();
+    if (parts.isEmpty() || ! subforge::parseCompactPattern (parts[parts.size() - 1].toRawUTF8(), pattern))
+        return false;
+
+    int length = subforge::kMaxSteps;
+    float swing = 0.5f;
+    for (const auto& part : parts)
+    {
+        if (part.startsWithIgnoreCase ("length"))
+            length = part.fromFirstOccurrenceOf (" ", false, false).getIntValue();
+        else if (part.startsWithIgnoreCase ("swing"))
+            swing = part.fromFirstOccurrenceOf (" ", false, false).getFloatValue();
+    }
+    applyPatternSettings (length, swing);
+    patternName = "Pasted";
+    currentPatternEntry = -1;
+    sendChangeMessage();
+    return true;
+}
+
 
 juce::AudioProcessorEditor* SubForgeProcessor::createEditor()
 {
@@ -547,6 +689,7 @@ void SubForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
     state.setProperty ("patchName", patchName, nullptr);
     state.setProperty ("presetIndex", isUserEntry (currentEntry) ? 0 : currentEntry, nullptr);
     state.setProperty ("pattern", juce::String (pattern.toString()), nullptr);
+    state.setProperty ("patternName", patternName, nullptr);
 
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
@@ -562,6 +705,11 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
             patchName = state.getProperty ("patchName", "Init").toString();
             if (state.hasProperty ("pattern"))
                 pattern.fromString (state.getProperty ("pattern").toString().toStdString());
+            patternName = state.getProperty ("patternName", "Default").toString();
+            currentPatternEntry = -1;
+            for (int i = 0; i < getNumPatternEntries(); ++i)
+                if (getPatternEntryName (i) == patternName)
+                    currentPatternEntry = i;
             currentEntry = juce::jlimit (0, subforge::kNumPresets - 1, (int) state.getProperty ("presetIndex", 0));
             for (int i = subforge::kNumPresets; i < getNumEntries(); ++i)
                 if (getEntryName (i) == patchName)

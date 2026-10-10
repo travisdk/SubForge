@@ -7,7 +7,8 @@ using P = SubForgeLookAndFeel::Palette;
 constexpr int kHeaderHeight = 48;
 constexpr int kMargin = 10;
 constexpr int kRowHeight = 128;
-constexpr int kSeqRowHeight = 132;
+constexpr int kSeqRowHeight = 140;
+constexpr int kSeqTitleHeight = 28;
 constexpr int kSeqControlsWidth = 330;
 constexpr int kSectionTitleHeight = 22;
 constexpr int kLabelHeight = 16;
@@ -45,13 +46,30 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
                          knob ("seqGate", "Gate"), knob ("seqSwing", "Swing"), knob ("seqRoot", "Root") } },
     };
 
+    patternBox.onChange = [this]
+    {
+        if (const int id = patternBox.getSelectedId(); id > 0)
+            processor.loadPatternEntry (id - 1);
+    };
+    patternPrevButton.onClick = [this] { stepPattern (-1); };
+    patternNextButton.onClick = [this] { stepPattern (1); };
+    patternSaveButton.onClick = [this]
+    {
+        auto suggestion = processor.getPatternName().trimCharactersAtEnd (" *");
+        if (! processor.isUserPatternEntry (processor.getCurrentPatternEntry()))
+            suggestion = "My " + suggestion;
+        showNameDialog ("Save pattern", processor.getPatternFolder(), suggestion,
+                        [this] (const juce::String& name) { savePattern (name); });
+    };
     seqRandomButton.onClick = [this] { processor.randomizePattern(); };
-    seqClearButton.onClick = [this] { processor.clearPattern(); };
-    for (auto* b : { &seqRandomButton, &seqClearButton })
+    patternMenuButton.onClick = [this] { showPatternMenu(); };
+
+    for (auto* b : { &patternPrevButton, &patternNextButton, &patternSaveButton, &seqRandomButton, &patternMenuButton })
     {
         b->setColour (juce::TextButton::buttonColourId, P::field);
         addAndMakeVisible (b);
     }
+    addAndMakeVisible (patternBox);
     addAndMakeVisible (stepGrid);
 
     presetBox.onChange = [this]
@@ -74,7 +92,9 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
 
     processor.addChangeListener (this);
     processor.rescanUserPresets(); // pick up files added since the plugin was loaded
+    processor.rescanUserPatterns();
     refreshPresetBox();
+    refreshPatternBox();
     timerCallback();
     startTimerHz (30);
     setSize (900, kHeaderHeight + 3 * kRowHeight + kSeqRowHeight + 4 * kMargin);
@@ -127,6 +147,7 @@ SubForgeEditor::Control* SubForgeEditor::addControl (Kind kind, const char* para
 void SubForgeEditor::changeListenerCallback (juce::ChangeBroadcaster*)
 {
     refreshPresetBox();
+    refreshPatternBox();
     stepGrid.repaint(); // the pattern may have come from a preset, state or the generator
 }
 
@@ -181,8 +202,14 @@ void SubForgeEditor::showSaveDialog()
     if (! processor.isUserEntry (processor.getCurrentEntry()))
         suggestion = "My " + suggestion;
 
-    auto* window = new juce::AlertWindow ("Save preset", "Saved to " + processor.getPresetFolder().getFullPathName(),
-                                          juce::MessageBoxIconType::NoIcon);
+    showNameDialog ("Save preset", processor.getPresetFolder(), suggestion,
+                    [this] (const juce::String& name) { savePreset (name); });
+}
+
+void SubForgeEditor::showNameDialog (const juce::String& title, const juce::File& folder, const juce::String& suggestion,
+                                     std::function<void (const juce::String&)> onName)
+{
+    auto* window = new juce::AlertWindow (title, "Saved to " + folder.getFullPathName(), juce::MessageBoxIconType::NoIcon);
     window->setLookAndFeel (&lookAndFeel);
     window->addTextEditor ("name", suggestion, "Name:");
     window->addButton ("Save", 1, juce::KeyPress (juce::KeyPress::returnKey));
@@ -192,11 +219,11 @@ void SubForgeEditor::showSaveDialog()
     addAndMakeVisible (window);
     window->setCentrePosition (getLocalBounds().getCentre());
     window->enterModalState (true, juce::ModalCallbackFunction::create (
-        [safeThis = juce::Component::SafePointer<SubForgeEditor> (this), window] (int result)
+        [safeThis = juce::Component::SafePointer<SubForgeEditor> (this), window, onName] (int result)
         {
             const auto name = window->getTextEditorContents ("name").trim();
             if (safeThis != nullptr && result == 1 && name.isNotEmpty())
-                safeThis->savePreset (name);
+                onName (name);
         }), true);
 
     if (auto* nameEditor = window->getTextEditor ("name"))
@@ -218,6 +245,83 @@ void SubForgeEditor::savePreset (const juce::String& name)
         confirm ("Overwrite preset?", "\"" + name + "\" already exists.", "Overwrite", save);
     else
         save();
+}
+
+void SubForgeEditor::savePattern (const juce::String& name)
+{
+    auto save = [this, name]
+    {
+        if (! processor.saveUserPattern (name))
+            confirm ("Could not save", "Writing to " + processor.getPatternFolder().getFullPathName() + " failed.", "OK", {});
+    };
+
+    if (processor.userPatternExists (name))
+        confirm ("Overwrite pattern?", "\"" + name + "\" already exists.", "Overwrite", save);
+    else
+        save();
+}
+
+void SubForgeEditor::refreshPatternBox()
+{
+    patternBox.clear (juce::dontSendNotification);
+    patternBox.addSectionHeading ("Factory");
+    for (int i = 0; i < processor.getNumPatternEntries(); ++i)
+    {
+        if (i == subforge::kNumFactoryPatterns)
+            patternBox.addSectionHeading ("User");
+        patternBox.addItem (processor.getPatternEntryName (i), i + 1);
+    }
+
+    const auto name = processor.getPatternName();
+    const int index = processor.getCurrentPatternEntry();
+    if (index >= 0 && name == processor.getPatternEntryName (index))
+        patternBox.setSelectedId (index + 1, juce::dontSendNotification);
+    else
+        patternBox.setText (name, juce::dontSendNotification);
+}
+
+void SubForgeEditor::stepPattern (int delta)
+{
+    const int n = processor.getNumPatternEntries();
+    const int current = processor.getCurrentPatternEntry();
+    if (current < 0) // nothing from the list loaded yet: start at either end
+        processor.loadPatternEntry (delta > 0 ? 0 : n - 1);
+    else
+        processor.loadPatternEntry ((current + delta + n) % n);
+}
+
+void SubForgeEditor::showPatternMenu()
+{
+    juce::PopupMenu menu;
+    menu.setLookAndFeel (&lookAndFeel);
+    menu.addItem ("Clear pattern", [this] { processor.clearPattern(); });
+    menu.addItem ("Copy pattern as text", [this] { juce::SystemClipboard::copyTextToClipboard (processor.getPatternAsText()); });
+    menu.addItem ("Paste pattern", [this]
+    {
+        if (! processor.setPatternFromText (juce::SystemClipboard::getTextFromClipboard()))
+            confirm ("Nothing to paste",
+                     "The clipboard needs sixteen steps like \"0a 0 12s - 3a ...\" (rest \"-\", a = accent, s = slide).",
+                     "OK", {});
+    });
+    menu.addSeparator();
+    menu.addItem ("Open pattern folder", [this]
+    {
+        auto folder = processor.getPatternFolder();
+        folder.createDirectory();
+        folder.startAsProcess();
+    });
+    menu.addItem ("Rescan patterns", [this] { processor.rescanUserPatterns(); });
+
+    const int entry = processor.getCurrentPatternEntry();
+    const bool onUserPattern = processor.isUserPatternEntry (entry);
+    menu.addItem ("Delete \"" + (onUserPattern ? processor.getPatternEntryName (entry) : juce::String ("user pattern")) + "\"",
+                  onUserPattern, false, [this, entry]
+                  {
+                      confirm ("Delete pattern?", "\"" + processor.getPatternEntryName (entry) + "\" will be moved to the trash.",
+                               "Delete", [this, entry] { processor.deleteUserPattern (entry); });
+                  });
+
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&patternMenuButton).withDeletionCheck (*this));
 }
 
 // Two-button (or one, without onOk) message shown inside the editor.
@@ -445,11 +549,19 @@ void SubForgeEditor::resized()
     layoutSection (sequencer, seqRow.withWidth (kSeqControlsWidth));
     sequencer.bounds = seqRow;
 
-    auto titleStrip = seqRow.withHeight (kSectionTitleHeight).reduced (8, 3).withTrimmedTop (2);
-    seqClearButton.setBounds (titleStrip.removeFromRight (56));
+    auto titleStrip = seqRow.withHeight (kSeqTitleHeight).reduced (8, 4);
+    patternMenuButton.setBounds (titleStrip.removeFromRight (34));
     titleStrip.removeFromRight (6);
     seqRandomButton.setBounds (titleStrip.removeFromRight (66));
+    titleStrip.removeFromRight (6);
+    patternSaveButton.setBounds (titleStrip.removeFromRight (50));
+    titleStrip.removeFromRight (10);
+    patternNextButton.setBounds (titleStrip.removeFromRight (22));
+    titleStrip.removeFromRight (2);
+    patternBox.setBounds (titleStrip.removeFromRight (190));
+    titleStrip.removeFromRight (2);
+    patternPrevButton.setBounds (titleStrip.removeFromRight (22));
 
     stepGrid.setBounds (seqRow.withTrimmedLeft (kSeqControlsWidth + 8).reduced (8, 0)
-                            .withTrimmedTop (kSectionTitleHeight + 6).withTrimmedBottom (6));
+                            .withTrimmedTop (kSeqTitleHeight + 4).withTrimmedBottom (6));
 }

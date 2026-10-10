@@ -4,6 +4,7 @@
 #include <juce_dsp/juce_dsp.h>
 #include "Patches.h"
 #include "Sequencer.h"
+#include "PatternLibrary.h"
 
 class SubForgeProcessor : public juce::AudioProcessor,
                           public juce::ChangeBroadcaster
@@ -64,6 +65,28 @@ public:
     void randomizePattern();
     void clearPattern();
 
+    // Pattern browser: factory patterns first, then the user's pattern files, which
+    // live in a "Patterns" folder next to the preset folder. A pattern stores its
+    // steps, length and swing.
+    static constexpr const char* kPatternExtension = ".sfpattern";
+    int getNumPatternEntries() const { return subforge::kNumFactoryPatterns + userPatterns.size(); }
+    juce::String getPatternEntryName (int index) const;
+    bool isUserPatternEntry (int index) const
+    {
+        return index >= subforge::kNumFactoryPatterns && index < getNumPatternEntries();
+    }
+    int getCurrentPatternEntry() const { return currentPatternEntry; }
+    juce::String getPatternName() const { return patternName; }
+    void loadPatternEntry (int index);
+    void rescanUserPatterns();
+    juce::File getPatternFolder() const { return getPresetFolder().getParentDirectory().getChildFile ("Patterns"); }
+    bool userPatternExists (const juce::String& name) const { return patternFileFor (name).existsAsFile(); }
+    bool saveUserPattern (const juce::String& name);
+    void deleteUserPattern (int index);
+    void markPatternEdited();
+    juce::String getPatternAsText() const;
+    bool setPatternFromText (const juce::String& text);
+
     // Global preferences shared by all instances (accent colour, preset folder).
     juce::PropertiesFile& getSettings() { return settings; }
 
@@ -71,6 +94,8 @@ public:
 
 private:
     juce::File presetFileFor (const juce::String& name) const;
+    juce::File patternFileFor (const juce::String& name) const;
+    void applyPatternSettings (int length, float swing);
     bool loadUserPresetFile (const juce::File& file);
     void setParameterValue (juce::RangedAudioParameter& param, float value);
     subforge::PatchValues currentPatch() const;
@@ -91,7 +116,10 @@ private:
     int maxBlockSize = 512;
 
     juce::PropertiesFile settings;
-    juce::Array<juce::File> userPresets;
+    juce::Array<juce::File> userPresets, userPatterns;
+    int currentPatternEntry = -1;
+    juce::String patternName { "Default" };
+    int randomPatternCount = 0;
     int currentEntry = 0;
     juce::String patchName { "Init" };
     int randomCount = 0;

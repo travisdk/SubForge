@@ -69,8 +69,14 @@ private:
     void stepPreset (int delta);
     void showSettingsMenu();
     void applyAccent (juce::Colour accent);
+    void showNameDialog (const juce::String& title, const juce::File& folder, const juce::String& suggestion,
+                         std::function<void (const juce::String&)> onName);
     void showSaveDialog();
     void savePreset (const juce::String& name);
+    void refreshPatternBox();
+    void stepPattern (int delta);
+    void showPatternMenu();
+    void savePattern (const juce::String& name);
     void confirm (const juce::String& title, const juce::String& message, const juce::String& okText,
                   std::function<void()> onOk);
     void choosePresetFolder();
@@ -90,7 +96,9 @@ private:
     std::unique_ptr<juce::FileChooser> folderChooser;
 
     StepGrid stepGrid { processor, lookAndFeel };
-    juce::TextButton seqRandomButton { "Random" }, seqClearButton { "Clear" };
+    juce::ComboBox patternBox;
+    juce::TextButton patternPrevButton { "<" }, patternNextButton { ">" }, patternSaveButton { "Save" };
+    juce::TextButton seqRandomButton { "Random" }, patternMenuButton { "..." };
     int shownSeqLength = -1, shownSeqRoot = -1;
     juce::Rectangle<int> headerArea;
 

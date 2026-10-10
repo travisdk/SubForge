@@ -5,9 +5,9 @@
 #include <atomic>
 #include <cmath>
 #include <cstdint>
-#include <cstdio>
 #include <iterator>
 #include <random>
+#include <sstream>
 #include <string>
 
 // Acid-style step sequencer: a 16-step pattern (gate, note, accent, slide)
@@ -83,13 +83,13 @@ public:
     bool fromString (const std::string& text)
     {
         Step parsed[kMaxSteps];
-        size_t pos = 0;
+        std::istringstream in (text);
         for (auto& step : parsed)
         {
-            int gate, note, accent, slide, consumed = 0;
-            if (std::sscanf (text.c_str() + pos, " %d:%d:%d:%d%n", &gate, &note, &accent, &slide, &consumed) != 4)
+            int gate = 0, note = 0, accent = 0, slide = 0;
+            char c1 = 0, c2 = 0, c3 = 0;
+            if (! (in >> gate >> c1 >> note >> c2 >> accent >> c3 >> slide) || c1 != ':' || c2 != ':' || c3 != ':')
                 return false;
-            pos += (size_t) consumed;
             step = { gate != 0, std::clamp (note, kMinStepNote, kMaxStepNote), accent != 0, slide != 0 };
         }
         for (int i = 0; i < kMaxSteps; ++i)

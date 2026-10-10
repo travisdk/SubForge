@@ -31,6 +31,12 @@ set(CLAP_INSTALL_DIR "${SUBFORGE_DEFAULT_CLAP_DIR}" CACHE PATH "Where the built 
 set(VST3_INSTALL_DIR "${SUBFORGE_DEFAULT_VST3_DIR}" CACHE PATH "Where the built .vst3 is copied")
 
 add_subdirectory(${JUCE_DIR} JUCE)
+
+option(SUBFORGE_BUILD_TESTS "Build the JUCE-free unit tests (run with ctest)" ON)
+if (SUBFORGE_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()
 add_subdirectory(${CLAP_JUCE_EXTENSIONS_DIR} clap-juce-extensions EXCLUDE_FROM_ALL)
 
 juce_add_plugin(SubForge

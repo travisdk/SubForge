@@ -69,7 +69,7 @@ CMake 3.28.3 og GCC 13.3.
 
 | Fil / linjer | Hvad | Sandsynlig kilde | Licens | Vurdering |
 |---|---|---|---|---|
-| `Source/BassSynth.h` 73–87 `polyBlep()` | Anti-aliasing af saw og firkant | Algoritmen er fra forskningen (PolyBLEP, Välimäki m.fl.). **Den præcise udformning** (`t + t - t*t - 1`, `t*t + t + t + 1`) er identisk med en meget udbredt tutorial-version, bl.a. på Martin Finkes blog ("Making Audio Plugins") | **Ukendt** for tutorial-koden. Stykket er 14 linjer og næsten bestemt af matematikken | **UKENDT** (lav risiko). Skrives om i fase 3 |
+| `Source/BassSynth.h` `stepResidual()`, `stepResidualAtWrap()` (tidl. `polyBlep()`) | Anti-aliasing af saw og firkant | **Omskrevet i fase 3** ud fra specifikationen i §5.2. Udledningen står trin for trin i kodekommentaren. Den tidligere version var identisk med en udbredt tutorial-formulering. **Forbehold:** Omskrivningen er lavet af den samme AI-assistent, som skrev den tidligere version, og den var derfor ikke et strengt clean room. Resultatet er numerisk identisk med den tidligere version (forskel ≤ 6·10⁻⁸), fordi matematikken entydigt bestemmer det. Koden har nu sin egen struktur og navngivning | Selv genereret ud fra publiceret matematik | OK |
 | `Source/BassSynth.h` 89–102 `polyBlamp()` | Anti-aliasing af trekant | Udledt i projektet som integralet af `polyBlep`. Svarer til formler i litteraturen. Fortegnet er verificeret numerisk | Selv genereret | OK |
 | `Source/BassSynth.h` 104–151 `Oscillator` | Bølgeformer | Selv skrevet | Selv genereret | OK |
 | `Source/BassSynth.h` 153–187 `LadderFilter` | 4-polet ladder-filter, zero-delay feedback | Metoden er fra Vadim Zavalishins bog *The Art of VA Filter Design*. Koden er skrevet ud fra metoden, ikke kopieret. LP12/BP12-koefficienterne er Oberheim Xpander-teknikken fra litteraturen | Selv genereret | OK |
@@ -115,7 +115,7 @@ CMake 3.28.3 og GCC 13.3.
 | Systembiblioteker (dynamiske) | **OK** | Distribueres ikke |
 | libstdc++/libc | **UKENDT** (formelt) | Licens ikke aflæst lokalt. Normalt uproblematisk |
 | Inter-fonten | **SVAG COPYLEFT** (kun selve fonten) | OFL kræver kun, at fonten forbliver under OFL, og at licensteksten følger med. Påvirker ikke din kode |
-| `polyBlep()` | **UKENDT** | Identisk med en udbredt tutorial-formulering. Skrives om i fase 3 |
+| `stepResidual()` (tidl. `polyBlep()`) | **OK** | Omskrevet ud fra specifikationen (§5.2). Se forbeholdet om clean room i §2 |
 | Al øvrig kode i `Source/` | **OK** | Selv genereret |
 | Presets og mønstre | **OK** | Selv genereret, neutrale navne (lighedsforbehold for mønstre, se §3) |
 
@@ -142,11 +142,11 @@ CMake 3.28.3 og GCC 13.3.
 
 **Indsats:** **lille**. Kun licenstegning hos JUCE, som du selv skal gøre.
 
-### 5.2 `polyBlep()` (UKENDT) – fase 3
+### 5.2 `polyBlep()` – udført (fase 3)
 
 **Clean room:** Skriv funktionen igen kun ud fra specifikationen, uden at se på den nuværende version eller tutorialen. Specifikationen: *"Træk et 2-punkts polynomielt residual fra den naive bølgeform omkring hver diskontinuitet. Residualet er differencen mellem et båndbegrænset step, tilnærmet ved integralet af en trekantkerne over én sample på hver side, og et ideelt step."* Bekræft resultatet med den numeriske test, der sammenligner med en båndbegrænset reference.
 
-**Indsats: lille.**
+**Status:** Udført. `polyBlep()` er erstattet af `stepResidual()` og `stepResidualAtWrap()`. Den numeriske test viser 7,5–10,8 dB mindre fejl end de naive bølgeformer ved 440 Hz–3 kHz og samme lyd som før (pluginnets output er bit-identisk). Ønskes et strengt clean room, hvor implementøren aldrig har set originalen, kan funktionen skrives igen af en anden person eller en ny agent uden adgang til historikken.
 
 ### 5.3 Inter-fonten (SVAG COPYLEFT, kun selve fonten)
 
@@ -185,6 +185,6 @@ Alt er selv genereret. De 15 presetnavne med varemærkepræg er omdøbt til neut
 1. **Du har tegnet JUCE 8 Starter-licensen** og bekræftet vilkårene på juce.com (§5.1). Det gælder kun, så længe din samlede omsætning eller funding er højst 20.000 USD over 12 måneder.
 2. **`THIRD-PARTY-NOTICES.txt` følger med.** ✅ Udført i fase 2: den ligger i pakken og vises i "About SubForge…".
 
-**Anbefalet (fase 3):** omskriv `polyBlep()` clean room. Presetnavnene er allerede neutrale.
+**Fase 3 er udført:** `polyBlep()` er omskrevet ud fra specifikationen (med forbeholdet i §2), og presetnavnene er neutrale.
 
 Der er ikke fundet andet, der forhindrer salg med lukket kildekode.

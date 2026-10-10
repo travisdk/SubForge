@@ -604,10 +604,10 @@ void MainView::choosePresetFolder()
 
 void MainView::showAbout()
 {
-    aboutOverlay = std::make_unique<AboutOverlay> (lookAndFeel, [this]
+    aboutOverlay = std::make_unique<AboutOverlay> (lookAndFeel, [safeThis = juce::Component::SafePointer<MainView> (this)]
     {
         // deferred: the overlay is still inside its own callback when asked to close
-        juce::MessageManager::callAsync ([safeThis = juce::Component::SafePointer<MainView> (this)]
+        juce::MessageManager::callAsync ([safeThis]
         {
             if (safeThis != nullptr)
                 safeThis->aboutOverlay.reset();

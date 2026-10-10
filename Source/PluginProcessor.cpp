@@ -273,7 +273,7 @@ void SubForgeProcessor::buildVoiceMidi (const juce::MidiBuffer& midi, int numSam
         if (running && message.isNoteOnOrOff())
         {
             const int note = message.getNoteNumber();
-            auto* end = transposeKeys.begin() + numTransposeKeys;
+            const auto end = transposeKeys.begin() + numTransposeKeys;
             numTransposeKeys = (int) (std::remove (transposeKeys.begin(), end, note) - transposeKeys.begin());
             if (message.isNoteOn() && numTransposeKeys < (int) transposeKeys.size())
                 transposeKeys[(size_t) numTransposeKeys++] = note;

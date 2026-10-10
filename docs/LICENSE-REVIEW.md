@@ -22,7 +22,8 @@ Projektet bruger **ingen pakkehåndtering** (ingen NuGet, npm, pip, vcpkg eller 
 | clap-juce-extensions | commit `7adee3a` (2026-10-06) | **MIT** (`LICENSE.md`, "Copyright 2019-2020, Paul Walker") | CLAP-wrapper rundt om JUCE-processoren |
 | CLAP SDK | 1.2.7 (`git describe`) | **MIT** (`LICENSE`, "Copyright (c) 2021 Alexandre BIQUE") | CLAP-headere |
 | clap-helpers | commit `a61bcdf` (2025-11-28) | **MIT** (`LICENSE`, "Copyright (c) 2021 Alexandre BIQUE") | Hjælpeklasser i CLAP-wrapperen |
-| Inter (Medium, Bold) | 4.0 (fra fontens navnetabel) | **SIL OFL 1.1** (`/usr/share/doc/fonts-inter/copyright`: "License: OFL-1.1"). Fonten indeholder teksten "Inter is a trademark of rsms" | Skrifttype i GUI'en, indlejret via BinaryData |
+| Chakra Petch (SemiBold, Bold) | 1.0 (fra fontens navnetabel) | **SIL OFL 1.1** (`Resources/Fonts/ChakraPetch/OFL.txt`, "Copyright 2018 The Chakra Petch Project Authors"). Hentet fra Googles officielle font-repo (`github.com/google/fonts`, `ofl/chakrapetch`). Ingen reserverede fontnavne | Etiketter og overskrifter, indlejret via BinaryData |
+| JetBrains Mono (Medium) | 2.305 (fra fontens navnetabel) | **SIL OFL 1.1** (`Resources/Fonts/JetBrainsMono/OFL.txt`, "Copyright 2020 The JetBrains Mono Project Authors"). Hentet fra `github.com/JetBrains/JetBrainsMono`. Ingen reserverede fontnavne | Parameterværdier, indlejret via BinaryData |
 
 ### 1b. Tredjepartskode som JUCE 8 bygger med ind
 
@@ -93,8 +94,9 @@ CMake 3.28.3 og GCC 13.3.
 | 42 sequencer-mønstre | `Source/PatternLibrary.h` | **Selv genereret** (komponeret ud fra genrebeskrivelser) | – | **Generiske genrefigurer:** Goa Offbeat, Psy Roller, Disco Octaves, Octave Bounce, Body Drive, Slide Riser, Pentatonic Run, Lonely Note, Twelve Step Tresillo (traditionel rytme). **Acid-stil (de øvrige):** lighed med kendte numre er **ikke systematisk kontrolleret**. Korte 16-trins figurer kan ligne eksisterende numre tilfældigt. Ingen er bevidst skrevet efter et bestemt nummer |
 | Standardmønster | `Source/Sequencer.h` `setDefault()` | **Selv genereret** | – | Acid-stil, se ovenfor |
 | Mønstergenerator (Random) | `Source/Sequencer.h` `randomize()` | **Selv genereret**, regelbaseret | – | Genererer nye mønstre |
-| Inter-fonte | `Resources/Fonts/Inter-*.otf` | Systempakken `fonts-inter` | **SIL OFL 1.1**: må indlejres og distribueres kommercielt sammen med software. Må ikke sælges alene. Licensteksten skal følge med | – |
-| OFL-licenstekst | `Resources/Fonts/OFL.txt` | Udtrukket fra `/usr/share/doc/fonts-inter/copyright` | – | – |
+| Chakra Petch- og JetBrains Mono-fonte | `Resources/Fonts/ChakraPetch/*.ttf`, `Resources/Fonts/JetBrainsMono/*.ttf` | Officielle repos (se §1a) | **SIL OFL 1.1**: må indlejres og distribueres kommercielt sammen med software. Må ikke sælges alene. Licensteksten skal følge med | – |
+| OFL-licenstekster | `Resources/Fonts/ChakraPetch/OFL.txt`, `Resources/Fonts/JetBrainsMono/OFL.txt` | Fra de samme repos som fontene | – | – |
+| GUI-designreference | `docs/design/syre.png` | Leveret af ejeren | – | Kun til udvikling. Distribueres ikke med pluginnet |
 | Demo-WAV'er | `build/`, `build-juce8/` | **Selv genereret** | – | Udeladt via `.gitignore`. Distribueres ikke |
 
 ---
@@ -114,7 +116,7 @@ CMake 3.28.3 og GCC 13.3.
 | FLAC, Vorbis, AAX, ASIO m.fl. | **Ikke relevant** | Ikke med i binæren |
 | Systembiblioteker (dynamiske) | **OK** | Distribueres ikke |
 | libstdc++/libc | **UKENDT** (formelt) | Licens ikke aflæst lokalt. Normalt uproblematisk |
-| Inter-fonten | **SVAG COPYLEFT** (kun selve fonten) | OFL kræver kun, at fonten forbliver under OFL, og at licensteksten følger med. Påvirker ikke din kode |
+| Chakra Petch og JetBrains Mono | **SVAG COPYLEFT** (kun selve fontene) | OFL kræver kun, at fontene forbliver under OFL, og at licensteksterne følger med. Påvirker ikke din kode |
 | `stepResidual()` (tidl. `polyBlep()`) | **OK** | Omskrevet ud fra specifikationen (§5.2). Se forbeholdet om clean room i §2 |
 | Al øvrig kode i `Source/` | **OK** | Selv genereret |
 | Presets og mønstre | **OK** | Selv genereret, neutrale navne (lighedsforbehold for mønstre, se §3) |
@@ -148,12 +150,12 @@ CMake 3.28.3 og GCC 13.3.
 
 **Status:** Udført. `polyBlep()` er erstattet af `stepResidual()` og `stepResidualAtWrap()`. Den numeriske test viser 7,5–10,8 dB mindre fejl end de naive bølgeformer ved 440 Hz–3 kHz og samme lyd som før (pluginnets output er bit-identisk). Ønskes et strengt clean room, hvor implementøren aldrig har set originalen, kan funktionen skrives igen af en anden person eller en ny agent uden adgang til historikken.
 
-### 5.3 Inter-fonten (SVAG COPYLEFT, kun selve fonten)
+### 5.3 Fontene Chakra Petch og JetBrains Mono (SVAG COPYLEFT, kun selve fontene)
 
 Ingen erstatning er nødvendig. Krav:
-- `OFL.txt` skal følge med distributionen.
+- Begge `OFL.txt` skal følge med distributionen (de står i `THIRD-PARTY-NOTICES.txt`).
 - Fonten må ikke sælges alene.
-- "Inter" må ikke bruges som produktnavn.
+- Fontnavnene må ikke bruges som produktnavn.
 
 **Indsats: lille.**
 
@@ -165,7 +167,7 @@ Ingen erstatning er nødvendig. Krav:
 - SheenBidi (Apache-2.0)
 - IJG libjpeg (inklusive den krævede sætning)
 - libpng og zlib
-- Inter (OFL)
+- Chakra Petch og JetBrains Mono (OFL)
 - VST3 SDK (MIT), når VST3 bygges
 
 JUCE 8 har ingen ISC-moduler, så der er ingen JUCE-ISC-note. JUCE selv er dækket af den kommercielle licens.

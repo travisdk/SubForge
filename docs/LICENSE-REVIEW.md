@@ -1,7 +1,7 @@
 # Licensgennemgang – SubForge
 
 **Dato:** 2026-10-10 (opdateret efter migrering til JUCE 8.0.15)
-**Omfang:** hele repoet (branch `juce8`), de biblioteker der bygges ind, og den færdige binær `SubForge.clap` bygget mod JUCE 8.0.15
+**Omfang:** hele repoet, de biblioteker der bygges ind, og de færdige binærer `SubForge.clap` og `SubForge.vst3` bygget mod JUCE 8.0.15
 **Metode:** licenser er læst fra pakkernes egne licensfiler, fra Debian-copyrightfiler for systembiblioteker, fra JUCE 8-EULA'en (juce.com/legal/juce-8-licence, læst 2026-10-10) og fra `strings`/`ldd` på den byggede binær. Hvor noget ikke kunne afgøres, står der **ukendt**.
 
 > ⚠️ **Det skal du selv gøre:** Bekræft vilkårene for **JUCE 8 Starter** på juce.com, og **tegn licensen**, før SubForge distribueres. Gennemgangen nedenfor bygger på EULA-teksten, som den så ud 2026-10-10. Vilkår, priser og omsætningsgrænser kan ændre sig.
@@ -36,7 +36,7 @@ Listen bygger på `JUCE-8.0.15/LICENSE.md` ("The JUCE Framework Dependencies"), 
 | IJG libjpeg | `juce_graphics/image_formats/jpglib` | **IJG-licens** (README, samme tekst som i JUCE 7): binær distribution kræver, at dokumentationen skriver *"this software is based in part on the work of the Independent JPEG Group"* | **Ja**: `JPEGMEM` |
 | libpng | `juce_graphics/image_formats/pnglib` | **PNG Reference Library License v2** (`LICENSE`). *JUCEs `LICENSE.md` kalder den "zlib", men selve licensfilen er PNG v2. Rapporten følger filen* | **Ja**: `libpng error` |
 | zlib | `juce_core/zip/zlib` | **zlib-licens** (README) | **Ukendt**: ikke entydigt fundet i binæren |
-| VST3 SDK | `juce_audio_processors_headless/format_types/VST3_SDK` | **MIT** (`LICENSE.txt`) | **Nej**, ikke endnu: der bygges ikke VST3 (fase 4). Bliver relevant med VST3 |
+| VST3 SDK 3.8.0 | `juce_audio_processors_headless/format_types/VST3_SDK` | **MIT** (`LICENSE.txt`). Navnet "VST" og VST-logoet er Steinbergs varemærker. Brugen i markedsføring styres af `VST3_Usage_Guidelines.pdf` i samme mappe | **Ja, i VST3-udgaven** (`SubForge.vst3`, 636 `Steinberg`-spor). Ikke i CLAP-udgaven |
 | FLAC, Ogg Vorbis | `juce_audio_formats/codecs` | BSD (ifølge JUCEs `LICENSE.md`) | **Nej**: fjernet af linkeren |
 | CHOC/QuickJS, Box2D, GLEW, Oboe, AAX, ASIO, AudioUnitSDK, LV2 | diverse moduler | ISC/MIT, zlib, BSD/MIT, Apache-2.0, proprietær/GPLv3, proprietær/GPLv3, Apache-2.0, ISC | **Nej**: modulerne bruges ikke, eller funktionerne er slået fra. AAX og ASIO er **ikke** i brug |
 
@@ -112,7 +112,7 @@ CMake 3.28.3 og GCC 13.3.
 | IJG libjpeg | **OK** (permissiv) | Kræver attribution i dokumentationen |
 | libpng | **OK** (permissiv) | PNG Reference Library License v2 |
 | zlib (muligvis i binæren) | **OK** (permissiv) | zlib-licens |
-| VST3 SDK (når VST3 bygges) | **OK** | MIT (følger med i JUCE 8) |
+| VST3 SDK 3.8.0 (i VST3-udgaven) | **OK** | MIT (følger med i JUCE 8). Varemærket "VST" er ikke en licensbetingelse, men se §6 |
 | FLAC, Vorbis, AAX, ASIO m.fl. | **Ikke relevant** | Ikke med i binæren |
 | Systembiblioteker (dynamiske) | **OK** | Distribueres ikke |
 | libstdc++/libc | **UKENDT** (formelt) | Licens ikke aflæst lokalt. Normalt uproblematisk |
@@ -168,7 +168,7 @@ Ingen erstatning er nødvendig. Krav:
 - IJG libjpeg (inklusive den krævede sætning)
 - libpng og zlib
 - Chakra Petch og JetBrains Mono (OFL)
-- VST3 SDK (MIT), når VST3 bygges
+- VST3 SDK (MIT)
 
 JUCE 8 har ingen ISC-moduler, så der er ingen JUCE-ISC-note. JUCE selv er dækket af den kommercielle licens.
 
@@ -190,3 +190,5 @@ Alt er selv genereret. De 15 presetnavne med varemærkepræg er omdøbt til neut
 **Fase 3 er udført:** `polyBlep()` er omskrevet ud fra specifikationen (med forbeholdet i §2), og presetnavnene er neutrale.
 
 Der er ikke fundet andet, der forhindrer salg med lukket kildekode.
+
+**Varemærke (ikke licens):** VST3-udgaven må distribueres under MIT-licensen. Bruger du ordet "VST" eller VST-logoet i markedsføring, på salgssider eller i pakken, skal Steinbergs retningslinjer i `VST3_Usage_Guidelines.pdf` følges. `INSTALL.txt` indeholder allerede "VST is a registered trademark of Steinberg Media Technologies GmbH."

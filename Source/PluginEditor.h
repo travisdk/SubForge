@@ -4,6 +4,7 @@
 #include "PluginProcessor.h"
 #include "SubForgeLookAndFeel.h"
 #include "StepGrid.h"
+#include "AboutOverlay.h"
 
 class SubForgeEditor : public juce::AudioProcessorEditor,
                        private juce::ChangeListener,
@@ -76,6 +77,7 @@ private:
     void refreshPatternBox();
     void stepPattern (int delta);
     void showPatternMenu();
+    void showAbout();
     void savePattern (const juce::String& name);
     void confirm (const juce::String& title, const juce::String& message, const juce::String& okText,
                   std::function<void()> onOk);
@@ -100,6 +102,8 @@ private:
     juce::TextButton patternPrevButton { "<" }, patternNextButton { ">" }, patternSaveButton { "Save" };
     juce::TextButton seqRandomButton { "Random" }, patternMenuButton { "..." };
     int shownSeqLength = -1, shownSeqRoot = -1;
+
+    std::unique_ptr<AboutOverlay> aboutOverlay;
     juce::Rectangle<int> headerArea;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubForgeEditor)

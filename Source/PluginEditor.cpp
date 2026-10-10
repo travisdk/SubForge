@@ -290,6 +290,22 @@ void SubForgeEditor::stepPattern (int delta)
         processor.loadPatternEntry ((current + delta + n) % n);
 }
 
+void SubForgeEditor::showAbout()
+{
+    aboutOverlay = std::make_unique<AboutOverlay> (lookAndFeel, [this]
+    {
+        // deferred: the overlay is still inside its own callback when asked to close
+        juce::MessageManager::callAsync ([safeThis = juce::Component::SafePointer<SubForgeEditor> (this)]
+        {
+            if (safeThis != nullptr)
+                safeThis->aboutOverlay.reset();
+        });
+    });
+    addAndMakeVisible (*aboutOverlay);
+    aboutOverlay->setBounds (getLocalBounds());
+    aboutOverlay->focusText(); // so Escape works without clicking first (hosts may still keep the keys)
+}
+
 void SubForgeEditor::showPatternMenu()
 {
     juce::PopupMenu menu;
@@ -396,6 +412,9 @@ void SubForgeEditor::showSettingsMenu()
     constexpr int menuWidth = 200;
     const auto gear = settingsButton.getScreenBounds();
     const auto target = juce::Rectangle<int> (gear.getRight() - menuWidth, gear.getY(), menuWidth, gear.getHeight());
+    menu.addSeparator();
+    menu.addItem ("About SubForge...", [this] { showAbout(); });
+
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (target).withMinimumWidth (menuWidth)
                             .withDeletionCheck (*this));
 }

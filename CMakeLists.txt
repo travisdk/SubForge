@@ -29,11 +29,13 @@ target_sources(SubForge PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/SubForgeLookAndFeel.cpp
-    Source/StepGrid.cpp)
+    Source/StepGrid.cpp
+    Source/AboutOverlay.cpp)
 
 juce_add_binary_data(SubForgeAssets SOURCES
     Resources/Fonts/Inter-Medium.otf
-    Resources/Fonts/Inter-Bold.otf)
+    Resources/Fonts/Inter-Bold.otf
+    THIRD-PARTY-NOTICES.txt)
 set_target_properties(SubForgeAssets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 target_compile_definitions(SubForge PUBLIC

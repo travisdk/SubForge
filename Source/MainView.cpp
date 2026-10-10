@@ -25,9 +25,10 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
     setLookAndFeel (&lookAndFeel); // before any child is laid out, so the controls find the SubForge look
 
     panels = {
+        // sound sections are numbered; the sequencer is a separate zone without a number
         { "02", "FILTER", kFilterPanel }, { "01", "OSC", kOscPanel }, { "03", "DRIVE", kDrivePanel },
         { "04", "AMP ENV", kAmpPanel },   { "05", "PITCH", kPitchPanel }, { "06", "LFO > CUT", kLfoPanel },
-        { "07", "MOD", kModPanel },       { "09", "PLAY", kPlayPanel },   { "08", "SEQUENCER", kSeqPanel },
+        { "07", "MOD", kModPanel },       { "08", "PLAY", kPlayPanel },   { "", "SEQUENCER", kSeqPanel },
     };
 
     // header
@@ -140,13 +141,24 @@ void MainView::paint (juce::Graphics& g)
 
     for (const auto& panel : panels)
     {
+        const bool sequencer = panel.number.isEmpty();
         const auto r = panel.bounds.toFloat();
-        g.setColour (P::panel);
+        const auto titleArea = panel.bounds.withHeight (kPanelTitle).withTrimmedLeft (14).withTrimmedTop (4);
+
+        // the sequencer zone: darker, accent-edged and titled in the accent colour
+        g.setColour (sequencer ? P::background.interpolatedWith (P::panel, 0.4f) : P::panel);
         g.fillRoundedRectangle (r, 8.0f);
-        g.setColour (P::panelEdge);
+        g.setColour (sequencer ? lookAndFeel.getAccent().withAlpha (0.35f) : P::panelEdge);
         g.drawRoundedRectangle (r.reduced (0.5f), 8.0f, 1.0f);
 
-        const auto titleArea = panel.bounds.withHeight (kPanelTitle).withTrimmedLeft (14).withTrimmedTop (4);
+        if (sequencer)
+        {
+            g.setColour (lookAndFeel.getAccent());
+            g.setFont (lookAndFeel.titleFont (14.0f).withExtraKerningFactor (0.2f));
+            g.drawText (panel.title, titleArea, juce::Justification::centredLeft);
+            continue;
+        }
+
         g.setColour (lookAndFeel.getAccent());
         g.setFont (lookAndFeel.valueFont (13.0f));
         g.drawText (panel.number, titleArea, juce::Justification::centredLeft);
@@ -154,6 +166,13 @@ void MainView::paint (juce::Graphics& g)
         g.setFont (lookAndFeel.labelFont (13.0f).withExtraKerningFactor (0.2f));
         g.drawText (panel.title, titleArea.withTrimmedLeft (26), juce::Justification::centredLeft);
     }
+
+    // which browser loads what
+    g.setColour (P::dimText);
+    g.setFont (lookAndFeel.titleFont (10.5f).withExtraKerningFactor (0.18f));
+    g.drawText ("SOUND", 334, 16, 46, 34, juce::Justification::centredRight);
+    g.setFont (lookAndFeel.titleFont (9.5f).withExtraKerningFactor (0.12f));
+    g.drawText ("PATTERN", 520, kSeqPanel.getY() + 10, 40, 24, juce::Justification::centredRight);
 
     g.setColour (P::dimText);
     g.setFont (lookAndFeel.labelFont (11.0f).withExtraKerningFactor (0.1f));
@@ -179,8 +198,8 @@ void MainView::layoutKnobRow (juce::Rectangle<int> area, std::initializer_list<j
 void MainView::resized()
 {
     // header
-    presetPrev.setBounds (327, 16, 28, 34);
-    presetBox.setBounds (357, 16, 198, 34);
+    presetPrev.setBounds (386, 16, 28, 34);
+    presetBox.setBounds (416, 16, 139, 34);
     presetNext.setBounds (557, 16, 28, 34);
     saveButton.setBounds (594, 16, 64, 34);
     randomButton.setBounds (666, 16, 106, 34);
@@ -221,8 +240,8 @@ void MainView::resized()
     const int seqTop = kSeqPanel.getY() + 9;
     seqOn.setBounds (156, seqTop, 26, 26);
     int x = 190;
-    for (auto [chip, width] : { std::pair<juce::Component*, int> { &seqRate, 64 }, { &seqSteps, 58 }, { &seqGate, 68 },
-                                { &seqSwing, 74 }, { &seqRoot, 70 } })
+    for (auto [chip, width] : { std::pair<juce::Component*, int> { &seqRate, 60 }, { &seqSteps, 54 }, { &seqGate, 64 },
+                                { &seqSwing, 70 }, { &seqRoot, 62 } })
     {
         chip->setBounds (x, seqTop + 1, width, 24);
         x += width + 4;
@@ -238,7 +257,7 @@ void MainView::resized()
     placeRight (generateButton, 84, 6);
     placeRight (patternSave, 50, 8);
     placeRight (patternNext, 18, 2);
-    placeRight (patternBox, 112, 2);
+    placeRight (patternBox, 104, 2);
     placeRight (patternPrev, 18, 0);
 
     stepGrid.setBounds (30, kSeqPanel.getY() + 42, 860, kSeqPanel.getHeight() - 50);
@@ -351,7 +370,7 @@ void MainView::showSettingsMenu()
     const int entry = sound().current();
     const bool onUserPreset = sound().isUser (entry);
     const bool customFolder = sound().folder() != SoundPresets::defaultFolder();
-    menu.addSectionHeader ("Presets");
+    menu.addSectionHeader ("Sound presets");
     menu.addItem ("Open preset folder", [this]
     {
         auto folder = sound().folder();
@@ -378,6 +397,7 @@ void MainView::showPatternMenu()
 {
     juce::PopupMenu menu;
     menu.setLookAndFeel (&lookAndFeel);
+    menu.addSectionHeader ("Pattern");
     menu.addItem ("Clear pattern", [this] { patterns().clear(); });
     menu.addItem ("Copy pattern as text", [this] { juce::SystemClipboard::copyTextToClipboard (patterns().asText()); });
     menu.addItem ("Paste pattern", [this]

@@ -61,3 +61,20 @@ add_custom_command(TARGET SubForge_CLAP POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CLAP_INSTALL_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:SubForge_CLAP> ${CLAP_INSTALL_DIR}/
     COMMENT "Installing SubForge.clap into ${CLAP_INSTALL_DIR}")
+
+# Linux release archive: dist/SubForge-<version>-linux-x86_64.tar.gz with the
+# plug-in, the third-party notices and install notes.
+set(SUBFORGE_PACKAGE_NAME "SubForge-${PROJECT_VERSION}-linux-x86_64")
+set(SUBFORGE_PACKAGE_DIR "${CMAKE_BINARY_DIR}/package/${SUBFORGE_PACKAGE_NAME}")
+add_custom_target(package-linux
+    COMMAND ${CMAKE_COMMAND} -E rm -rf ${SUBFORGE_PACKAGE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${SUBFORGE_PACKAGE_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:SubForge_CLAP> ${SUBFORGE_PACKAGE_DIR}/
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/THIRD-PARTY-NOTICES.txt ${SUBFORGE_PACKAGE_DIR}/
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/packaging/INSTALL-linux.txt ${SUBFORGE_PACKAGE_DIR}/INSTALL.txt
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/dist
+    COMMAND ${CMAKE_COMMAND} -E chdir ${CMAKE_BINARY_DIR}/package
+            ${CMAKE_COMMAND} -E tar czf ${CMAKE_SOURCE_DIR}/dist/${SUBFORGE_PACKAGE_NAME}.tar.gz ${SUBFORGE_PACKAGE_NAME}
+    DEPENDS SubForge_CLAP
+    COMMENT "Packaging dist/${SUBFORGE_PACKAGE_NAME}.tar.gz"
+    VERBATIM)

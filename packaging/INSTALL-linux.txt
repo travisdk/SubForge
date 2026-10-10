@@ -1,0 +1,17 @@
+SubForge – installation on Linux
+================================
+
+1. Copy SubForge.clap to your CLAP plug-in folder:
+
+       mkdir -p ~/.clap
+       cp SubForge.clap ~/.clap/
+
+   (or /usr/lib/clap/ to install it for all users).
+
+2. Restart your DAW or rescan plug-ins. SubForge appears as an instrument.
+
+Your presets and patterns are saved in ~/Documents/SubForge/ and settings in
+~/.config/SubForge/. Removing the plug-in leaves them in place.
+
+Third-party licences are listed in THIRD-PARTY-NOTICES.txt and in the
+plug-in under the gear menu > About SubForge.

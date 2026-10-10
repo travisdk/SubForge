@@ -34,8 +34,8 @@ public:
     juce::Colour getAccent() const { return accent; }
     void setAccent (juce::Colour newAccent);
 
-    juce::Font regularFont (float height) const { return juce::Font (medium).withHeight (height); }
-    juce::Font boldFont (float height) const { return juce::Font (bold).withHeight (height); }
+    juce::Font regularFont (float height) const { return juce::Font (juce::FontOptions (medium).withHeight (height)); }
+    juce::Font boldFont (float height) const { return juce::Font (juce::FontOptions (bold).withHeight (height)); }
 
     void drawRotarySlider (juce::Graphics&, int x, int y, int width, int height, float sliderPos,
                            float startAngle, float endAngle, juce::Slider&) override;

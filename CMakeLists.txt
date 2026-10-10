@@ -18,7 +18,9 @@ juce_add_plugin(SubForge
     PLUGIN_MANUFACTURER_CODE Hjuh
     PLUGIN_CODE SbFg
     PRODUCT_NAME "SubForge"
-    FORMATS Standalone
+    FORMATS Standalone VST3
+    VST3_CATEGORIES Instrument Synth Mono
+    COPY_PLUGIN_AFTER_BUILD TRUE   # VST3 into ~/.vst3 (CLAP is copied by the command at the end)
     IS_SYNTH TRUE
     NEEDS_MIDI_INPUT TRUE
     NEEDS_MIDI_OUTPUT FALSE
@@ -46,7 +48,8 @@ set_target_properties(SubForgeAssets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 target_compile_definitions(SubForge PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
-    JUCE_DISPLAY_SPLASH_SCREEN=0)
+    JUCE_DISPLAY_SPLASH_SCREEN=0
+    JUCE_VST3_CAN_REPLACE_VST2=0)  # no VST2 SDK; VST3 only
 
 target_link_libraries(SubForge
     PRIVATE

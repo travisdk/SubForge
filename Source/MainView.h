@@ -63,6 +63,7 @@ private:
     void changePresetFolder (const juce::File& folder);
     void showAbout();
     void layoutKnobRow (juce::Rectangle<int> area, std::initializer_list<juce::Component*> items);
+    void drawLogo (juce::Graphics&, juce::Rectangle<float> area);
 
     SubForgeProcessor& processor;
     SubForgeLookAndFeel& lookAndFeel;

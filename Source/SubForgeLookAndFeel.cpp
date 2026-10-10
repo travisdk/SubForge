@@ -238,6 +238,12 @@ void SubForgeLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& b
 // Toggles are round LEDs: a ring that glows in the accent colour when on.
 void SubForgeLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& button, bool isHighlighted, bool)
 {
+    if ((bool) button.getProperties().getWithDefault (switchProperty, false))
+    {
+        drawSlideSwitch (g, button, isHighlighted);
+        return;
+    }
+
     const auto bounds = button.getLocalBounds().toFloat();
     const float d = juce::jmin (bounds.getWidth(), bounds.getHeight()) - 2.0f;
     const auto ring = juce::Rectangle<float> (d, d).withCentre (bounds.getCentre());
@@ -259,4 +265,31 @@ void SubForgeLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButto
         g.setColour (P::field);
         g.fillEllipse (core);
     }
+}
+
+// A pill-shaped ON/OFF switch: the knob sits left and grey when off, right on an
+// accent-filled track when on, with the state written on the free side.
+void SubForgeLookAndFeel::drawSlideSwitch (juce::Graphics& g, juce::ToggleButton& button, bool isHighlighted)
+{
+    const bool on = button.getToggleState();
+    const auto colour = accentFor (button);
+    const auto track = button.getLocalBounds().toFloat().reduced (1.0f);
+    const float radius = track.getHeight() * 0.5f;
+
+    g.setColour (on ? colour : P::field);
+    g.fillRoundedRectangle (track, radius);
+    g.setColour (on ? colour.brighter (0.2f) : (isHighlighted ? P::panelEdge.brighter (0.6f) : P::panelEdge.brighter (0.3f)));
+    g.drawRoundedRectangle (track.reduced (0.5f), radius, 1.0f);
+
+    const float knobSize = track.getHeight() - 6.0f;
+    const auto knob = juce::Rectangle<float> (knobSize, knobSize)
+                          .withCentre ({ on ? track.getRight() - radius : track.getX() + radius, track.getCentreY() });
+    g.setColour (on ? P::background : P::dimText);
+    g.fillEllipse (knob);
+
+    auto label = track.reduced (4.0f, 0.0f);
+    label = on ? label.withTrimmedRight (knobSize + 2.0f) : label.withTrimmedLeft (knobSize + 2.0f);
+    g.setColour (on ? P::background : P::dimText);
+    g.setFont (titleFont (9.5f).withExtraKerningFactor (0.06f));
+    g.drawText (on ? "ON" : "OFF", label, juce::Justification::centred);
 }

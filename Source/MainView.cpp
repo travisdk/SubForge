@@ -73,6 +73,7 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
     });
     lfoRetrigAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, "lfoRetrig", lfoRetrig);
     seqOnAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, "seqOn", seqOn);
+    seqOn.getProperties().set (SubForgeLookAndFeel::switchProperty, true);
 
     for (auto* c : std::initializer_list<juce::Component*> {
              &filterMode, &filterCurve, &envAmount, &filterDecay, &drive, &keyTrack, &cutoff, &resonance,
@@ -131,13 +132,14 @@ void MainView::paint (juce::Graphics& g)
 {
     g.fillAll (P::background);
 
-    // header
+    // header: SF badge, name and tagline
+    drawLogo (g, { 16.0f, 14.0f, 38.0f, 38.0f });
     g.setColour (lookAndFeel.getAccent());
-    g.setFont (lookAndFeel.titleFont (32.0f).withExtraKerningFactor (0.06f));
-    g.drawText ("SUBFORGE", 16, 10, 160, 44, juce::Justification::centredLeft);
+    g.setFont (lookAndFeel.titleFont (24.0f).withExtraKerningFactor (0.08f));
+    g.drawText ("SUBFORGE", 64, 12, 130, 42, juce::Justification::centredLeft);
     g.setColour (P::dimText);
-    g.setFont (lookAndFeel.labelFont (11.0f).withExtraKerningFactor (0.22f));
-    g.drawText ("MONO BASS SYNTH", 178, 24, 140, 20, juce::Justification::centredLeft);
+    g.setFont (lookAndFeel.labelFont (10.5f).withExtraKerningFactor (0.2f));
+    g.drawText ("MONO BASS SYNTH", 196, 24, 130, 20, juce::Justification::centredLeft);
 
     for (const auto& panel : panels)
     {
@@ -178,6 +180,32 @@ void MainView::paint (juce::Graphics& g)
     g.setFont (lookAndFeel.labelFont (11.0f).withExtraKerningFactor (0.1f));
     g.drawText ("SUB WAVE", 806, 106, 90, 16, juce::Justification::centred);
     g.drawText ("RETRIG", kLfoPanel.getRight() - 72, kLfoPanel.getY() + 6, 46, 24, juce::Justification::centredRight);
+}
+
+// The SF badge: a rounded tile in the accent colour (with a slight gradient),
+// "SF" cut out in the background colour and a saw-tooth wave running across
+// the bottom, all drawn as vectors so it follows the theme and any UI size.
+void MainView::drawLogo (juce::Graphics& g, juce::Rectangle<float> r)
+{
+    const auto theme = lookAndFeel.getAccent();
+    g.setGradientFill (juce::ColourGradient (theme.brighter (0.15f), r.getX(), r.getY(),
+                                             theme.darker (0.35f), r.getRight(), r.getBottom(), false));
+    g.fillRoundedRectangle (r, 8.0f);
+
+    g.setColour (P::background);
+    g.setFont (lookAndFeel.titleFont (21.0f).withExtraKerningFactor (-0.02f));
+    g.drawText ("SF", r.withTrimmedBottom (7.0f).translated (0.0f, 1.0f), juce::Justification::centred);
+
+    // two saw-tooth periods: rise, drop, rise, drop
+    const float y0 = r.getBottom() - 6.0f, y1 = r.getBottom() - 11.0f;
+    const float x0 = r.getX() + 6.0f, w = r.getWidth() - 12.0f;
+    juce::Path saw;
+    saw.startNewSubPath (x0, y0);
+    saw.lineTo (x0 + w * 0.5f, y1);
+    saw.lineTo (x0 + w * 0.5f, y0);
+    saw.lineTo (x0 + w, y1);
+    saw.lineTo (x0 + w, y0);
+    g.strokePath (saw, juce::PathStrokeType (1.6f, juce::PathStrokeType::mitered, juce::PathStrokeType::rounded));
 }
 
 // Places knobs (or any components) side by side in equal cells.
@@ -238,10 +266,10 @@ void MainView::resized()
 
     // 08 sequencer header
     const int seqTop = kSeqPanel.getY() + 9;
-    seqOn.setBounds (156, seqTop, 26, 26);
-    int x = 190;
-    for (auto [chip, width] : { std::pair<juce::Component*, int> { &seqRate, 60 }, { &seqSteps, 54 }, { &seqGate, 64 },
-                                { &seqSwing, 70 }, { &seqRoot, 62 } })
+    seqOn.setBounds (146, seqTop + 2, 50, 22);
+    int x = 200;
+    for (auto [chip, width] : { std::pair<juce::Component*, int> { &seqRate, 60 }, { &seqSteps, 54 }, { &seqGate, 62 },
+                                { &seqSwing, 68 }, { &seqRoot, 60 } })
     {
         chip->setBounds (x, seqTop + 1, width, 24);
         x += width + 4;

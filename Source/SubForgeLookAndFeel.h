@@ -27,6 +27,7 @@ public:
     static inline const juce::Identifier secondaryProperty { "secondaryAccent" }; // bool, use the orange accent
     static inline const juce::Identifier outlineProperty { "accentOutline" };     // bool, button outlined in the accent
     static inline const juce::Identifier valueSizeProperty { "valueFontSize" };   // float, knob value text height
+    static inline const juce::Identifier switchProperty { "slideSwitch" };       // bool, draw a toggle as an ON/OFF slide switch
 
     struct AccentChoice
     {
@@ -69,6 +70,7 @@ public:
     void drawButtonText (juce::Graphics&, juce::TextButton&, bool isHighlighted, bool isDown) override;
 
     void drawToggleButton (juce::Graphics&, juce::ToggleButton&, bool isHighlighted, bool isDown) override;
+    void drawSlideSwitch (juce::Graphics&, juce::ToggleButton&, bool isHighlighted);
 
     // labels keep the font they were given (value boxes use JetBrains Mono at their own size)
     juce::Font getLabelFont (juce::Label& label) override { return label.getFont(); }

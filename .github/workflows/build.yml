@@ -1,0 +1,82 @@
+# Builds SubForge (CLAP + VST3) on Linux and Windows, runs the unit tests,
+# checks the third-party notices and uploads the release archives.
+# Runs on GitHub only after a push; nothing here is needed for local builds.
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+env:
+  JUCE_VERSION: "8.0.15"
+  CLAP_JUCE_EXTENSIONS_COMMIT: 7adee3a1bd4684d4caa5601100e364abccff4b4d
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux
+            os: ubuntu-24.04
+            generator: -G Ninja
+            package: package-linux
+          - name: Windows
+            os: windows-2022
+            generator: ""            # Visual Studio 2022 (MSVC), the default on this runner
+            package: package-windows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build libasound2-dev libfreetype-dev libfontconfig1-dev \
+            libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev libxrandr-dev libxrender-dev
+
+      - name: Fetch JUCE and clap-juce-extensions
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "$JUCE_VERSION" https://github.com/juce-framework/JUCE.git _sdks/JUCE
+          git clone https://github.com/free-audio/clap-juce-extensions.git _sdks/clap-juce-extensions
+          git -C _sdks/clap-juce-extensions checkout "$CLAP_JUCE_EXTENSIONS_COMMIT"
+          git -C _sdks/clap-juce-extensions submodule update --init --recursive
+
+      - name: Configure
+        shell: bash
+        run: >
+          cmake -S . -B build ${{ matrix.generator }}
+          -DCMAKE_BUILD_TYPE=Release
+          -DJUCE_DIR=_sdks/JUCE
+          -DCLAP_JUCE_EXTENSIONS_DIR=_sdks/clap-juce-extensions
+          -DSUBFORGE_INSTALL_AFTER_BUILD=OFF
+
+      - name: Build
+        run: >
+          cmake --build build --config Release --parallel
+          --target SubForge_CLAP SubForge_VST3
+          test_presets test_patterns test_sequencer test_filter_curve test_oscillator
+
+      - name: Unit tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Third-party notices match the licence files
+        run: python scripts/generate-third-party-notices.py --check --juce _sdks/JUCE --cje _sdks/clap-juce-extensions
+
+      - name: Package
+        run: cmake --build build --config Release --target ${{ matrix.package }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SubForge-${{ matrix.name }}
+          path: dist/*
+          if-no-files-found: error

@@ -3,3 +3,4 @@ build/
 compile_commands.json
 build-juce8/
 dist/
+_sdks/

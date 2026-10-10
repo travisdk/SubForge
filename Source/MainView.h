@@ -15,9 +15,13 @@ class MainView : public juce::Component,
 {
 public:
     static constexpr int kWidth = 920, kHeight = 680;
+    static constexpr int kCollapsedHeight = 510; // sequencer steps hidden, its control row kept
 
     MainView (SubForgeProcessor&, SubForgeLookAndFeel&, std::function<void (float)> onScaleChosen,
-              std::function<float()> currentScale);
+              std::function<float()> currentScale, std::function<void()> onDesignHeightChanged);
+
+    // design height depends on whether the sequencer's steps are shown
+    int designHeight() const { return sequencerVisible ? kHeight : kCollapsedHeight; }
     ~MainView() override;
 
     void paint (juce::Graphics&) override;
@@ -30,6 +34,13 @@ private:
     {
         juce::String number, title;
         juce::Rectangle<int> bounds;
+    };
+
+    // Invisible button over the sequencer title: click to show or hide the steps.
+    struct TitleToggle : juce::Button
+    {
+        TitleToggle() : juce::Button ("Show/hide sequencer") { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+        void paintButton (juce::Graphics&, bool, bool) override {}
     };
 
     struct SettingsButton : juce::Button
@@ -64,11 +75,16 @@ private:
     void showAbout();
     void layoutKnobRow (juce::Rectangle<int> area, std::initializer_list<juce::Component*> items);
     void drawLogo (juce::Graphics&, juce::Rectangle<float> area);
+    void setSequencerVisible (bool visible);
+    juce::Rectangle<int> sequencerPanel() const;
 
     SubForgeProcessor& processor;
     SubForgeLookAndFeel& lookAndFeel;
     std::function<void (float)> chooseScale;
     std::function<float()> getScale;
+    std::function<void()> designHeightChanged;
+    bool sequencerVisible = true;
+    TitleToggle sequencerToggle;
 
     std::vector<Panel> panels;
 

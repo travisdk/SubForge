@@ -19,6 +19,7 @@ public:
 private:
     float currentScale() const { return (float) getWidth() / (float) MainView::kWidth; }
     void setUiScale (float scale);
+    void applyLayout (float scale); // size, limits and aspect ratio for the view's current design height
 
     SubForgeProcessor& processor;
     SubForgeLookAndFeel lookAndFeel;

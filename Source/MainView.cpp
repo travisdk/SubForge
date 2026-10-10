@@ -19,8 +19,9 @@ constexpr int kPanelTitle = 30; // height reserved for "02 FILTER" etc.
 } // namespace
 
 MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function<void (float)> onScaleChosen,
-                    std::function<float()> currentScale)
-    : processor (p), lookAndFeel (lf), chooseScale (std::move (onScaleChosen)), getScale (std::move (currentScale))
+                    std::function<float()> currentScale, std::function<void()> onDesignHeightChanged)
+    : processor (p), lookAndFeel (lf), chooseScale (std::move (onScaleChosen)), getScale (std::move (currentScale)),
+      designHeightChanged (std::move (onDesignHeightChanged))
 {
     setLookAndFeel (&lookAndFeel); // before any child is laid out, so the controls find the SubForge look
 
@@ -108,8 +109,11 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
 
     for (auto* c : std::initializer_list<juce::Component*> { &seqOn, &seqRate, &seqSteps, &seqGate, &seqSwing, &seqRoot,
                                                               &patternPrev, &patternBox, &patternNext, &patternSave,
-                                                              &generateButton, &patternMenuButton, &stepGrid })
+                                                              &generateButton, &patternMenuButton, &stepGrid, &sequencerToggle })
         addAndMakeVisible (c);
+    sequencerToggle.onClick = [this] { setSequencerVisible (! sequencerVisible); };
+    sequencerVisible = processor.getSettings().getBoolValue ("showSequencer", true);
+    stepGrid.setVisible (sequencerVisible);
 
     processor.addChangeListener (this);
     sound().rescan(); // pick up files added since the plugin was loaded
@@ -118,7 +122,26 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
     refreshPatternBox();
     timerCallback();
     startTimerHz (30);
-    setSize (kWidth, kHeight);
+    setSize (kWidth, designHeight());
+}
+
+juce::Rectangle<int> MainView::sequencerPanel() const
+{
+    return sequencerVisible ? kSeqPanel : kSeqPanel.withHeight (42);
+}
+
+// Hiding the steps keeps the sequencer's control row (on/off, groove, patterns)
+// and makes the whole interface shorter; the choice is remembered globally.
+void MainView::setSequencerVisible (bool visible)
+{
+    sequencerVisible = visible;
+    stepGrid.setVisible (visible);
+    processor.getSettings().setValue ("showSequencer", visible);
+    processor.getSettings().saveIfNeeded();
+    setSize (kWidth, designHeight());
+    resized();
+    repaint();
+    designHeightChanged();
 }
 
 MainView::~MainView()
@@ -155,9 +178,25 @@ void MainView::paint (juce::Graphics& g)
 
         if (sequencer)
         {
+            // chevron: down when the steps are shown, right when hidden
+            const auto c = juce::Point<float> ((float) titleArea.getX() + 5.0f, (float) titleArea.getCentreY());
+            juce::Path chevron;
+            if (sequencerVisible)
+            {
+                chevron.startNewSubPath (c.x - 4.0f, c.y - 2.0f);
+                chevron.lineTo (c.x, c.y + 2.5f);
+                chevron.lineTo (c.x + 4.0f, c.y - 2.0f);
+            }
+            else
+            {
+                chevron.startNewSubPath (c.x - 2.0f, c.y - 4.0f);
+                chevron.lineTo (c.x + 2.5f, c.y);
+                chevron.lineTo (c.x - 2.0f, c.y + 4.0f);
+            }
             g.setColour (lookAndFeel.getAccent());
-            g.setFont (lookAndFeel.titleFont (14.0f).withExtraKerningFactor (0.2f));
-            g.drawText (panel.title, titleArea, juce::Justification::centredLeft);
+            g.strokePath (chevron, juce::PathStrokeType (1.8f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+            g.setFont (lookAndFeel.titleFont (13.0f).withExtraKerningFactor (0.14f));
+            g.drawText (panel.title, titleArea.withTrimmedLeft (16), juce::Justification::centredLeft);
             continue;
         }
 
@@ -264,7 +303,9 @@ void MainView::resized()
     aftertouchDest.setBounds (aftertouchDest.getBounds().reduced (2, 0));
     layoutKnobRow (knobArea (kPlayPanel), { &glide, &velocity, &accent, &accentSweep, &volume });
 
-    // 08 sequencer header
+    // sequencer header (its panel shrinks to this row when the steps are hidden)
+    panels.back().bounds = sequencerPanel();
+    sequencerToggle.setBounds (kSeqPanel.getX() + 8, kSeqPanel.getY() + 6, 118, 30);
     const int seqTop = kSeqPanel.getY() + 9;
     seqOn.setBounds (146, seqTop + 2, 50, 22);
     int x = 200;

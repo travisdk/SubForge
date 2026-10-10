@@ -89,7 +89,7 @@ CMake 3.28.3 og GCC 13.3.
 
 | Indhold | Placering | Oprindelse | Kildesidens licens | Generisk eller ligner kendt materiale? |
 |---|---|---|---|---|
-| 89 synth-presets | `Source/Patches.h` | **Selv genereret** | – | Generiske indstillinger. **Varemærkenær navngivning** (omdøbes i fase 3): "8-Oh-8 Sub", "8-Oh-8 Boom", "Moogie Classic", "Fat Moogy", "Fat 12dB Moogy", "Muffin Bass" |
+| 89 synth-presets | `Source/Patches.h` | **Selv genereret** | – | Generiske indstillinger. **Neutrale navne:** 15 presets, der direkte eller indirekte hentydede til varemærker eller kunstnernavne (Moog, TR-808, Big Muff, Taurus, Hoover, Tube Screamer, "Reese"), er omdøbt (fx Fat Ladder, Long Sub, Woolly Fuzz, Detuned Saw). Indstillingerne er uændrede |
 | 42 sequencer-mønstre | `Source/PatternLibrary.h` | **Selv genereret** (komponeret ud fra genrebeskrivelser) | – | **Generiske genrefigurer:** Goa Offbeat, Psy Roller, Disco Octaves, Octave Bounce, Body Drive, Slide Riser, Pentatonic Run, Lonely Note, Twelve Step Tresillo (traditionel rytme). **Acid-stil (de øvrige):** lighed med kendte numre er **ikke systematisk kontrolleret**. Korte 16-trins figurer kan ligne eksisterende numre tilfældigt. Ingen er bevidst skrevet efter et bestemt nummer |
 | Standardmønster | `Source/Sequencer.h` `setDefault()` | **Selv genereret** | – | Acid-stil, se ovenfor |
 | Mønstergenerator (Random) | `Source/Sequencer.h` `randomize()` | **Selv genereret**, regelbaseret | – | Genererer nye mønstre |
@@ -117,7 +117,7 @@ CMake 3.28.3 og GCC 13.3.
 | Inter-fonten | **SVAG COPYLEFT** (kun selve fonten) | OFL kræver kun, at fonten forbliver under OFL, og at licensteksten følger med. Påvirker ikke din kode |
 | `polyBlep()` | **UKENDT** | Identisk med en udbredt tutorial-formulering. Skrives om i fase 3 |
 | Al øvrig kode i `Source/` | **OK** | Selv genereret |
-| Presets og mønstre | **OK** | Selv genereret (med varemærke- og lighedsforbehold, se §3) |
+| Presets og mønstre | **OK** | Selv genereret, neutrale navne (lighedsforbehold for mønstre, se §3) |
 
 ---
 
@@ -172,9 +172,9 @@ JUCE 8 har ingen ISC-moduler, så der er ingen JUCE-ISC-note. JUCE selv er dækk
 
 **Indsats: lille.**
 
-### 5.5 Mønstre og presets – fase 3
+### 5.5 Mønstre og presets – udført
 
-Alt er selv genereret. Presetnavne med varemærkepræg omdøbes til neutrale navne. **Indsats: lille.**
+Alt er selv genereret. De 15 presetnavne med varemærkepræg er omdøbt til neutrale navne, og kommentarer i kildekoden beskriver nu acid-stilen uden varemærkenavne.
 
 ---
 
@@ -185,6 +185,6 @@ Alt er selv genereret. Presetnavne med varemærkepræg omdøbes til neutrale nav
 1. **Du har tegnet JUCE 8 Starter-licensen** og bekræftet vilkårene på juce.com (§5.1). Det gælder kun, så længe din samlede omsætning eller funding er højst 20.000 USD over 12 måneder.
 2. **`THIRD-PARTY-NOTICES.txt` følger med** (fase 2). Den skal indeholde MIT, Old MIT, Apache-2.0, IJG, libpng, zlib, OFL og senere VST3 MIT.
 
-**Anbefalet (fase 3):** omskriv `polyBlep()` clean room, og omdøb de varemærkeprægede presetnavne.
+**Anbefalet (fase 3):** omskriv `polyBlep()` clean room. Presetnavnene er allerede neutrale.
 
 Der er ikke fundet andet, der forhindrer salg med lukket kildekode.

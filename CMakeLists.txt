@@ -32,7 +32,9 @@ target_sources(SubForge PRIVATE
     Source/StepGrid.cpp
     Source/AboutOverlay.cpp
     Source/MainView.cpp
-    Source/Widgets.cpp)
+    Source/Widgets.cpp
+    Source/SoundPresets.cpp
+    Source/PatternPresets.cpp)
 
 juce_add_binary_data(SubForgeAssets SOURCES
     Resources/Fonts/ChakraPetch/ChakraPetch-SemiBold.ttf

@@ -34,21 +34,21 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
     presetBox.onChange = [this]
     {
         if (const int id = presetBox.getSelectedId(); id > 0)
-            processor.loadEntry (id - 1);
+            sound().load (id - 1);
     };
     presetPrev.onClick = [this] { stepPreset (-1); };
     presetNext.onClick = [this] { stepPreset (1); };
     saveButton.onClick = [this]
     {
-        auto suggestion = processor.getPatchName().trimCharactersAtEnd (" *");
-        if (! processor.isUserEntry (processor.getCurrentEntry()))
+        auto suggestion = sound().name().trimCharactersAtEnd (" *");
+        if (! sound().isUser (sound().current()))
             suggestion = "My " + suggestion;
-        showNameDialog ("Save preset", processor.getPresetFolder(), suggestion,
+        showNameDialog ("Save preset", sound().folder(), suggestion,
                         [this] (const juce::String& name) { savePreset (name); });
     };
     randomButton.setToggleState (true, juce::dontSendNotification); // drawn filled with the accent
-    randomButton.onClick = [this] { processor.randomizePatch(); };
-    mutateButton.onClick = [this] { processor.mutatePatch(); };
+    randomButton.onClick = [this] { sound().randomize(); };
+    mutateButton.onClick = [this] { sound().mutate(); };
     settingsButton.onClick = [this] { showSettingsMenu(); };
 
     for (auto* c : std::initializer_list<juce::Component*> { &presetPrev, &presetBox, &presetNext, &saveButton,
@@ -88,20 +88,20 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
     patternBox.onChange = [this]
     {
         if (const int id = patternBox.getSelectedId(); id > 0)
-            processor.loadPatternEntry (id - 1);
+            patterns().load (id - 1);
     };
     patternPrev.onClick = [this] { stepPattern (-1); };
     patternNext.onClick = [this] { stepPattern (1); };
     patternSave.onClick = [this]
     {
-        auto suggestion = processor.getPatternName().trimCharactersAtEnd (" *");
-        if (! processor.isUserPatternEntry (processor.getCurrentPatternEntry()))
+        auto suggestion = patterns().name().trimCharactersAtEnd (" *");
+        if (! patterns().isUser (patterns().current()))
             suggestion = "My " + suggestion;
-        showNameDialog ("Save pattern", processor.getPatternFolder(), suggestion,
+        showNameDialog ("Save pattern", patterns().folder(), suggestion,
                         [this] (const juce::String& name) { savePattern (name); });
     };
     generateButton.getProperties().set (SubForgeLookAndFeel::outlineProperty, true);
-    generateButton.onClick = [this] { processor.randomizePattern(); };
+    generateButton.onClick = [this] { patterns().randomize(); };
     patternMenuButton.onClick = [this] { showPatternMenu(); };
 
     for (auto* c : std::initializer_list<juce::Component*> { &seqOn, &seqRate, &seqSteps, &seqGate, &seqSwing, &seqRoot,
@@ -110,8 +110,8 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
         addAndMakeVisible (c);
 
     processor.addChangeListener (this);
-    processor.rescanUserPresets(); // pick up files added since the plugin was loaded
-    processor.rescanUserPatterns();
+    sound().rescan(); // pick up files added since the plugin was loaded
+    patterns().rescan();
     refreshPresetBox();
     refreshPatternBox();
     timerCallback();
@@ -278,16 +278,16 @@ void MainView::refreshPresetBox()
 {
     presetBox.clear (juce::dontSendNotification);
     presetBox.addSectionHeading ("Factory");
-    for (int i = 0; i < processor.getNumEntries(); ++i)
+    for (int i = 0; i < sound().numEntries(); ++i)
     {
         if (i == subforge::kNumPresets)
             presetBox.addSectionHeading ("User");
-        presetBox.addItem (processor.getEntryName (i), i + 1);
+        presetBox.addItem (sound().entryName (i), i + 1);
     }
 
-    const auto name = processor.getPatchName();
-    const int index = processor.getCurrentEntry();
-    if (name == processor.getEntryName (index))
+    const auto name = sound().name();
+    const int index = sound().current();
+    if (name == sound().entryName (index))
         presetBox.setSelectedId (index + 1, juce::dontSendNotification);
     else
         presetBox.setText (name, juce::dontSendNotification);
@@ -295,24 +295,24 @@ void MainView::refreshPresetBox()
 
 void MainView::stepPreset (int delta)
 {
-    const int n = processor.getNumEntries();
-    processor.loadEntry ((processor.getCurrentEntry() + delta + n) % n);
+    const int n = sound().numEntries();
+    sound().load ((sound().current() + delta + n) % n);
 }
 
 void MainView::refreshPatternBox()
 {
     patternBox.clear (juce::dontSendNotification);
     patternBox.addSectionHeading ("Factory");
-    for (int i = 0; i < processor.getNumPatternEntries(); ++i)
+    for (int i = 0; i < patterns().numEntries(); ++i)
     {
         if (i == subforge::kNumFactoryPatterns)
             patternBox.addSectionHeading ("User");
-        patternBox.addItem (processor.getPatternEntryName (i), i + 1);
+        patternBox.addItem (patterns().entryName (i), i + 1);
     }
 
-    const auto name = processor.getPatternName();
-    const int index = processor.getCurrentPatternEntry();
-    if (index >= 0 && name == processor.getPatternEntryName (index))
+    const auto name = patterns().name();
+    const int index = patterns().current();
+    if (index >= 0 && name == patterns().entryName (index))
         patternBox.setSelectedId (index + 1, juce::dontSendNotification);
     else
         patternBox.setText (name, juce::dontSendNotification);
@@ -320,12 +320,12 @@ void MainView::refreshPatternBox()
 
 void MainView::stepPattern (int delta)
 {
-    const int n = processor.getNumPatternEntries();
-    const int current = processor.getCurrentPatternEntry();
+    const int n = patterns().numEntries();
+    const int current = patterns().current();
     if (current < 0) // nothing from the list loaded yet: start at either end
-        processor.loadPatternEntry (delta > 0 ? 0 : n - 1);
+        patterns().load (delta > 0 ? 0 : n - 1);
     else
-        processor.loadPatternEntry ((current + delta + n) % n);
+        patterns().load ((current + delta + n) % n);
 }
 
 //==============================================================================
@@ -348,24 +348,24 @@ void MainView::showSettingsMenu()
         menu.addItem (juce::String (juce::roundToInt (scale * 100.0f)) + " %", true,
                       std::abs (getScale() - scale) < 0.01f, [this, scale] { chooseScale (scale); });
 
-    const int entry = processor.getCurrentEntry();
-    const bool onUserPreset = processor.isUserEntry (entry);
-    const bool customFolder = processor.getPresetFolder() != SubForgeProcessor::defaultPresetFolder();
+    const int entry = sound().current();
+    const bool onUserPreset = sound().isUser (entry);
+    const bool customFolder = sound().folder() != SoundPresets::defaultFolder();
     menu.addSectionHeader ("Presets");
     menu.addItem ("Open preset folder", [this]
     {
-        auto folder = processor.getPresetFolder();
+        auto folder = sound().folder();
         folder.createDirectory();
         folder.startAsProcess();
     });
     menu.addItem ("Change preset folder...", [this] { choosePresetFolder(); });
-    menu.addItem ("Use default folder", customFolder, false, [this] { processor.setPresetFolder ({}); });
-    menu.addItem ("Rescan presets", [this] { processor.rescanUserPresets(); });
-    menu.addItem ("Delete \"" + (onUserPreset ? processor.getEntryName (entry) : juce::String ("user preset")) + "\"",
+    menu.addItem ("Use default folder", customFolder, false, [this] { changePresetFolder ({}); });
+    menu.addItem ("Rescan presets", [this] { sound().rescan(); });
+    menu.addItem ("Delete \"" + (onUserPreset ? sound().entryName (entry) : juce::String ("user preset")) + "\"",
                   onUserPreset, false, [this, entry]
                   {
-                      confirm ("Delete preset?", "\"" + processor.getEntryName (entry) + "\" will be moved to the trash.",
-                               "Delete", [this, entry] { processor.deleteUserPreset (entry); });
+                      confirm ("Delete preset?", "\"" + sound().entryName (entry) + "\" will be moved to the trash.",
+                               "Delete", [this, entry] { sound().remove (entry); });
                   });
     menu.addSeparator();
     menu.addItem ("About SubForge...", [this] { showAbout(); });
@@ -378,11 +378,11 @@ void MainView::showPatternMenu()
 {
     juce::PopupMenu menu;
     menu.setLookAndFeel (&lookAndFeel);
-    menu.addItem ("Clear pattern", [this] { processor.clearPattern(); });
-    menu.addItem ("Copy pattern as text", [this] { juce::SystemClipboard::copyTextToClipboard (processor.getPatternAsText()); });
+    menu.addItem ("Clear pattern", [this] { patterns().clear(); });
+    menu.addItem ("Copy pattern as text", [this] { juce::SystemClipboard::copyTextToClipboard (patterns().asText()); });
     menu.addItem ("Paste pattern", [this]
     {
-        if (! processor.setPatternFromText (juce::SystemClipboard::getTextFromClipboard()))
+        if (! patterns().fromText (juce::SystemClipboard::getTextFromClipboard()))
             confirm ("Nothing to paste",
                      "The clipboard needs sixteen steps like \"0a 0 12s - 3a ...\" (rest \"-\", a = accent, s = slide).",
                      "OK", {});
@@ -390,19 +390,19 @@ void MainView::showPatternMenu()
     menu.addSeparator();
     menu.addItem ("Open pattern folder", [this]
     {
-        auto folder = processor.getPatternFolder();
+        auto folder = patterns().folder();
         folder.createDirectory();
         folder.startAsProcess();
     });
-    menu.addItem ("Rescan patterns", [this] { processor.rescanUserPatterns(); });
+    menu.addItem ("Rescan patterns", [this] { patterns().rescan(); });
 
-    const int entry = processor.getCurrentPatternEntry();
-    const bool onUserPattern = processor.isUserPatternEntry (entry);
-    menu.addItem ("Delete \"" + (onUserPattern ? processor.getPatternEntryName (entry) : juce::String ("user pattern")) + "\"",
+    const int entry = patterns().current();
+    const bool onUserPattern = patterns().isUser (entry);
+    menu.addItem ("Delete \"" + (onUserPattern ? patterns().entryName (entry) : juce::String ("user pattern")) + "\"",
                   onUserPattern, false, [this, entry]
                   {
-                      confirm ("Delete pattern?", "\"" + processor.getPatternEntryName (entry) + "\" will be moved to the trash.",
-                               "Delete", [this, entry] { processor.deleteUserPattern (entry); });
+                      confirm ("Delete pattern?", "\"" + patterns().entryName (entry) + "\" will be moved to the trash.",
+                               "Delete", [this, entry] { patterns().remove (entry); });
                   });
 
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&patternMenuButton).withDeletionCheck (*this));
@@ -450,11 +450,11 @@ void MainView::savePreset (const juce::String& name)
 {
     auto save = [this, name]
     {
-        if (! processor.saveUserPreset (name))
-            confirm ("Could not save", "Writing to " + processor.getPresetFolder().getFullPathName() + " failed.", "OK", {});
+        if (! sound().save (name))
+            confirm ("Could not save", "Writing to " + sound().folder().getFullPathName() + " failed.", "OK", {});
     };
 
-    if (processor.userPresetExists (name))
+    if (sound().exists (name))
         confirm ("Overwrite preset?", "\"" + name + "\" already exists.", "Overwrite", save);
     else
         save();
@@ -464,11 +464,11 @@ void MainView::savePattern (const juce::String& name)
 {
     auto save = [this, name]
     {
-        if (! processor.saveUserPattern (name))
-            confirm ("Could not save", "Writing to " + processor.getPatternFolder().getFullPathName() + " failed.", "OK", {});
+        if (! patterns().save (name))
+            confirm ("Could not save", "Writing to " + patterns().folder().getFullPathName() + " failed.", "OK", {});
     };
 
-    if (processor.userPatternExists (name))
+    if (patterns().exists (name))
         confirm ("Overwrite pattern?", "\"" + name + "\" already exists.", "Overwrite", save);
     else
         save();
@@ -494,15 +494,22 @@ void MainView::confirm (const juce::String& title, const juce::String& message, 
         }), true);
 }
 
+// Patterns live in a "Patterns" folder next to the preset folder, so both follow a change.
+void MainView::changePresetFolder (const juce::File& folder)
+{
+    sound().setFolder (folder);
+    patterns().rescan();
+}
+
 void MainView::choosePresetFolder()
 {
-    folderChooser = std::make_unique<juce::FileChooser> ("Choose preset folder", processor.getPresetFolder());
+    folderChooser = std::make_unique<juce::FileChooser> ("Choose preset folder", sound().folder());
     folderChooser->launchAsync (juce::FileBrowserComponent::openMode | juce::FileBrowserComponent::canSelectDirectories,
                                 [safeThis = juce::Component::SafePointer<MainView> (this)] (const juce::FileChooser& chooser)
                                 {
                                     const auto folder = chooser.getResult();
                                     if (safeThis != nullptr && folder.isDirectory())
-                                        safeThis->processor.setPresetFolder (folder);
+                                        safeThis->changePresetFolder (folder);
                                 });
 }
 

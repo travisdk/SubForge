@@ -149,7 +149,7 @@ void StepGrid::setFlag (int step, Row row, bool value)
     else if (row == Row::Slide)
         s.slide = value;
     pattern.set (step, s);
-    processor.markPatternEdited();
+    processor.getPatternPresets().markEdited();
     repaint();
 }
 
@@ -159,7 +159,7 @@ void StepGrid::setNote (int step, int note)
     auto s = pattern.get (step);
     s.note = juce::jlimit (subforge::kMinStepNote, subforge::kMaxStepNote, note);
     pattern.set (step, s);
-    processor.markPatternEdited();
+    processor.getPatternPresets().markEdited();
     repaint();
 }
 
@@ -169,7 +169,7 @@ void StepGrid::setGate (int step, bool gate)
     auto s = pattern.get (step);
     s.gate = gate;
     pattern.set (step, s);
-    processor.markPatternEdited();
+    processor.getPatternPresets().markEdited();
     repaint();
 }
 

@@ -5,6 +5,8 @@
 #include "Patches.h"
 #include "Sequencer.h"
 #include "PatternLibrary.h"
+#include "SoundPresets.h"
+#include "PatternPresets.h"
 
 class SubForgeProcessor : public juce::AudioProcessor,
                           public juce::ChangeBroadcaster
@@ -27,11 +29,11 @@ public:
     bool isMidiEffect() const override { return false; }
     double getTailLengthSeconds() const override { return 0.0; }
 
-    // Host programs are the factory presets only.
+    // Host programs are the factory sound presets only.
     int getNumPrograms() override { return subforge::kNumPresets; }
-    int getCurrentProgram() override { return isUserEntry (currentEntry) ? 0 : currentEntry; }
-    void setCurrentProgram (int index) override { loadEntry (index); }
-    const juce::String getProgramName (int index) override;
+    int getCurrentProgram() override { return soundPresets.isUser (soundPresets.current()) ? 0 : soundPresets.current(); }
+    void setCurrentProgram (int index) override { soundPresets.load (index); }
+    const juce::String getProgramName (int index) override { return soundPresets.entryName (index); }
     void changeProgramName (int, const juce::String&) override {}
 
     void getStateInformation (juce::MemoryBlock& destData) override;
@@ -39,67 +41,22 @@ public:
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
-    // Preset browser: factory presets first, then the user's preset files.
-    // Everything here runs on the message thread and sends a change message.
-    int getNumEntries() const { return subforge::kNumPresets + userPresets.size(); }
-    juce::String getEntryName (int index) const;
-    bool isUserEntry (int index) const { return index >= subforge::kNumPresets && index < getNumEntries(); }
-    int getCurrentEntry() const { return currentEntry; }
-    void loadEntry (int index);
-    void randomizePatch();
-    void mutatePatch();
-    juce::String getPatchName() const { return patchName; }
-
-    static constexpr const char* kPresetExtension = ".sfpreset";
-    void rescanUserPresets();
-    bool userPresetExists (const juce::String& name) const { return presetFileFor (name).existsAsFile(); }
-    bool saveUserPreset (const juce::String& name);
-    void deleteUserPreset (int index);
-    juce::File getPresetFolder() const;
-    void setPresetFolder (const juce::File& folder); // a default-constructed File restores the default
-    static juce::File defaultPresetFolder();
+    // The two kinds of presets are independent: a sound preset never touches the
+    // sequencer and a pattern never touches the sound. Both send a change message
+    // from this processor when something changes.
+    SoundPresets& getSoundPresets() { return soundPresets; }
+    PatternPresets& getPatternPresets() { return patternPresets; }
 
     // Step sequencer pattern, edited by the GUI while the audio thread plays it.
     subforge::Pattern& getPattern() { return pattern; }
     int getSequencerStep() const { return sequencer.getCurrentStep(); }
-    void randomizePattern();
-    void clearPattern();
 
-    // Pattern browser: factory patterns first, then the user's pattern files, which
-    // live in a "Patterns" folder next to the preset folder. A pattern stores its
-    // steps, length and swing.
-    static constexpr const char* kPatternExtension = ".sfpattern";
-    int getNumPatternEntries() const { return subforge::kNumFactoryPatterns + userPatterns.size(); }
-    juce::String getPatternEntryName (int index) const;
-    bool isUserPatternEntry (int index) const
-    {
-        return index >= subforge::kNumFactoryPatterns && index < getNumPatternEntries();
-    }
-    int getCurrentPatternEntry() const { return currentPatternEntry; }
-    juce::String getPatternName() const { return patternName; }
-    void loadPatternEntry (int index);
-    void rescanUserPatterns();
-    juce::File getPatternFolder() const { return getPresetFolder().getParentDirectory().getChildFile ("Patterns"); }
-    bool userPatternExists (const juce::String& name) const { return patternFileFor (name).existsAsFile(); }
-    bool saveUserPattern (const juce::String& name);
-    void deleteUserPattern (int index);
-    void markPatternEdited();
-    juce::String getPatternAsText() const;
-    bool setPatternFromText (const juce::String& text);
-
-    // Global preferences shared by all instances (accent colour, preset folder).
+    // Global preferences shared by all instances (accent colour, UI size, preset folder).
     juce::PropertiesFile& getSettings() { return settings; }
 
     juce::AudioProcessorValueTreeState apvts;
 
 private:
-    juce::File presetFileFor (const juce::String& name) const;
-    juce::File patternFileFor (const juce::String& name) const;
-    void applyPatternSettings (int length, float swing);
-    bool loadUserPresetFile (const juce::File& file);
-    void setParameterValue (juce::RangedAudioParameter& param, float value);
-    subforge::PatchValues currentPatch() const;
-    void applyPatch (const subforge::PatchValues& values);
     void handleMidi (const juce::MidiMessage& message);
     void buildVoiceMidi (const juce::MidiBuffer& midi, int numSamples, double bpm, double ppq, bool playing);
     subforge::BassParams readParams() const;
@@ -116,14 +73,8 @@ private:
     int maxBlockSize = 512;
 
     juce::PropertiesFile settings;
-    juce::Array<juce::File> userPresets, userPatterns;
-    int currentPatternEntry = -1;
-    juce::String patternName { "Default" };
-    int randomPatternCount = 0;
-    int currentEntry = 0;
-    juce::String patchName { "Init" };
-    int randomCount = 0;
-    std::mt19937 rng { std::random_device {}() };
+    SoundPresets soundPresets;     // declared after settings and pattern, which they use
+    PatternPresets patternPresets;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubForgeProcessor)
 };

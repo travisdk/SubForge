@@ -39,6 +39,8 @@ private:
     };
 
     juce::RangedAudioParameter& param (const char* id) { return *processor.apvts.getParameter (id); }
+    SoundPresets& sound() { return processor.getSoundPresets(); }
+    PatternPresets& patterns() { return processor.getPatternPresets(); }
     Knob::Options small (bool secondary = false) const { return { 34, secondary, 14.0f, 12.5f }; }
 
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
@@ -58,6 +60,7 @@ private:
     void confirm (const juce::String& title, const juce::String& message, const juce::String& okText,
                   std::function<void()> onOk);
     void choosePresetFolder();
+    void changePresetFolder (const juce::File& folder);
     void showAbout();
     void layoutKnobRow (juce::Rectangle<int> area, std::initializer_list<juce::Component*> items);
 

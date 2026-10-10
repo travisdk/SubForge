@@ -50,47 +50,17 @@ juce::PropertiesFile::Options settingsOptions()
     options.osxLibrarySubFolder = "Application Support";
     return options;
 }
-// JUCE's Linux File::moveToTrash() skips the .trashinfo file, so file managers
-// can't show or restore the file. This follows the freedesktop.org trash spec.
-bool moveToTrash (const juce::File& file)
-{
-   #if JUCE_LINUX
-    const auto dataHome = juce::SystemStats::getEnvironmentVariable ("XDG_DATA_HOME", {});
-    const auto trash = (dataHome.isNotEmpty() ? juce::File (dataHome)
-                                              : juce::File::getSpecialLocation (juce::File::userHomeDirectory)
-                                                    .getChildFile (".local/share"))
-                           .getChildFile ("Trash");
-    const auto files = trash.getChildFile ("files"), info = trash.getChildFile ("info");
-
-    if (files.createDirectory() && info.createDirectory())
-    {
-        const auto target = files.getNonexistentChildFile (file.getFileNameWithoutExtension(), file.getFileExtension(), false);
-        const auto infoFile = info.getChildFile (target.getFileName() + ".trashinfo");
-        auto segments = juce::StringArray::fromTokens (file.getFullPathName(), "/", {});
-        for (auto& segment : segments)
-            segment = juce::URL::addEscapeChars (segment, false); // escape the parts, keep the slashes
-        const auto infoText = "[Trash Info]\nPath=" + segments.joinIntoString ("/")
-                              + "\nDeletionDate=" + juce::Time::getCurrentTime().formatted ("%Y-%m-%dT%H:%M:%S") + "\n";
-
-        if (infoFile.replaceWithText (infoText))
-        {
-            if (file.moveFileTo (target))
-                return true;
-            infoFile.deleteFile();
-        }
-    }
-   #endif
-    return file.moveToTrash();
-}
 } // namespace
 
 SubForgeProcessor::SubForgeProcessor()
     : AudioProcessor (BusesProperties().withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMS", createParameterLayout()),
-      settings (settingsOptions())
+      settings (settingsOptions()),
+      soundPresets (apvts, settings, [this] { sendChangeMessage(); }),
+      patternPresets (apvts, pattern,
+                      [this] { return soundPresets.folder().getParentDirectory().getChildFile ("Patterns"); },
+                      [this] { sendChangeMessage(); })
 {
-    rescanUserPresets();
-    rescanUserPatterns();
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createParameterLayout()
@@ -177,7 +147,11 @@ subforge::BassParams SubForgeProcessor::readParams() const
 {
     auto get = [this] (const char* id) { return apvts.getRawParameterValue (id)->load(); };
 
-    auto p = subforge::toBassParams (currentPatch(), juce::Decibels::decibelsToGain (get ("volume")));
+    subforge::PatchValues patch {};
+    for (int i = 0; i < subforge::kNumPatchParams; ++i)
+        patch[(size_t) i] = get (subforge::kPatchParamIds[i]);
+
+    auto p = subforge::toBassParams (patch, juce::Decibels::decibelsToGain (get ("volume")));
     p.wheelDest = (int) get ("wheelDest");
     p.wheelAmount = get ("wheelAmount");
     p.aftertouchDest = (int) get ("aftertouchDest");
@@ -326,370 +300,16 @@ void SubForgeProcessor::buildVoiceMidi (const juce::MidiBuffer& midi, int numSam
                        });
 }
 
-void SubForgeProcessor::randomizePattern()
-{
-    pattern.randomize (rng);
-    patternName = "Random " + juce::String (++randomPatternCount);
-    sendChangeMessage();
-}
-
-void SubForgeProcessor::clearPattern()
-{
-    pattern.clear();
-    patternName = "Empty";
-    sendChangeMessage();
-}
-
-juce::String SubForgeProcessor::getPatternEntryName (int index) const
-{
-    if (isUserPatternEntry (index))
-        return userPatterns[index - subforge::kNumFactoryPatterns].getFileNameWithoutExtension();
-    return juce::isPositiveAndBelow (index, subforge::kNumFactoryPatterns) ? subforge::kFactoryPatterns[index].name : "";
-}
-
-juce::File SubForgeProcessor::patternFileFor (const juce::String& name) const
-{
-    return getPatternFolder().getChildFile (juce::File::createLegalFileName (name.trim()) + kPatternExtension);
-}
-
-void SubForgeProcessor::rescanUserPatterns()
-{
-    const auto currentFile = isUserPatternEntry (currentPatternEntry)
-                                 ? userPatterns[currentPatternEntry - subforge::kNumFactoryPatterns] : juce::File();
-
-    userPatterns = getPatternFolder().findChildFiles (juce::File::findFiles, false, juce::String ("*") + kPatternExtension);
-    std::sort (userPatterns.begin(), userPatterns.end(), [] (const juce::File& a, const juce::File& b)
-               { return a.getFileNameWithoutExtension().compareNatural (b.getFileNameWithoutExtension()) < 0; });
-
-    if (currentFile != juce::File())
-    {
-        const int index = userPatterns.indexOf (currentFile);
-        currentPatternEntry = index >= 0 ? subforge::kNumFactoryPatterns + index : -1;
-    }
-    sendChangeMessage();
-}
-
-void SubForgeProcessor::applyPatternSettings (int length, float swing)
-{
-    setParameterValue (*apvts.getParameter ("seqLength"), (float) juce::jlimit (1, subforge::kMaxSteps, length));
-    setParameterValue (*apvts.getParameter ("seqSwing"), juce::jlimit (0.5f, 0.75f, swing));
-}
-
-void SubForgeProcessor::loadPatternEntry (int index)
-{
-    if (isUserPatternEntry (index))
-    {
-        const auto xml = juce::parseXML (userPatterns[index - subforge::kNumFactoryPatterns]);
-        if (xml == nullptr || ! xml->hasTagName ("SubForgePattern")
-            || ! subforge::parseCompactPattern (xml->getStringAttribute ("steps").toRawUTF8(), pattern))
-            return;
-        applyPatternSettings (xml->getIntAttribute ("length", subforge::kMaxSteps),
-                              (float) xml->getDoubleAttribute ("swing", 0.5));
-    }
-    else if (juce::isPositiveAndBelow (index, subforge::kNumFactoryPatterns))
-    {
-        const auto& factory = subforge::kFactoryPatterns[index];
-        subforge::parseCompactPattern (factory.steps, pattern);
-        applyPatternSettings (factory.length, factory.swing);
-    }
-    else
-    {
-        return;
-    }
-
-    currentPatternEntry = index;
-    patternName = getPatternEntryName (index);
-    sendChangeMessage();
-}
-
-bool SubForgeProcessor::saveUserPattern (const juce::String& name)
-{
-    const auto file = patternFileFor (name);
-    if (! file.getParentDirectory().createDirectory())
-        return false;
-
-    juce::XmlElement xml ("SubForgePattern");
-    xml.setAttribute ("version", 1);
-    xml.setAttribute ("name", name.trim());
-    xml.setAttribute ("length", (int) apvts.getRawParameterValue ("seqLength")->load());
-    xml.setAttribute ("swing", apvts.getRawParameterValue ("seqSwing")->load());
-    xml.setAttribute ("steps", juce::String (subforge::toCompactPattern (pattern)));
-    if (! xml.writeTo (file))
-        return false;
-
-    patternName = file.getFileNameWithoutExtension();
-    currentPatternEntry = -1;
-    rescanUserPatterns();
-    currentPatternEntry = subforge::kNumFactoryPatterns + userPatterns.indexOf (file);
-    sendChangeMessage();
-    return true;
-}
-
-void SubForgeProcessor::deleteUserPattern (int index)
-{
-    if (! isUserPatternEntry (index))
-        return;
-
-    moveToTrash (userPatterns[index - subforge::kNumFactoryPatterns]);
-    if (currentPatternEntry == index)
-        currentPatternEntry = -1;
-    rescanUserPatterns();
-}
-
-void SubForgeProcessor::markPatternEdited()
-{
-    if (! patternName.endsWith ("*"))
-    {
-        patternName << " *";
-        sendChangeMessage();
-    }
-}
-
-// One line that is easy to share in a chat or forum post, e.g.
-// "SubForge pattern | length 16 | swing 0.50 | 0a 0 12s - 3a ..."
-juce::String SubForgeProcessor::getPatternAsText() const
-{
-    return "SubForge pattern | length " + juce::String ((int) apvts.getRawParameterValue ("seqLength")->load())
-           + " | swing " + juce::String (apvts.getRawParameterValue ("seqSwing")->load(), 2)
-           + " | " + juce::String (subforge::toCompactPattern (pattern));
-}
-
-// Accepts the line above, or just the sixteen step tokens.
-bool SubForgeProcessor::setPatternFromText (const juce::String& text)
-{
-    auto parts = juce::StringArray::fromTokens (text.trim(), "|", "");
-    parts.trim();
-    if (parts.isEmpty() || ! subforge::parseCompactPattern (parts[parts.size() - 1].toRawUTF8(), pattern))
-        return false;
-
-    int length = subforge::kMaxSteps;
-    float swing = 0.5f;
-    for (const auto& part : parts)
-    {
-        if (part.startsWithIgnoreCase ("length"))
-            length = part.fromFirstOccurrenceOf (" ", false, false).getIntValue();
-        else if (part.startsWithIgnoreCase ("swing"))
-            swing = part.fromFirstOccurrenceOf (" ", false, false).getFloatValue();
-    }
-    applyPatternSettings (length, swing);
-    patternName = "Pasted";
-    currentPatternEntry = -1;
-    sendChangeMessage();
-    return true;
-}
-
-
 juce::AudioProcessorEditor* SubForgeProcessor::createEditor()
 {
     return new SubForgeEditor (*this);
 }
 
-const juce::String SubForgeProcessor::getProgramName (int index)
-{
-    return juce::isPositiveAndBelow (index, subforge::kNumPresets) ? subforge::kPresets[index].name : "";
-}
-
-juce::String SubForgeProcessor::getEntryName (int index) const
-{
-    if (isUserEntry (index))
-        return userPresets[index - subforge::kNumPresets].getFileNameWithoutExtension();
-    return juce::isPositiveAndBelow (index, subforge::kNumPresets) ? subforge::kPresets[index].name : "";
-}
-
-juce::File SubForgeProcessor::defaultPresetFolder()
-{
-    return juce::File::getSpecialLocation (juce::File::userDocumentsDirectory).getChildFile ("SubForge/Presets");
-}
-
-juce::File SubForgeProcessor::getPresetFolder() const
-{
-    const auto custom = settings.getValue ("presetFolder");
-    return custom.isNotEmpty() ? juce::File (custom) : defaultPresetFolder();
-}
-
-void SubForgeProcessor::setPresetFolder (const juce::File& folder)
-{
-    settings.setValue ("presetFolder", folder == juce::File() ? juce::String() : folder.getFullPathName());
-    settings.saveIfNeeded();
-    if (isUserEntry (currentEntry))
-        currentEntry = 0;
-    rescanUserPresets();
-}
-
-juce::File SubForgeProcessor::presetFileFor (const juce::String& name) const
-{
-    return getPresetFolder().getChildFile (juce::File::createLegalFileName (name.trim()) + kPresetExtension);
-}
-
-void SubForgeProcessor::rescanUserPresets()
-{
-    const auto currentFile = isUserEntry (currentEntry) ? userPresets[currentEntry - subforge::kNumPresets] : juce::File();
-
-    userPresets = getPresetFolder().findChildFiles (juce::File::findFiles, false, juce::String ("*") + kPresetExtension);
-    std::sort (userPresets.begin(), userPresets.end(), [] (const juce::File& a, const juce::File& b)
-               { return a.getFileNameWithoutExtension().compareNatural (b.getFileNameWithoutExtension()) < 0; });
-
-    if (currentFile != juce::File())
-    {
-        const int index = userPresets.indexOf (currentFile);
-        currentEntry = index >= 0 ? subforge::kNumPresets + index : 0;
-    }
-    sendChangeMessage();
-}
-
-void SubForgeProcessor::setParameterValue (juce::RangedAudioParameter& param, float value)
-{
-    param.beginChangeGesture();
-    param.setValueNotifyingHost (param.convertTo0to1 (value));
-    param.endChangeGesture();
-}
-
-// A user preset stores every parameter as a plain value, including volume:
-// unlike factory presets it is restored exactly as it was saved.
-bool SubForgeProcessor::saveUserPreset (const juce::String& name)
-{
-    const auto file = presetFileFor (name);
-    if (! file.getParentDirectory().createDirectory())
-        return false;
-
-    juce::XmlElement xml ("SubForgePreset");
-    xml.setAttribute ("version", 1);
-    xml.setAttribute ("name", name.trim());
-    xml.createNewChildElement ("Pattern")->setAttribute ("steps", juce::String (pattern.toString()));
-    for (auto* p : getParameters())
-        if (auto* param = dynamic_cast<juce::RangedAudioParameter*> (p))
-        {
-            auto* element = xml.createNewChildElement ("Param");
-            element->setAttribute ("id", param->paramID);
-            element->setAttribute ("value", param->convertFrom0to1 (param->getValue()));
-        }
-
-    if (! xml.writeTo (file))
-        return false;
-
-    patchName = file.getFileNameWithoutExtension();
-    currentEntry = -1;
-    rescanUserPresets();
-    currentEntry = subforge::kNumPresets + userPresets.indexOf (file);
-    sendChangeMessage();
-    return true;
-}
-
-bool SubForgeProcessor::loadUserPresetFile (const juce::File& file)
-{
-    const auto xml = juce::parseXML (file);
-    if (xml == nullptr || ! xml->hasTagName ("SubForgePreset"))
-        return false;
-
-    // parameters missing from older files fall back to their defaults
-    for (auto* p : getParameters())
-        if (auto* param = dynamic_cast<juce::RangedAudioParameter*> (p))
-        {
-            float value = param->convertFrom0to1 (param->getDefaultValue());
-            if (auto* element = xml->getChildByAttribute ("id", param->paramID))
-                value = (float) element->getDoubleAttribute ("value", value);
-            setParameterValue (*param, value);
-        }
-
-    if (auto* patternElement = xml->getChildByName ("Pattern")) // older presets keep the current pattern
-        pattern.fromString (patternElement->getStringAttribute ("steps").toStdString());
-    return true;
-}
-
-void SubForgeProcessor::deleteUserPreset (int index)
-{
-    if (! isUserEntry (index))
-        return;
-
-    moveToTrash (userPresets[index - subforge::kNumPresets]);
-    if (currentEntry == index)
-        currentEntry = 0;
-    rescanUserPresets();
-}
-
-subforge::PatchValues SubForgeProcessor::currentPatch() const
-{
-    subforge::PatchValues values {};
-    for (int i = 0; i < subforge::kNumPatchParams; ++i)
-        values[(size_t) i] = apvts.getRawParameterValue (subforge::kPatchParamIds[i])->load();
-    return values;
-}
-
-void SubForgeProcessor::applyPatch (const subforge::PatchValues& values)
-{
-    for (int i = 0; i < subforge::kNumPatchParams; ++i)
-        setParameterValue (*apvts.getParameter (subforge::kPatchParamIds[i]), values[(size_t) i]);
-    setParameterValue (*apvts.getParameter ("volume"), subforge::normalizedVolumeDb (values));
-}
-
-void SubForgeProcessor::loadEntry (int index)
-{
-    if (isUserEntry (index))
-    {
-        if (! loadUserPresetFile (userPresets[index - subforge::kNumPresets]))
-            return;
-    }
-    else if (juce::isPositiveAndBelow (index, subforge::kNumPresets))
-    {
-        applyPatch (subforge::kPresets[index].values());
-    }
-    else
-    {
-        return;
-    }
-
-    currentEntry = index;
-    patchName = getEntryName (index);
-    sendChangeMessage();
-}
-
-void SubForgeProcessor::randomizePatch()
-{
-    applyPatch (subforge::randomPatch (rng));
-    patchName = "Random " + juce::String (++randomCount);
-    sendChangeMessage();
-}
-
-void SubForgeProcessor::mutatePatch()
-{
-    std::uniform_real_distribution<float> uniform (0.0f, 1.0f);
-    std::normal_distribution<float> nudge (0.0f, 0.07f);
-
-    auto values = currentPatch();
-    for (int i = 0; i < subforge::kNumPatchParams; ++i)
-    {
-        auto* param = apvts.getParameter (subforge::kPatchParamIds[i]);
-        auto& value = values[(size_t) i];
-
-        if (dynamic_cast<juce::AudioParameterChoice*> (param) != nullptr
-            || dynamic_cast<juce::AudioParameterInt*> (param) != nullptr
-            || dynamic_cast<juce::AudioParameterBool*> (param) != nullptr)
-        {
-            // discrete choices only flip occasionally
-            if (uniform (rng) < 0.1f)
-                value = param->convertFrom0to1 (uniform (rng));
-            value = std::round (value);
-        }
-        else
-        {
-            const float normalised = juce::jlimit (0.0f, 1.0f, param->convertTo0to1 (value) + nudge (rng));
-            value = param->convertFrom0to1 (normalised);
-        }
-    }
-
-    applyPatch (values);
-    if (! patchName.endsWith ("*"))
-        patchName << " *";
-    sendChangeMessage();
-}
-
 void SubForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
-    state.setProperty ("patchName", patchName, nullptr);
-    state.setProperty ("presetIndex", isUserEntry (currentEntry) ? 0 : currentEntry, nullptr);
-    state.setProperty ("pattern", juce::String (pattern.toString()), nullptr);
-    state.setProperty ("patternName", patternName, nullptr);
+    soundPresets.writeState (state);
+    patternPresets.writeState (state);
 
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
@@ -702,20 +322,9 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
         if (xml->hasTagName (apvts.state.getType()))
         {
             auto state = juce::ValueTree::fromXml (*xml);
-            patchName = state.getProperty ("patchName", "Init").toString();
-            if (state.hasProperty ("pattern"))
-                pattern.fromString (state.getProperty ("pattern").toString().toStdString());
-            patternName = state.getProperty ("patternName", "Default").toString();
-            currentPatternEntry = -1;
-            for (int i = 0; i < getNumPatternEntries(); ++i)
-                if (getPatternEntryName (i) == patternName)
-                    currentPatternEntry = i;
-            currentEntry = juce::jlimit (0, subforge::kNumPresets - 1, (int) state.getProperty ("presetIndex", 0));
-            for (int i = subforge::kNumPresets; i < getNumEntries(); ++i)
-                if (getEntryName (i) == patchName)
-                    currentEntry = i; // a user preset of that name is the better match
+            soundPresets.readState (state);
+            patternPresets.readState (state);
             apvts.replaceState (state);
-            sendChangeMessage();
         }
     }
 }

@@ -1,0 +1,27 @@
+SubForge – installation on Windows
+==================================
+
+The archive contains SubForge in two plug-in formats. Install the one your
+DAW uses, or both.
+
+For your user only (no administrator rights needed):
+
+    CLAP:  copy SubForge.clap to   %LOCALAPPDATA%\Programs\Common\CLAP\
+    VST3:  copy the SubForge.vst3 folder to   %LOCALAPPDATA%\Programs\Common\VST3\
+
+For all users (needs administrator rights):
+
+    CLAP:  C:\Program Files\Common Files\CLAP\
+    VST3:  C:\Program Files\Common Files\VST3\
+
+Create the folder if it does not exist, then restart your DAW or rescan
+plug-ins. SubForge appears as an instrument.
+
+Your sound presets are saved in Documents\SubForge\Presets\, patterns in
+Documents\SubForge\Patterns\ and settings in %APPDATA%\SubForge\.
+Removing the plug-in leaves them in place.
+
+Third-party licences are listed in THIRD-PARTY-NOTICES.txt and in the
+plug-in under the gear menu > About SubForge.
+
+VST is a registered trademark of Steinberg Media Technologies GmbH.

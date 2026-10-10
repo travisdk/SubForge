@@ -25,6 +25,8 @@ public:
     // Per-component properties the look understands
     static inline const juce::Identifier knobSizeProperty { "knobSize" };       // int, max knob diameter
     static inline const juce::Identifier secondaryProperty { "secondaryAccent" }; // bool, use the orange accent
+    static inline const juce::Identifier outlineProperty { "accentOutline" };     // bool, button outlined in the accent
+    static inline const juce::Identifier valueSizeProperty { "valueFontSize" };   // float, knob value text height
 
     struct AccentChoice
     {
@@ -68,7 +70,8 @@ public:
 
     void drawToggleButton (juce::Graphics&, juce::ToggleButton&, bool isHighlighted, bool isDown) override;
 
-    juce::Font getLabelFont (juce::Label&) override { return labelFont (12.0f); }
+    // labels keep the font they were given (value boxes use JetBrains Mono at their own size)
+    juce::Font getLabelFont (juce::Label& label) override { return label.getFont(); }
 
     juce::Font getAlertWindowTitleFont() override { return titleFont (16.0f); }
     juce::Font getAlertWindowMessageFont() override { return labelFont (14.0f); }

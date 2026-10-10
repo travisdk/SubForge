@@ -105,7 +105,8 @@ void SubForgeLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int
 juce::Label* SubForgeLookAndFeel::createSliderTextBox (juce::Slider& slider)
 {
     auto* label = LookAndFeel_V4::createSliderTextBox (slider);
-    label->setFont (valueFont (13.0f));
+    label->setFont (valueFont ((float) slider.getProperties().getWithDefault (valueSizeProperty, 13.0f)));
+    label->setMinimumHorizontalScale (0.5f); // squeeze long values rather than cut them off
     label->setColour (juce::Label::textColourId, P::text);
     label->setColour (juce::Label::outlineColourId, juce::Colours::transparentBlack);
     label->setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
@@ -202,6 +203,7 @@ void SubForgeLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button&
 {
     const auto bounds = button.getLocalBounds().toFloat().reduced (0.5f);
     const bool lit = button.getToggleState();
+    const bool outlined = button.getProperties().getWithDefault (outlineProperty, false);
     auto fill = lit ? accentFor (button) : backgroundColour;
     if (isDown)
         fill = fill.darker (0.2f);
@@ -210,7 +212,12 @@ void SubForgeLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button&
 
     g.setColour (fill);
     g.fillRoundedRectangle (bounds, 6.0f);
-    if (! lit)
+    if (outlined && ! lit)
+    {
+        g.setColour (accentFor (button));
+        g.drawRoundedRectangle (bounds.reduced (0.5f), 6.0f, 1.5f);
+    }
+    else if (! lit)
     {
         g.setColour (isHighlighted ? P::panelEdge.brighter (0.5f) : P::panelEdge.brighter (0.15f));
         g.drawRoundedRectangle (bounds, 6.0f, 1.0f);
@@ -220,8 +227,10 @@ void SubForgeLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button&
 void SubForgeLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& button, bool, bool)
 {
     const bool lit = button.getToggleState();
+    const bool outlined = button.getProperties().getWithDefault (outlineProperty, false);
     g.setFont (getTextButtonFont (button, button.getHeight()).withExtraKerningFactor (0.08f));
     g.setColour (lit ? P::background
+                 : outlined ? accentFor (button)
                      : button.findColour (juce::TextButton::textColourOffId).withMultipliedAlpha (button.isEnabled() ? 1.0f : 0.5f));
     g.drawFittedText (button.getButtonText(), button.getLocalBounds().reduced (4, 0), juce::Justification::centred, 1);
 }

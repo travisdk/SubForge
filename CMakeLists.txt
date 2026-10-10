@@ -5,8 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(JUCE_DIR "$ENV{HOME}/SDKs/JUCE" CACHE PATH "JUCE source tree")
-set(CLAP_JUCE_EXTENSIONS_DIR "$ENV{HOME}/SDKs/clap-juce-extensions" CACHE PATH "clap-juce-extensions source tree")
+set(JUCE_DIR "$ENV{HOME}/SDKs/JUCE-8.0.15" CACHE PATH "JUCE source tree")
+set(CLAP_JUCE_EXTENSIONS_DIR "$ENV{HOME}/SDKs/clap-juce-extensions-main" CACHE PATH "clap-juce-extensions source tree")
 set(CLAP_INSTALL_DIR "$ENV{HOME}/.clap" CACHE PATH "Where the built .clap is copied")
 
 add_subdirectory(${JUCE_DIR} JUCE)

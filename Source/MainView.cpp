@@ -136,7 +136,7 @@ void MainView::paint (juce::Graphics& g)
     g.drawText ("SUBFORGE", 16, 10, 160, 44, juce::Justification::centredLeft);
     g.setColour (P::dimText);
     g.setFont (lookAndFeel.labelFont (11.0f).withExtraKerningFactor (0.22f));
-    g.drawText ("ACID BASS ENGINE", 178, 24, 140, 20, juce::Justification::centredLeft);
+    g.drawText ("MONO BASS SYNTH", 178, 24, 140, 20, juce::Justification::centredLeft);
 
     for (const auto& panel : panels)
     {

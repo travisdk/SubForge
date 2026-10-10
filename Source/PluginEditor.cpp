@@ -3,7 +3,18 @@
 namespace
 {
 constexpr float kMinScale = 0.75f, kMaxScale = 2.0f;
+
+// The largest scale whose window still fits the screen the editor is on (or the main one).
+float largestFittingScale (const juce::Component& c)
+{
+    const auto& displays = juce::Desktop::getInstance().getDisplays();
+    const auto* display = c.isShowing() ? displays.getDisplayForRect (c.getScreenBounds()) : displays.getPrimaryDisplay();
+    if (display == nullptr)
+        return kMaxScale;
+    const auto area = display->userBounds.reduced (20.0f, 40.0f); // leave room for title bars and panels
+    return juce::jmax (kMinScale, juce::jmin (area.getWidth() / (float) MainView::kWidth, area.getHeight() / (float) MainView::kHeight));
 }
+} // namespace
 
 SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
@@ -23,7 +34,7 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
         aspect->setFixedAspectRatio ((double) MainView::kWidth / (double) MainView::kHeight);
 
     const float saved = (float) processor.getSettings().getDoubleValue ("uiScale", 1.0);
-    const float scale = juce::jlimit (kMinScale, kMaxScale, saved);
+    const float scale = juce::jlimit (kMinScale, juce::jmin (kMaxScale, largestFittingScale (*this)), saved);
     setSize (juce::roundToInt (MainView::kWidth * scale), juce::roundToInt (MainView::kHeight * scale));
 }
 
@@ -50,7 +61,7 @@ void SubForgeEditor::resized()
 
 void SubForgeEditor::setUiScale (float scale)
 {
-    scale = juce::jlimit (kMinScale, kMaxScale, scale);
+    scale = juce::jlimit (kMinScale, juce::jmin (kMaxScale, largestFittingScale (*this)), scale);
     setSize (juce::roundToInt (MainView::kWidth * scale), juce::roundToInt (MainView::kHeight * scale));
     processor.getSettings().setValue ("uiScale", scale);
     processor.getSettings().saveIfNeeded();

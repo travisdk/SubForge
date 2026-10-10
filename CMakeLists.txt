@@ -28,7 +28,8 @@ juce_add_plugin(SubForge
 target_sources(SubForge PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
-    Source/SubForgeLookAndFeel.cpp)
+    Source/SubForgeLookAndFeel.cpp
+    Source/StepGrid.cpp)
 
 juce_add_binary_data(SubForgeAssets SOURCES
     Resources/Fonts/Inter-Medium.otf

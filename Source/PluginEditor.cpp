@@ -7,6 +7,8 @@ using P = SubForgeLookAndFeel::Palette;
 constexpr int kHeaderHeight = 48;
 constexpr int kMargin = 10;
 constexpr int kRowHeight = 128;
+constexpr int kSeqRowHeight = 132;
+constexpr int kSeqControlsWidth = 330;
 constexpr int kSectionTitleHeight = 22;
 constexpr int kLabelHeight = 16;
 constexpr int kValueHeight = 16;
@@ -39,7 +41,18 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
                    choice ("aftertouchDest", "Aftertouch"), knob ("aftertouchAmount", "Amount") } },
         { "PLAY", { knob ("glide", "Glide"), knob ("velocity", "Velocity"), knob ("accent", "Accent"),
                     knob ("accentSweep", "Sweep"), knob ("volume", "Volume") } },
+        { "SEQUENCER", { toggle ("seqOn", "On"), choice ("seqRate", "Rate"), knob ("seqLength", "Steps"),
+                         knob ("seqGate", "Gate"), knob ("seqSwing", "Swing"), knob ("seqRoot", "Root") } },
     };
+
+    seqRandomButton.onClick = [this] { processor.randomizePattern(); };
+    seqClearButton.onClick = [this] { processor.clearPattern(); };
+    for (auto* b : { &seqRandomButton, &seqClearButton })
+    {
+        b->setColour (juce::TextButton::buttonColourId, P::field);
+        addAndMakeVisible (b);
+    }
+    addAndMakeVisible (stepGrid);
 
     presetBox.onChange = [this]
     {
@@ -63,8 +76,8 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
     processor.rescanUserPresets(); // pick up files added since the plugin was loaded
     refreshPresetBox();
     timerCallback();
-    startTimerHz (10);
-    setSize (900, kHeaderHeight + 3 * kRowHeight + 3 * kMargin);
+    startTimerHz (30);
+    setSize (900, kHeaderHeight + 3 * kRowHeight + kSeqRowHeight + 4 * kMargin);
 }
 
 SubForgeEditor::~SubForgeEditor()
@@ -114,6 +127,7 @@ SubForgeEditor::Control* SubForgeEditor::addControl (Kind kind, const char* para
 void SubForgeEditor::changeListenerCallback (juce::ChangeBroadcaster*)
 {
     refreshPresetBox();
+    stepGrid.repaint(); // the pattern may have come from a preset, state or the generator
 }
 
 void SubForgeEditor::timerCallback()
@@ -122,6 +136,16 @@ void SubForgeEditor::timerCallback()
     const bool freeRunning = processor.apvts.getRawParameterValue ("lfoSync")->load() < 0.5f;
     lfoRateControl->slider.setEnabled (freeRunning);
     lfoRateControl->slider.setAlpha (freeRunning ? 1.0f : 0.35f);
+
+    stepGrid.setPlayhead (processor.getSequencerStep());
+    const int length = (int) processor.apvts.getRawParameterValue ("seqLength")->load();
+    const int root = (int) processor.apvts.getRawParameterValue ("seqRoot")->load();
+    if (length != shownSeqLength || root != shownSeqRoot)
+    {
+        shownSeqLength = length;
+        shownSeqRoot = root;
+        stepGrid.repaint();
+    }
 }
 
 // Rebuilt on every change: factory presets, then a "User" section for saved files.
@@ -414,4 +438,18 @@ void SubForgeEditor::resized()
     layoutRow ({ &sections[0], &sections[1] }, nextRow());
     layoutRow ({ &sections[2], &sections[3], &sections[4] }, nextRow());
     layoutRow ({ &sections[5], &sections[6], &sections[7] }, nextRow());
+
+    // sequencer: settings on the left, step grid on the right, buttons in the title strip
+    auto& sequencer = sections[8];
+    const auto seqRow = area.removeFromTop (kSeqRowHeight);
+    layoutSection (sequencer, seqRow.withWidth (kSeqControlsWidth));
+    sequencer.bounds = seqRow;
+
+    auto titleStrip = seqRow.withHeight (kSectionTitleHeight).reduced (8, 3).withTrimmedTop (2);
+    seqClearButton.setBounds (titleStrip.removeFromRight (56));
+    titleStrip.removeFromRight (6);
+    seqRandomButton.setBounds (titleStrip.removeFromRight (66));
+
+    stepGrid.setBounds (seqRow.withTrimmedLeft (kSeqControlsWidth + 8).reduced (8, 0)
+                            .withTrimmedTop (kSectionTitleHeight + 6).withTrimmedBottom (6));
 }

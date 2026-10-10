@@ -3,6 +3,7 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "PluginProcessor.h"
 #include "SubForgeLookAndFeel.h"
+#include "StepGrid.h"
 
 class SubForgeEditor : public juce::AudioProcessorEditor,
                        private juce::ChangeListener,
@@ -87,6 +88,10 @@ private:
     juce::TextButton randomButton { "Randomize" }, mutateButton { "Mutate" };
     SettingsButton settingsButton;
     std::unique_ptr<juce::FileChooser> folderChooser;
+
+    StepGrid stepGrid { processor, lookAndFeel };
+    juce::TextButton seqRandomButton { "Random" }, seqClearButton { "Clear" };
+    int shownSeqLength = -1, shownSeqRoot = -1;
     juce::Rectangle<int> headerArea;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubForgeEditor)

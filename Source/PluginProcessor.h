@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 #include "Patches.h"
+#include "Sequencer.h"
 
 class SubForgeProcessor : public juce::AudioProcessor,
                           public juce::ChangeBroadcaster
@@ -57,6 +58,12 @@ public:
     void setPresetFolder (const juce::File& folder); // a default-constructed File restores the default
     static juce::File defaultPresetFolder();
 
+    // Step sequencer pattern, edited by the GUI while the audio thread plays it.
+    subforge::Pattern& getPattern() { return pattern; }
+    int getSequencerStep() const { return sequencer.getCurrentStep(); }
+    void randomizePattern();
+    void clearPattern();
+
     // Global preferences shared by all instances (accent colour, preset folder).
     juce::PropertiesFile& getSettings() { return settings; }
 
@@ -69,11 +76,17 @@ private:
     subforge::PatchValues currentPatch() const;
     void applyPatch (const subforge::PatchValues& values);
     void handleMidi (const juce::MidiMessage& message);
+    void buildVoiceMidi (const juce::MidiBuffer& midi, int numSamples, double bpm, double ppq, bool playing);
     subforge::BassParams readParams() const;
 
     static constexpr int kOversampling = 4;
 
     subforge::BassSynth synth;
+    subforge::Pattern pattern;
+    subforge::SequencerEngine sequencer;
+    juce::MidiBuffer voiceMidi;              // incoming MIDI merged with sequencer notes
+    std::array<int, 16> transposeKeys {};    // keys held while the sequencer runs
+    int numTransposeKeys = 0;
     juce::dsp::Oversampling<float> oversampler { 1, 2, juce::dsp::Oversampling<float>::filterHalfBandPolyphaseIIR, true, false };
     int maxBlockSize = 512;
 

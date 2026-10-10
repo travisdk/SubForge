@@ -152,6 +152,21 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
     params.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "aftertouchDest", 1 }, "Aftertouch Dest",
                                                               modDestinations, subforge::kModCutoff));
     params.push_back (floatParam ("aftertouchAmount", "Aftertouch Amount", { -1.0f, 1.0f }, 0.3f));
+
+    StringArray rateNames;
+    for (auto* name : subforge::kSeqRateNames)
+        rateNames.add (name);
+    params.push_back (std::make_unique<AudioParameterBool> (ParameterID { "seqOn", 1 }, "Sequencer On", false));
+    params.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "seqRate", 1 }, "Sequencer Rate", rateNames, 1));
+    params.push_back (std::make_unique<AudioParameterInt> (ParameterID { "seqLength", 1 }, "Sequencer Steps", 1,
+                                                           subforge::kMaxSteps, subforge::kMaxSteps));
+    params.push_back (floatParam ("seqGate", "Sequencer Gate", { 0.05f, 1.0f }, 0.5f));
+    params.push_back (floatParam ("seqSwing", "Sequencer Swing", { 0.5f, 0.75f }, 0.5f));
+    params.push_back (std::make_unique<AudioParameterInt> (
+        ParameterID { "seqRoot", 1 }, "Sequencer Root", 24, 60, 36,
+        AudioParameterIntAttributes()
+            .withStringFromValueFunction ([] (int note, int) { return MidiMessage::getMidiNoteName (note, true, true, 3); })
+            .withValueFromStringFunction ([] (const String& text) { return text.getIntValue(); })));
     params.push_back (floatParam ("volume", "Volume", { -36.0f, 6.0f }, -6.0f, "dB"));
 
     return { params.begin(), params.end() };
@@ -171,6 +186,10 @@ subforge::BassParams SubForgeProcessor::readParams() const
 
 void SubForgeProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
+    voiceMidi.ensureSize (8192);
+    sequencer.reset();
+    numTransposeKeys = 0;
+
     maxBlockSize = juce::jmax (1, samplesPerBlock);
     oversampler.initProcessing ((size_t) maxBlockSize);
     oversampler.reset();
@@ -226,10 +245,12 @@ void SubForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     }
     synth.setTransport (bpm, ppq, hasPosition);
 
-    buffer.clear();
     const int numSamples = buffer.getNumSamples();
+    buildVoiceMidi (midi, numSamples, bpm, ppq, hasPosition);
+
+    buffer.clear();
     auto mono = juce::dsp::AudioBlock<float> (buffer).getSingleChannelBlock (0);
-    auto midiIt = midi.cbegin();
+    auto midiIt = voiceMidi.cbegin();
 
     // The voice runs at kOversampling x the host rate; MIDI positions are scaled to match.
     for (int start = 0; start < numSamples; start += maxBlockSize)
@@ -239,7 +260,7 @@ void SubForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         float* up = oversampler.processSamplesUp (chunk).getChannelPointer (0);
         int position = 0;
 
-        for (; midiIt != midi.cend(); ++midiIt)
+        for (; midiIt != voiceMidi.cend(); ++midiIt)
         {
             const auto metadata = *midiIt;
             const int eventPos = juce::jlimit (0, numSamples, metadata.samplePosition) - start;
@@ -261,6 +282,59 @@ void SubForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 
     for (int ch = 1; ch < buffer.getNumChannels(); ++ch)
         buffer.copyFrom (ch, 0, buffer, 0, 0, numSamples);
+}
+
+// While the sequencer runs, played keys transpose the pattern (303 style) instead of
+// sounding; otherwise MIDI passes straight through. Sequencer notes are merged in.
+void SubForgeProcessor::buildVoiceMidi (const juce::MidiBuffer& midi, int numSamples, double bpm, double ppq, bool playing)
+{
+    auto get = [this] (const char* id) { return apvts.getRawParameterValue (id)->load(); };
+    const bool running = get ("seqOn") >= 0.5f && playing;
+
+    voiceMidi.clear();
+    for (const auto metadata : midi)
+    {
+        const auto message = metadata.getMessage();
+        if (running && message.isNoteOnOrOff())
+        {
+            const int note = message.getNoteNumber();
+            auto* end = transposeKeys.begin() + numTransposeKeys;
+            numTransposeKeys = (int) (std::remove (transposeKeys.begin(), end, note) - transposeKeys.begin());
+            if (message.isNoteOn() && numTransposeKeys < (int) transposeKeys.size())
+                transposeKeys[(size_t) numTransposeKeys++] = note;
+            continue;
+        }
+        voiceMidi.addEvent (message, metadata.samplePosition);
+    }
+    if (! running)
+        numTransposeKeys = 0;
+
+    subforge::SequencerSettings seqSettings;
+    seqSettings.enabled = get ("seqOn") >= 0.5f;
+    seqSettings.stepBeats = subforge::kSeqRateBeats[juce::jlimit (0, subforge::kNumSeqRates - 1, (int) get ("seqRate"))];
+    seqSettings.length = (int) get ("seqLength");
+    seqSettings.gate = get ("seqGate");
+    seqSettings.swing = get ("seqSwing");
+    seqSettings.rootNote = numTransposeKeys > 0 ? transposeKeys[(size_t) numTransposeKeys - 1] : (int) get ("seqRoot");
+
+    sequencer.process (playing, ppq, bpm, getSampleRate(), numSamples, seqSettings, pattern,
+                       [this] (int sample, bool on, int note, float velocity)
+                       {
+                           voiceMidi.addEvent (on ? juce::MidiMessage::noteOn (1, note, velocity)
+                                                  : juce::MidiMessage::noteOff (1, note), sample);
+                       });
+}
+
+void SubForgeProcessor::randomizePattern()
+{
+    pattern.randomize (rng);
+    sendChangeMessage();
+}
+
+void SubForgeProcessor::clearPattern()
+{
+    pattern.clear();
+    sendChangeMessage();
 }
 
 juce::AudioProcessorEditor* SubForgeProcessor::createEditor()
@@ -339,6 +413,7 @@ bool SubForgeProcessor::saveUserPreset (const juce::String& name)
     juce::XmlElement xml ("SubForgePreset");
     xml.setAttribute ("version", 1);
     xml.setAttribute ("name", name.trim());
+    xml.createNewChildElement ("Pattern")->setAttribute ("steps", juce::String (pattern.toString()));
     for (auto* p : getParameters())
         if (auto* param = dynamic_cast<juce::RangedAudioParameter*> (p))
         {
@@ -373,6 +448,9 @@ bool SubForgeProcessor::loadUserPresetFile (const juce::File& file)
                 value = (float) element->getDoubleAttribute ("value", value);
             setParameterValue (*param, value);
         }
+
+    if (auto* patternElement = xml->getChildByName ("Pattern")) // older presets keep the current pattern
+        pattern.fromString (patternElement->getStringAttribute ("steps").toStdString());
     return true;
 }
 
@@ -468,6 +546,7 @@ void SubForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
     auto state = apvts.copyState();
     state.setProperty ("patchName", patchName, nullptr);
     state.setProperty ("presetIndex", isUserEntry (currentEntry) ? 0 : currentEntry, nullptr);
+    state.setProperty ("pattern", juce::String (pattern.toString()), nullptr);
 
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
@@ -481,6 +560,8 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
         {
             auto state = juce::ValueTree::fromXml (*xml);
             patchName = state.getProperty ("patchName", "Init").toString();
+            if (state.hasProperty ("pattern"))
+                pattern.fromString (state.getProperty ("pattern").toString().toStdString());
             currentEntry = juce::jlimit (0, subforge::kNumPresets - 1, (int) state.getProperty ("presetIndex", 0));
             for (int i = subforge::kNumPresets; i < getNumEntries(); ++i)
                 if (getEntryName (i) == patchName)

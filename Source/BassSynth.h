@@ -70,22 +70,40 @@ struct BassParams
     float gain = 0.5f;
 };
 
-inline float polyBlep (float t, float dt)
+// Band-limited step (PolyBLEP), derived from the specification in
+// docs/LICENSE-REVIEW.md section 5.2:
+//
+// The ideal unit step H(x) is replaced by B(x), the integral of a triangular
+// kernel k(s) = 1 - |s| reaching one sample to each side (x in samples, the
+// discontinuity at x = 0):
+//     B(x) = (x + 1)^2 / 2          for -1 <= x < 0
+//     B(x) = 1 - (1 - x)^2 / 2      for  0 <= x < 1
+// The correction added to a naive waveform is the residual r(x) = B(x) - H(x),
+// scaled by the height of the jump:
+//     r(x) =  (x + 1)^2 / 2         for -1 <= x < 0   (just before the jump)
+//     r(x) = -(1 - x)^2 / 2         for  0 <= x < 1   (just after it)
+//     r(x) =  0                     elsewhere
+inline float stepResidual (float x)
 {
-    if (t < dt)
-    {
-        t /= dt;
-        return t + t - t * t - 1.0f;
-    }
-    if (t > 1.0f - dt)
-    {
-        t = (t - 1.0f) / dt;
-        return t * t + t + t + 1.0f;
-    }
+    if (x <= -1.0f || x >= 1.0f)
+        return 0.0f;
+    if (x < 0.0f)
+        return 0.5f * (x + 1.0f) * (x + 1.0f);
+    return -0.5f * (1.0f - x) * (1.0f - x);
+}
+
+// Residual for a jump where an oscillator's phase (0..1, advancing dt per
+// sample) wraps from 1 to 0. Phase distance divided by dt is sample distance.
+inline float stepResidualAtWrap (float phase, float dt)
+{
+    if (phase < dt)
+        return stepResidual (phase / dt);
+    if (phase > 1.0f - dt)
+        return stepResidual ((phase - 1.0f) / dt);
     return 0.0f;
 }
 
-// Integrated polyBlep, smooths slope discontinuities (triangle corners).
+// Integrated band-limited step, smooths slope discontinuities (triangle corners).
 inline float polyBlamp (float t, float dt)
 {
     if (t < dt)
@@ -115,7 +133,8 @@ struct Oscillator
 
         if (wave == 0)
         {
-            out = 2.0f * t - 1.0f - polyBlep (t, inc);
+            out = 2.0f * t - 1.0f;                      // falls by 2 where the phase wraps
+            out += -2.0f * stepResidualAtWrap (t, inc);
         }
         else if (wave == 3)
         {
@@ -133,11 +152,11 @@ struct Oscillator
         {
             const float pw = wave == 1 ? 0.5f : 0.25f;
             out = t < pw ? 1.0f : -1.0f;
-            out += polyBlep (t, inc);
-            float t2 = t + 1.0f - pw;
+            out += 2.0f * stepResidualAtWrap (t, inc);  // rises by 2 at phase 0
+            float t2 = t + 1.0f - pw;                   // phase measured from the falling edge at pw
             if (t2 >= 1.0f)
                 t2 -= 1.0f;
-            out -= polyBlep (t2, inc);
+            out += -2.0f * stepResidualAtWrap (t2, inc); // falls by 2 at phase pw
             out -= 2.0f * pw - 1.0f; // remove DC of asymmetric pulse
         }
 

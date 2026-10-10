@@ -33,8 +33,9 @@ target_sources(SubForge PRIVATE
     Source/AboutOverlay.cpp)
 
 juce_add_binary_data(SubForgeAssets SOURCES
-    Resources/Fonts/Inter-Medium.otf
-    Resources/Fonts/Inter-Bold.otf
+    Resources/Fonts/ChakraPetch/ChakraPetch-SemiBold.ttf
+    Resources/Fonts/ChakraPetch/ChakraPetch-Bold.ttf
+    Resources/Fonts/JetBrainsMono/JetBrainsMono-Medium.ttf
     THIRD-PARTY-NOTICES.txt)
 set_target_properties(SubForgeAssets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 

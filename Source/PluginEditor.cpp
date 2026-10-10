@@ -459,10 +459,10 @@ void SubForgeEditor::paint (juce::Graphics& g)
 
     auto title = headerArea.withTrimmedLeft (kMargin + 2);
     g.setColour (lookAndFeel.getAccent());
-    g.setFont (lookAndFeel.boldFont (20.0f).withExtraKerningFactor (0.08f));
+    g.setFont (lookAndFeel.titleFont (20.0f).withExtraKerningFactor (0.08f));
     g.drawText ("SUBFORGE", title, juce::Justification::centredLeft);
     g.setColour (P::dimText);
-    g.setFont (lookAndFeel.regularFont (11.0f).withExtraKerningFactor (0.1f));
+    g.setFont (lookAndFeel.labelFont (11.0f).withExtraKerningFactor (0.1f));
     g.drawText ("MONO BASS SYNTH", title.withTrimmedLeft (122), juce::Justification::centredLeft);
 
     for (const auto& section : sections)
@@ -476,7 +476,7 @@ void SubForgeEditor::paint (juce::Graphics& g)
         g.setColour (lookAndFeel.getAccent());
         g.fillRoundedRectangle (bounds.getX() + 10.0f, bounds.getY() + 8.0f, 3.0f, 9.0f, 1.5f);
         g.setColour (P::dimText);
-        g.setFont (lookAndFeel.boldFont (10.5f).withExtraKerningFactor (0.12f));
+        g.setFont (lookAndFeel.titleFont (10.5f).withExtraKerningFactor (0.12f));
         g.drawText (section.title, section.bounds.withHeight (kSectionTitleHeight + 3).withTrimmedLeft (19),
                     juce::Justification::centredLeft);
     }

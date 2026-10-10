@@ -65,8 +65,10 @@ def components(juce, cje):
          jm / "juce_core" / "zip" / "zlib" / "LICENSE", whole_file, None),
         ("VST3 SDK", "bundled with JUCE 8.0.15", "VST3 plug-in format",
          jm / "juce_audio_processors_headless" / "format_types" / "VST3_SDK" / "LICENSE.txt", whole_file, None),
-        ("Inter typeface", "4.0", "User interface font (Inter Medium and Inter Bold)",
-         ROOT / "Resources" / "Fonts" / "OFL.txt", whole_file, None),
+        ("Chakra Petch typeface", "1.0", "Labels and headings (SemiBold, Bold)",
+         ROOT / "Resources" / "Fonts" / "ChakraPetch" / "OFL.txt", whole_file, None),
+        ("JetBrains Mono typeface", "2.305", "Parameter values (Medium)",
+         ROOT / "Resources" / "Fonts" / "JetBrainsMono" / "OFL.txt", whole_file, None),
     ]
 
 

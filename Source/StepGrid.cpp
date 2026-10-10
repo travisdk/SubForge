@@ -87,7 +87,7 @@ void StepGrid::paint (juce::Graphics& g)
         g.setColour (P::field.withMultipliedAlpha (alpha));
         g.fillRoundedRectangle (noteCell, 3.0f);
         g.setColour ((step.gate ? P::text : P::dimText).withMultipliedAlpha (alpha));
-        g.setFont (lnf.regularFont (11.0f));
+        g.setFont (lnf.labelFont (11.0f));
         g.drawText (juce::MidiMessage::getMidiNoteName (juce::jlimit (0, 127, root + step.note), true, true, 3),
                     noteCell.toNearestInt(), juce::Justification::centred);
 
@@ -97,7 +97,7 @@ void StepGrid::paint (juce::Graphics& g)
             g.setColour ((on ? accent : P::field).withMultipliedAlpha (alpha));
             g.fillRoundedRectangle (cell, 3.0f);
             g.setColour ((on ? P::background : P::dimText).withMultipliedAlpha (alpha));
-            g.setFont (lnf.boldFont (10.0f));
+            g.setFont (lnf.titleFont (10.0f));
             g.drawText (letter, cell.toNearestInt(), juce::Justification::centred);
         };
         drawFlag (Row::Accent, step.accent, "A");

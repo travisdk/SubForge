@@ -5,8 +5,9 @@ using P = SubForgeLookAndFeel::Palette;
 
 SubForgeLookAndFeel::SubForgeLookAndFeel()
 {
-    medium = juce::Typeface::createSystemTypefaceFor (BinaryData::InterMedium_otf, BinaryData::InterMedium_otfSize);
-    bold = juce::Typeface::createSystemTypefaceFor (BinaryData::InterBold_otf, BinaryData::InterBold_otfSize);
+    labelFace = juce::Typeface::createSystemTypefaceFor (BinaryData::ChakraPetchSemiBold_ttf, BinaryData::ChakraPetchSemiBold_ttfSize);
+    titleFace = juce::Typeface::createSystemTypefaceFor (BinaryData::ChakraPetchBold_ttf, BinaryData::ChakraPetchBold_ttfSize);
+    valueFace = juce::Typeface::createSystemTypefaceFor (BinaryData::JetBrainsMonoMedium_ttf, BinaryData::JetBrainsMonoMedium_ttfSize);
 
     setColour (juce::ResizableWindow::backgroundColourId, P::background);
     setColour (juce::Label::textColourId, P::dimText);
@@ -15,24 +16,25 @@ SubForgeLookAndFeel::SubForgeLookAndFeel()
     setColour (juce::Slider::textBoxBackgroundColourId, juce::Colours::transparentBlack);
     setColour (juce::TextEditor::backgroundColourId, P::field);
     setColour (juce::TextEditor::textColourId, P::text);
+    setColour (juce::CaretComponent::caretColourId, P::text);
     setColour (juce::ComboBox::textColourId, P::text);
     setColour (juce::PopupMenu::textColourId, P::text);
     setColour (juce::PopupMenu::highlightedTextColourId, P::text);
     setColour (juce::TextButton::buttonColourId, P::field);
     setColour (juce::TextButton::textColourOffId, P::text);
-    setColour (juce::TextButton::textColourOnId, P::text);
-    setColour (juce::TextEditor::outlineColourId, P::panelEdge.brighter (0.2f));
+    setColour (juce::TextButton::textColourOnId, P::background);
+    setColour (juce::TextEditor::outlineColourId, P::panelEdge);
     setColour (juce::AlertWindow::backgroundColourId, P::panel);
     setColour (juce::AlertWindow::textColourId, P::text);
-    setColour (juce::AlertWindow::outlineColourId, P::panelEdge.brighter (0.2f));
+    setColour (juce::AlertWindow::outlineColourId, P::panelEdge);
     setAccent (accentChoices().front().colour);
 }
 
 const std::vector<SubForgeLookAndFeel::AccentChoice>& SubForgeLookAndFeel::accentChoices()
 {
     static const std::vector<AccentChoice> choices {
-        { "Orange", juce::Colour (0xffff8a3d) }, { "Amber", juce::Colour (0xffffc23d) },
-        { "Lime", juce::Colour (0xff9be15d) },   { "Mint", juce::Colour (0xff3ddca0) },
+        { "Lime", juce::Colour (0xffc8ff2e) },   { "Orange", juce::Colour (0xffff9f43) },
+        { "Amber", juce::Colour (0xffffc23d) },  { "Mint", juce::Colour (0xff3ddca0) },
         { "Cyan", juce::Colour (0xff3dc8ff) },   { "Blue", juce::Colour (0xff5b8cff) },
         { "Violet", juce::Colour (0xffa77bff) }, { "Pink", juce::Colour (0xffff5fa2) },
         { "Red", juce::Colour (0xffff5252) },
@@ -46,25 +48,32 @@ void SubForgeLookAndFeel::setAccent (juce::Colour newAccent)
     setColour (juce::Slider::textBoxHighlightColourId, accent.withAlpha (0.4f));
     setColour (juce::TextEditor::highlightColourId, accent.withAlpha (0.4f));
     setColour (juce::TextEditor::focusedOutlineColourId, accent);
-    setColour (juce::CaretComponent::caretColourId, accent);
+}
+
+juce::Colour SubForgeLookAndFeel::accentFor (const juce::Component& c) const
+{
+    return (bool) c.getProperties().getWithDefault (secondaryProperty, false) ? P::secondary : accent;
 }
 
 void SubForgeLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
                                             float startAngle, float endAngle, juce::Slider& slider)
 {
-    const float size = (float) juce::jmin (width, height, kKnobSize);
+    const int maxSize = slider.getProperties().getWithDefault (knobSizeProperty, kKnobSize);
+    const float size = (float) juce::jmin (width, height, maxSize);
     const auto centre = juce::Rectangle<int> (x, y, width, height).toFloat().getCentre();
-    const float ringRadius = size * 0.5f - 2.5f;
+    const float thickness = juce::jmax (3.0f, size * 0.09f);
+    const float ringRadius = size * 0.5f - thickness * 0.5f - 1.0f;
     const float angle = startAngle + sliderPos * (endAngle - startAngle);
     const bool hot = slider.isEnabled() && slider.isMouseOverOrDragging();
-    const juce::PathStrokeType ringStroke (3.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded);
+    const auto colour = accentFor (slider);
+    const juce::PathStrokeType arcStroke (thickness, juce::PathStrokeType::curved, juce::PathStrokeType::rounded);
 
     juce::Path track;
     track.addCentredArc (centre.x, centre.y, ringRadius, ringRadius, 0.0f, startAngle, endAngle, true);
     g.setColour (P::track);
-    g.strokePath (track, ringStroke);
+    g.strokePath (track, arcStroke);
 
-    // bipolar ranges (pitch env, volume around 0 dB...) fill from their zero point
+    // bipolar ranges (pitch env, volume, mod amounts) fill from their zero point
     float fromAngle = startAngle;
     if (slider.getMinimum() < 0.0 && slider.getMaximum() > 0.0)
         fromAngle = startAngle + (float) slider.valueToProportionOfLength (0.0) * (endAngle - startAngle);
@@ -74,32 +83,29 @@ void SubForgeLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int
         juce::Path value;
         value.addCentredArc (centre.x, centre.y, ringRadius, ringRadius, 0.0f,
                              juce::jmin (fromAngle, angle), juce::jmax (fromAngle, angle), true);
-        g.setColour (hot ? accent.brighter (0.25f) : accent);
-        g.strokePath (value, ringStroke);
+        g.setColour (hot ? colour.brighter (0.2f) : colour);
+        g.strokePath (value, arcStroke);
     }
 
-    const float bodyRadius = ringRadius - 6.0f;
+    const float bodyRadius = ringRadius - thickness * 1.1f;
     const auto body = juce::Rectangle<float> (bodyRadius * 2.0f, bodyRadius * 2.0f).withCentre (centre);
-
-    g.setColour (juce::Colours::black.withAlpha (0.4f));
-    g.fillEllipse (body.translated (0.0f, 1.5f).expanded (0.5f));
-    g.setGradientFill (juce::ColourGradient (P::knobTop, centre.x, body.getY(),
-                                             P::knobBottom, centre.x, body.getBottom(), false));
+    g.setColour (P::knobBody);
     g.fillEllipse (body);
-    g.setColour (juce::Colours::white.withAlpha (hot ? 0.14f : 0.08f));
+    g.setColour (hot ? P::panelEdge.brighter (0.4f) : P::panelEdge);
     g.drawEllipse (body.reduced (0.5f), 1.0f);
 
     juce::Path pointer;
-    pointer.startNewSubPath (centre.getPointOnCircumference (bodyRadius * 0.25f, angle));
-    pointer.lineTo (centre.getPointOnCircumference (bodyRadius * 0.8f, angle));
+    pointer.startNewSubPath (centre.getPointOnCircumference (bodyRadius * 0.35f, angle));
+    pointer.lineTo (centre.getPointOnCircumference (bodyRadius * 0.88f, angle));
     g.setColour (P::text);
-    g.strokePath (pointer, juce::PathStrokeType (2.2f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.strokePath (pointer, juce::PathStrokeType (juce::jmax (2.0f, size * 0.045f), juce::PathStrokeType::curved,
+                                                 juce::PathStrokeType::rounded));
 }
 
 juce::Label* SubForgeLookAndFeel::createSliderTextBox (juce::Slider& slider)
 {
     auto* label = LookAndFeel_V4::createSliderTextBox (slider);
-    label->setFont (regularFont (12.0f));
+    label->setFont (valueFont (13.0f));
     label->setColour (juce::Label::textColourId, P::text);
     label->setColour (juce::Label::outlineColourId, juce::Colours::transparentBlack);
     label->setColour (juce::Label::backgroundColourId, juce::Colours::transparentBlack);
@@ -113,22 +119,22 @@ void SubForgeLookAndFeel::drawComboBox (juce::Graphics& g, int width, int height
     const bool hot = box.isEnabled() && (box.isMouseOver (true) || box.isPopupActive());
 
     g.setColour (P::field);
-    g.fillRoundedRectangle (bounds, 4.0f);
-    g.setColour (hot ? accent.withAlpha (0.7f) : P::panelEdge.brighter (0.15f));
-    g.drawRoundedRectangle (bounds, 4.0f, 1.0f);
+    g.fillRoundedRectangle (bounds, 6.0f);
+    g.setColour (hot ? accentFor (box).withAlpha (0.7f) : P::panelEdge);
+    g.drawRoundedRectangle (bounds, 6.0f, 1.0f);
 
     const float cx = (float) width - 12.0f, cy = (float) height * 0.5f;
     juce::Path chevron;
     chevron.startNewSubPath (cx - 4.0f, cy - 2.0f);
     chevron.lineTo (cx, cy + 2.0f);
     chevron.lineTo (cx + 4.0f, cy - 2.0f);
-    g.setColour (accent);
+    g.setColour (P::dimText);
     g.strokePath (chevron, juce::PathStrokeType (1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 }
 
 void SubForgeLookAndFeel::positionComboBoxText (juce::ComboBox& box, juce::Label& label)
 {
-    label.setBounds (6, 1, box.getWidth() - 24, box.getHeight() - 2);
+    label.setBounds (8, 1, box.getWidth() - 26, box.getHeight() - 2);
     label.setFont (getComboBoxFont (box));
 }
 
@@ -154,7 +160,7 @@ void SubForgeLookAndFeel::drawPopupMenuItem (juce::Graphics& g, const juce::Rect
     auto r = area.reduced (3, 1);
     if (isHighlighted && isActive)
     {
-        g.setColour (accent.withAlpha (0.22f));
+        g.setColour (accent.withAlpha (0.18f));
         g.fillRoundedRectangle (r.toFloat(), 3.0f);
     }
 
@@ -181,49 +187,67 @@ void SubForgeLookAndFeel::drawPopupMenuItem (juce::Graphics& g, const juce::Rect
     g.drawFittedText (text, r.withTrimmedLeft (20).withTrimmedRight (6), juce::Justification::centredLeft, 1);
 }
 
-void SubForgeLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& button,
-                                                const juce::Colour& backgroundColour, bool isHighlighted, bool isDown)
-{
-    const auto bounds = button.getLocalBounds().toFloat().reduced (0.5f);
-    auto fill = backgroundColour;
-    if (isDown)
-        fill = fill.darker (0.2f);
-    else if (isHighlighted)
-        fill = fill.brighter (0.12f);
-
-    g.setColour (fill);
-    g.fillRoundedRectangle (bounds, 4.0f);
-    g.setColour (juce::Colours::white.withAlpha (0.06f));
-    g.drawRoundedRectangle (bounds, 4.0f, 1.0f);
-}
-
-void SubForgeLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& button, bool isHighlighted, bool)
-{
-    const auto centre = button.getLocalBounds().toFloat().getCentre();
-    const auto led = juce::Rectangle<float> (14.0f, 14.0f).withCentre (centre);
-
-    if (button.getToggleState())
-    {
-        g.setColour (accent.withAlpha (0.18f));
-        g.fillEllipse (led.expanded (5.0f));
-        g.setColour (accent);
-        g.fillEllipse (led);
-        g.setColour (juce::Colours::white.withAlpha (0.45f));
-        g.fillEllipse (led.reduced (4.0f).translated (-1.5f, -1.5f));
-    }
-    else
-    {
-        g.setColour (P::field);
-        g.fillEllipse (led);
-        g.setColour (isHighlighted ? accent.withAlpha (0.7f) : P::panelEdge.brighter (0.3f));
-        g.drawEllipse (led.reduced (0.5f), 1.0f);
-    }
-}
-
 void SubForgeLookAndFeel::drawPopupMenuSectionHeader (juce::Graphics& g, const juce::Rectangle<int>& area,
                                                      const juce::String& sectionName)
 {
     g.setColour (P::dimText);
-    g.setFont (boldFont (10.5f).withExtraKerningFactor (0.12f));
+    g.setFont (titleFont (11.0f).withExtraKerningFactor (0.14f));
     g.drawText (sectionName.toUpperCase(), area.reduced (10, 0), juce::Justification::bottomLeft);
+}
+
+// Buttons are flat chips. A toggled-on button is filled with its accent;
+// otherwise it is outlined on the dark field colour.
+void SubForgeLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& button,
+                                                const juce::Colour& backgroundColour, bool isHighlighted, bool isDown)
+{
+    const auto bounds = button.getLocalBounds().toFloat().reduced (0.5f);
+    const bool lit = button.getToggleState();
+    auto fill = lit ? accentFor (button) : backgroundColour;
+    if (isDown)
+        fill = fill.darker (0.2f);
+    else if (isHighlighted)
+        fill = fill.brighter (0.08f);
+
+    g.setColour (fill);
+    g.fillRoundedRectangle (bounds, 6.0f);
+    if (! lit)
+    {
+        g.setColour (isHighlighted ? P::panelEdge.brighter (0.5f) : P::panelEdge.brighter (0.15f));
+        g.drawRoundedRectangle (bounds, 6.0f, 1.0f);
+    }
+}
+
+void SubForgeLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& button, bool, bool)
+{
+    const bool lit = button.getToggleState();
+    g.setFont (getTextButtonFont (button, button.getHeight()).withExtraKerningFactor (0.08f));
+    g.setColour (lit ? P::background
+                     : button.findColour (juce::TextButton::textColourOffId).withMultipliedAlpha (button.isEnabled() ? 1.0f : 0.5f));
+    g.drawFittedText (button.getButtonText(), button.getLocalBounds().reduced (4, 0), juce::Justification::centred, 1);
+}
+
+// Toggles are round LEDs: a ring that glows in the accent colour when on.
+void SubForgeLookAndFeel::drawToggleButton (juce::Graphics& g, juce::ToggleButton& button, bool isHighlighted, bool)
+{
+    const auto bounds = button.getLocalBounds().toFloat();
+    const float d = juce::jmin (bounds.getWidth(), bounds.getHeight()) - 2.0f;
+    const auto ring = juce::Rectangle<float> (d, d).withCentre (bounds.getCentre());
+    const auto colour = accentFor (button);
+
+    g.setColour (button.getToggleState() ? colour : (isHighlighted ? P::panelEdge.brighter (0.6f) : P::panelEdge.brighter (0.3f)));
+    g.drawEllipse (ring.reduced (1.0f), 2.0f);
+
+    const auto core = ring.reduced (d * 0.27f);
+    if (button.getToggleState())
+    {
+        g.setColour (colour.withAlpha (0.25f));
+        g.fillEllipse (core.expanded (3.0f));
+        g.setColour (colour);
+        g.fillEllipse (core);
+    }
+    else
+    {
+        g.setColour (P::field);
+        g.fillEllipse (core);
+    }
 }

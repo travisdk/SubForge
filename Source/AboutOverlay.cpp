@@ -14,7 +14,7 @@ AboutOverlay::AboutOverlay (SubForgeLookAndFeel& lf, std::function<void()> onClo
     notices.setReadOnly (true);
     notices.setScrollbarsShown (true);
     notices.setCaretVisible (false);
-    notices.setFont (lnf.regularFont (12.0f));
+    notices.setFont (lnf.labelFont (12.0f));
     notices.setColour (juce::TextEditor::backgroundColourId, P::field);
     notices.setColour (juce::TextEditor::outlineColourId, P::panelEdge);
     notices.setColour (juce::TextEditor::focusedOutlineColourId, P::panelEdge);
@@ -47,11 +47,11 @@ void AboutOverlay::paint (juce::Graphics& g)
 
     auto header = panel.reduced (20, 16).withHeight (kHeaderHeight - 16);
     g.setColour (lnf.getAccent());
-    g.setFont (lnf.boldFont (22.0f).withExtraKerningFactor (0.08f));
+    g.setFont (lnf.titleFont (22.0f).withExtraKerningFactor (0.08f));
     g.drawText ("SUBFORGE", header.removeFromTop (28), juce::Justification::centredLeft);
 
     g.setColour (P::text);
-    g.setFont (lnf.regularFont (13.0f));
+    g.setFont (lnf.labelFont (13.0f));
     g.drawText (juce::String::fromUTF8 ("Mono bass synth  \xc2\xb7  version ") + JucePlugin_VersionString,
                 header.removeFromTop (20), juce::Justification::centredLeft);
     g.setColour (P::dimText);

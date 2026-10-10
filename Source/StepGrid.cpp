@@ -4,9 +4,9 @@ namespace
 {
 using P = SubForgeLookAndFeel::Palette;
 
-// row layout from the top: LED, gate, note, accent, slide
-constexpr int kLedHeight = 8, kGateHeight = 20, kNoteHeight = 22, kFlagHeight = 16, kGap = 4;
-constexpr int kPixelsPerSemitone = 6;
+// rows from the top
+constexpr float kLedHeight = 10.0f, kNoteHeight = 18.0f, kChipHeight = 18.0f, kGap = 4.0f;
+constexpr int kPixelsPerSemitone = 5;
 } // namespace
 
 StepGrid::StepGrid (SubForgeProcessor& p, SubForgeLookAndFeel& lf) : processor (p), lnf (lf) {}
@@ -20,23 +20,26 @@ void StepGrid::setPlayhead (int step)
     }
 }
 
-juce::Rectangle<int> StepGrid::cellBounds (int step, Row row) const
+juce::Rectangle<float> StepGrid::cell (int step, Row row) const
 {
     const float columnWidth = (float) getWidth() / (float) subforge::kMaxSteps;
-    const int x = juce::roundToInt ((float) step * columnWidth);
-    const int w = juce::roundToInt ((float) (step + 1) * columnWidth) - x;
+    const float x = (float) step * columnWidth + 3.0f;
+    const float w = columnWidth - 6.0f;
+    const float h = (float) getHeight();
+    const float chipsTop = h - 2.0f * kChipHeight - kGap;
+    const float noteTop = chipsTop - kGap - kNoteHeight;
+    const float barTop = kLedHeight + kGap;
 
-    int y = 0, h = 0;
     switch (row)
     {
-        case Row::Led:    y = 0; h = kLedHeight; break;
-        case Row::Gate:   y = kLedHeight + kGap; h = kGateHeight; break;
-        case Row::Note:   y = kLedHeight + kGateHeight + 2 * kGap; h = kNoteHeight; break;
-        case Row::Accent: y = kLedHeight + kGateHeight + kNoteHeight + 3 * kGap; h = kFlagHeight; break;
-        case Row::Slide:  y = kLedHeight + kGateHeight + kNoteHeight + kFlagHeight + 4 * kGap; h = kFlagHeight; break;
+        case Row::Led:    return { x, 0.0f, w, kLedHeight };
+        case Row::Bar:    return { x, barTop, w, noteTop - barTop };
+        case Row::Note:   return { x, noteTop, w, kNoteHeight };
+        case Row::Accent: return { x, chipsTop, w, kChipHeight };
+        case Row::Slide:  return { x, chipsTop + kChipHeight + kGap, w, kChipHeight };
         case Row::None:   break;
     }
-    return { x + 2, y, w - 4, h };
+    return {};
 }
 
 int StepGrid::stepAt (int x) const
@@ -46,11 +49,11 @@ int StepGrid::stepAt (int x) const
 
 StepGrid::Row StepGrid::rowAt (int y) const
 {
-    for (auto row : { Row::Gate, Row::Note, Row::Accent, Row::Slide })
+    for (auto row : { Row::Bar, Row::Note, Row::Accent, Row::Slide })
     {
-        const auto cell = cellBounds (0, row);
-        if (y >= cell.getY() - kGap / 2 && y < cell.getBottom() + kGap / 2)
-            return row;
+        const auto r = cell (0, row);
+        if ((float) y >= r.getY() - kGap * 0.5f && (float) y < r.getBottom() + kGap * 0.5f)
+            return row == Row::Note ? Row::Bar : row; // the note name belongs to the bar
     }
     return Row::None;
 }
@@ -61,57 +64,87 @@ void StepGrid::paint (juce::Graphics& g)
     const int length = (int) processor.apvts.getRawParameterValue ("seqLength")->load();
     const int root = (int) processor.apvts.getRawParameterValue ("seqRoot")->load();
     auto& pattern = processor.getPattern();
+    constexpr float noteSpan = (float) (subforge::kMaxStepNote - subforge::kMinStepNote);
 
     for (int i = 0; i < subforge::kMaxSteps; ++i)
     {
         const auto step = pattern.get (i);
-        const bool active = i < length;
-        const float alpha = active ? 1.0f : 0.3f;
+        const bool inPattern = i < length;
+        const bool playing = i == playhead;
 
-        // playhead LED, with a brighter tick on every beat
-        const auto led = cellBounds (i, Row::Led).toFloat();
-        const auto dot = juce::Rectangle<float> (6.0f, 6.0f).withCentre (led.getCentre());
-        g.setColour (i == playhead ? accent : (i % 4 == 0 ? P::dimText : P::track).withMultipliedAlpha (alpha));
-        g.fillEllipse (dot);
-
-        const auto gate = cellBounds (i, Row::Gate).toFloat();
-        g.setColour ((step.gate ? accent.withAlpha (0.85f) : P::field).withMultipliedAlpha (alpha));
-        g.fillRoundedRectangle (gate, 3.0f);
-        if (i == playhead && step.gate)
+        // playhead LED
+        const auto led = juce::Rectangle<float> (7.0f, 7.0f).withCentre (cell (i, Row::Led).getCentre());
+        if (playing)
         {
-            g.setColour (juce::Colours::white.withAlpha (0.35f));
-            g.fillRoundedRectangle (gate, 3.0f);
+            g.setColour (accent.withAlpha (0.3f));
+            g.fillEllipse (led.expanded (3.0f));
+            g.setColour (accent);
+        }
+        else
+        {
+            g.setColour (P::track.brighter (inPattern ? 0.4f : 0.0f));
+        }
+        g.fillEllipse (led);
+
+        // bar box, outlined while playing
+        const auto box = cell (i, Row::Bar);
+        g.setColour (P::field.darker (0.15f));
+        g.fillRoundedRectangle (box, 6.0f);
+        g.setColour (playing ? accent : P::panelEdge);
+        g.drawRoundedRectangle (box.reduced (0.5f), 6.0f, playing ? 1.5f : 1.0f);
+
+        const auto inner = box.reduced (5.0f);
+        if (step.gate)
+        {
+            const float level = 0.08f + 0.92f * (float) (step.note - subforge::kMinStepNote) / noteSpan;
+            const auto bar = inner.withTop (inner.getBottom() - juce::jmax (4.0f, inner.getHeight() * level));
+            g.setColour (! inPattern ? P::track : step.accent ? P::secondary : accent);
+            g.fillRoundedRectangle (bar, 4.0f);
+        }
+        else
+        {
+            g.setColour (P::track);
+            g.fillRoundedRectangle (inner.withTop (inner.getBottom() - 3.0f), 1.5f);
         }
 
-        const auto noteCell = cellBounds (i, Row::Note).toFloat();
-        g.setColour (P::field.withMultipliedAlpha (alpha));
-        g.fillRoundedRectangle (noteCell, 3.0f);
-        g.setColour ((step.gate ? P::text : P::dimText).withMultipliedAlpha (alpha));
-        g.setFont (lnf.labelFont (11.0f));
-        g.drawText (juce::MidiMessage::getMidiNoteName (juce::jlimit (0, 127, root + step.note), true, true, 3),
-                    noteCell.toNearestInt(), juce::Justification::centred);
+        // note name ("..." for a rest)
+        g.setColour (inPattern && step.gate ? P::text : P::dimText.withAlpha (inPattern ? 1.0f : 0.6f));
+        g.setFont (lnf.titleFont (14.0f));
+        g.drawText (step.gate ? juce::MidiMessage::getMidiNoteName (juce::jlimit (0, 127, root + step.note), true, true, 3)
+                              : juce::String ("..."),
+                    cell (i, Row::Note), juce::Justification::centred);
 
-        auto drawFlag = [&] (Row row, bool on, const char* letter)
+        // ACC (filled orange) and SLD (outlined in the accent) buttons
+        auto drawChip = [&] (Row row, bool on, const char* text, bool filled, juce::Colour colour)
         {
-            const auto cell = cellBounds (i, row).toFloat();
-            g.setColour ((on ? accent : P::field).withMultipliedAlpha (alpha));
-            g.fillRoundedRectangle (cell, 3.0f);
-            g.setColour ((on ? P::background : P::dimText).withMultipliedAlpha (alpha));
-            g.setFont (lnf.titleFont (10.0f));
-            g.drawText (letter, cell.toNearestInt(), juce::Justification::centred);
+            const auto r = cell (i, row);
+            const float alpha = inPattern ? 1.0f : 0.5f;
+            if (on && filled)
+            {
+                g.setColour (colour.withMultipliedAlpha (alpha));
+                g.fillRoundedRectangle (r, 4.0f);
+            }
+            else
+            {
+                g.setColour (P::field.withMultipliedAlpha (alpha));
+                g.fillRoundedRectangle (r, 4.0f);
+                g.setColour (on ? colour.withMultipliedAlpha (alpha) : P::panelEdge);
+                g.drawRoundedRectangle (r.reduced (0.5f), 4.0f, on ? 1.5f : 1.0f);
+            }
+            g.setColour (on ? (filled ? P::background : colour) : P::dimText.withMultipliedAlpha (alpha * 0.8f));
+            g.setFont (lnf.titleFont (11.0f).withExtraKerningFactor (0.06f));
+            g.drawText (text, r, juce::Justification::centred);
         };
-        drawFlag (Row::Accent, step.accent, "A");
-        drawFlag (Row::Slide, step.slide, "S");
+        drawChip (Row::Accent, step.accent, "ACC", true, P::secondary);
+        drawChip (Row::Slide, step.slide, "SLD", false, accent);
     }
 }
 
-void StepGrid::paintFlag (int step, Row row, bool value)
+void StepGrid::setFlag (int step, Row row, bool value)
 {
     auto& pattern = processor.getPattern();
     auto s = pattern.get (step);
-    if (row == Row::Gate)
-        s.gate = value;
-    else if (row == Row::Accent)
+    if (row == Row::Accent)
         s.accent = value;
     else if (row == Row::Slide)
         s.slide = value;
@@ -130,41 +163,75 @@ void StepGrid::setNote (int step, int note)
     repaint();
 }
 
+void StepGrid::setGate (int step, bool gate)
+{
+    auto& pattern = processor.getPattern();
+    auto s = pattern.get (step);
+    s.gate = gate;
+    pattern.set (step, s);
+    processor.markPatternEdited();
+    repaint();
+}
+
 void StepGrid::mouseDown (const juce::MouseEvent& e)
 {
     dragRow = rowAt (e.y);
     dragStep = stepAt (e.x);
+    dragged = false;
     const auto s = processor.getPattern().get (dragStep);
 
     switch (dragRow)
     {
-        case Row::Gate:   paintValue = ! s.gate; break;
-        case Row::Accent: paintValue = ! s.accent; break;
-        case Row::Slide:  paintValue = ! s.slide; break;
-        case Row::Note:   dragStartNote = s.note; return;
+        case Row::Accent: paintValue = ! s.accent; setFlag (dragStep, dragRow, paintValue); break;
+        case Row::Slide:  paintValue = ! s.slide; setFlag (dragStep, dragRow, paintValue); break;
+        case Row::Bar:    dragStartNote = s.note; break;
         case Row::Led:
-        case Row::None:   return;
+        case Row::Note:
+        case Row::None:   break;
     }
-    paintFlag (dragStep, dragRow, paintValue);
 }
 
 void StepGrid::mouseDrag (const juce::MouseEvent& e)
 {
-    if (dragRow == Row::Note)
-        setNote (dragStep, dragStartNote + (-e.getDistanceFromDragStartY()) / kPixelsPerSemitone);
-    else if (dragRow == Row::Gate || dragRow == Row::Accent || dragRow == Row::Slide)
-        paintFlag (stepAt (e.x), dragRow, paintValue);
+    if (dragRow == Row::Bar)
+    {
+        dragged = dragged || std::abs (e.getDistanceFromDragStartY()) > 3;
+        if (dragged)
+        {
+            if (! processor.getPattern().get (dragStep).gate)
+                setGate (dragStep, true); // dragging a rest brings the step back
+            setNote (dragStep, dragStartNote - e.getDistanceFromDragStartY() / kPixelsPerSemitone);
+        }
+    }
+    else if (dragRow == Row::Accent || dragRow == Row::Slide)
+    {
+        const int step = stepAt (e.x);
+        const auto s = processor.getPattern().get (step);
+        if ((dragRow == Row::Accent ? s.accent : s.slide) != paintValue)
+            setFlag (step, dragRow, paintValue);
+    }
+}
+
+void StepGrid::mouseUp (const juce::MouseEvent& e)
+{
+    if (dragRow == Row::Bar && ! dragged && e.getNumberOfClicks() < 2)
+        setGate (dragStep, ! processor.getPattern().get (dragStep).gate);
+    dragRow = Row::None;
 }
 
 void StepGrid::mouseDoubleClick (const juce::MouseEvent& e)
 {
-    if (rowAt (e.y) == Row::Note)
-        setNote (stepAt (e.x), 0);
+    if (rowAt (e.y) == Row::Bar)
+    {
+        const int step = stepAt (e.x);
+        setGate (step, true);
+        setNote (step, 0);
+    }
 }
 
 void StepGrid::mouseWheelMove (const juce::MouseEvent& e, const juce::MouseWheelDetails& wheel)
 {
-    if (rowAt (e.y) != Row::Note || std::abs (wheel.deltaY) < 1.0e-6f)
+    if (rowAt (e.y) != Row::Bar || std::abs (wheel.deltaY) < 1.0e-6f)
         return;
     const int step = stepAt (e.x);
     setNote (step, processor.getPattern().get (step).note + (wheel.deltaY > 0.0f ? 1 : -1));

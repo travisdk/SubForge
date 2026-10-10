@@ -169,7 +169,7 @@ inline const Preset kPresets[] = {
     { "Tracked Bright",    { 0,  0,  4, 0.3f, 0,   900, 0.25f, 0.25f, 250, 0.20f,   1,  600, 0.85f,  80,   20, 0.4f },
                            { 0, 1.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.0f } },
 
-    // filterMode 3 = Diode (303-style ladder). Its cutoff marks the resonant peak,
+    // filterMode 3 = Diode (acid-style diode ladder). Its cutoff marks the resonant peak,
     // so it sits higher than on the other modes for a similar brightness.
     { "Diode Acid",        { 0,  0,  0, 0.0f, 0,   500, 0.75f, 0.55f, 250, 0.25f,   1, 1500, 0.90f,  15,   60, 0.6f },
                            { 3, 0.0f, 0.7f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.6f } },

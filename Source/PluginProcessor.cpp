@@ -285,7 +285,7 @@ void SubForgeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
         buffer.copyFrom (ch, 0, buffer, 0, 0, numSamples);
 }
 
-// While the sequencer runs, played keys transpose the pattern (303 style) instead of
+// While the sequencer runs, played keys transpose the pattern (acid style) instead of
 // sounding; otherwise MIDI passes straight through. Sequencer notes are merged in.
 void SubForgeProcessor::buildVoiceMidi (const juce::MidiBuffer& midi, int numSamples, double bpm, double ppq, bool playing)
 {

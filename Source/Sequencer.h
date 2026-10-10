@@ -10,7 +10,7 @@
 #include <random>
 #include <string>
 
-// 303-style step sequencer: a 16-step pattern (gate, note, accent, slide)
+// Acid-style step sequencer: a 16-step pattern (gate, note, accent, slide)
 // played against the host timeline. JUCE-free so it can be tested on its own.
 namespace subforge
 {

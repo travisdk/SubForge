@@ -8,7 +8,7 @@
 
 // Monophonic bass voice: two detunable oscillators + sub, multimode ladder
 // filter with decay envelope, key tracking and LFO, ADSR amp, pitch envelope,
-// attack click, 303-style accent and legato glide.
+// attack click, acid-style accent and legato glide.
 namespace subforge
 {
 
@@ -50,7 +50,7 @@ struct BassParams
     float glideMs = 50.0f;
     float velocitySens = 0.5f;
     float accent = 0.0f;
-    float accentSweep = 0.0f;   // 0 = plain accent, 1 = accents build up like the 303's sweep circuit
+    float accentSweep = 0.0f;   // 0 = plain accent, 1 = consecutive accents build up (classic acid sweep)
     int wheelDest = kModLfoDepth; // mod wheel and aftertouch routing, amounts -1..1
     float wheelAmount = 0.5f;
     int aftertouchDest = kModCutoff;
@@ -182,7 +182,7 @@ struct LadderFilter
     }
 };
 
-// Zero-delay-feedback diode ladder in the style of the TB-303. The four stages
+// Zero-delay-feedback diode ladder (classic acid bass filter). The four stages
 // load each other (unlike the transistor ladder), giving a ~18 dB/oct slope and
 // a softer, squelchier resonance. Solved per sample as a tridiagonal system.
 // A highpass in the feedback path thins the resonance at low cutoffs.
@@ -278,7 +278,7 @@ struct OnePole
     float highpass (float x, float G) { return x - lowpass (x, G); }
 };
 
-// Pedal/amp stage after the voice, modelled loosely on the boxes 303 lines were
+// Pedal/amp stage after the voice, modelled loosely on the boxes acid lines were
 // run through: a mid-boosted overdrive, a high-gain hard-clipping distortion,
 // a two-stage fuzz with a mid-scoop tone control, and an asymmetric tube amp
 // with a simple cabinet rolloff. Runs at the oversampled rate.
@@ -633,7 +633,7 @@ public:
 
             const float resonance = std::clamp (params.resonance + mod[kModResonance], 0.0f, 1.0f);
             const float k = resonance * maxFeedback;
-            // the 303 keeps more of its characteristic bass loss as resonance rises
+            // the diode ladder keeps more of its characteristic bass loss as resonance rises
             const float resoMakeup = useDiode ? 1.0f + 0.6f * resonance : 1.0f + 0.5f * k;
             const float lfoOctaves = std::clamp (params.lfoDepth + mod[kModLfoDepth], 0.0f, 1.0f) * 6.0f;
             const float distDrive = std::clamp (params.distDrive + mod[kModDistGain], 0.0f, 1.0f);

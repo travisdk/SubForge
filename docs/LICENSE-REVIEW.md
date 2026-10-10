@@ -157,9 +157,9 @@ Ingen erstatning er nødvendig. Krav:
 
 **Indsats: lille.**
 
-### 5.4 Attributionskrav – fase 2
+### 5.4 Attributionskrav – udført (fase 2)
 
-Lav en `THIRD-PARTY-NOTICES.txt` med de fulde licenstekster for:
+`THIRD-PARTY-NOTICES.txt` genereres af `scripts/generate-third-party-notices.py` direkte fra licensfilerne (`--check` verificerer, at den stadig passer). Den vises i pluginnet under tandhjul → "About SubForge…" og ligger i Linux-pakken (`cmake --build … --target package-linux`). Den indeholder de fulde licenstekster for:
 - clap-juce-extensions, CLAP SDK og clap-helpers (MIT)
 - HarfBuzz (Old MIT)
 - SheenBidi (Apache-2.0)
@@ -183,7 +183,7 @@ Alt er selv genereret. De 15 presetnavne med varemærkepræg er omdøbt til neut
 **Kan SubForge sælges med lukket kildekode og de medfølgende mønstre? Ja, når to ting er på plads:**
 
 1. **Du har tegnet JUCE 8 Starter-licensen** og bekræftet vilkårene på juce.com (§5.1). Det gælder kun, så længe din samlede omsætning eller funding er højst 20.000 USD over 12 måneder.
-2. **`THIRD-PARTY-NOTICES.txt` følger med** (fase 2). Den skal indeholde MIT, Old MIT, Apache-2.0, IJG, libpng, zlib, OFL og senere VST3 MIT.
+2. **`THIRD-PARTY-NOTICES.txt` følger med.** ✅ Udført i fase 2: den ligger i pakken og vises i "About SubForge…".
 
 **Anbefalet (fase 3):** omskriv `polyBlep()` clean room. Presetnavnene er allerede neutrale.
 

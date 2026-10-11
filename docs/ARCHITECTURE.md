@@ -217,6 +217,7 @@ Lyd og mønstre er **to uafhængige systemer**. Et lydpreset rører aldrig seque
 - **Kompileringsflag:**
   - `JUCE_DISPLAY_SPLASH_SCREEN=0` (tilladt under JUCE 8-licensen)
   - `JUCE_WEB_BROWSER=0` og `JUCE_USE_CURL=0` (færre afhængigheder)
+- **Windows:** C++-runtime linkes statisk (`CMAKE_MSVC_RUNTIME_LIBRARY`, `/MT`). Pluginnet kræver derfor ingen Visual C++ Redistributable og bruger aldrig en ældre runtime-DLL, som hosten har indlæst.
 - `SUBFORGE_INSTALL_AFTER_BUILD` kopierer pluginnet til brugerens pluginmapper efter hver build. CI slår det fra.
 - **Pakker:**
   - `package-linux` laver en tar.gz.

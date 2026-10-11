@@ -65,7 +65,7 @@ Fra `ldd` på JUCE 8-binæren. Licenser fra `/usr/share/doc/<pakke>/copyright`:
 |---|---|---|
 | `KERNEL32`, `USER32`, `GDI32`, `ADVAPI32`, `SHELL32`, `SHLWAPI`, `ole32`, `OLEAUT32`, `COMCTL32`, `COMDLG32`, `IMM32`, `WINMM`, `WININET`, `WS2_32`, `dwmapi`, `d2d1`, `d3d11`, `dxgi`, `dcomp`, `api-ms-win-shcore-scaling-*` | Windows' egne systembiblioteker | Del af Windows. Distribueres ikke |
 | `api-ms-win-crt-*` | Universal C Runtime | Del af Windows 10 og nyere. Distribueres ikke |
-| `MSVCP140.dll`, `VCRUNTIME140.dll`, `VCRUNTIME140_1.dll` | Visual C++ 2015–2022-runtime | **Ikke en licensrisiko**, men et **brugerproblem**: Den skal være installeret på brugerens pc (Microsoft Visual C++ Redistributable). De fleste musik-pc'er har den, men ikke alle, og så indlæses pluginnet ikke. Se anbefalingen i §5.6 |
+| `MSVCP140.dll`, `VCRUNTIME140.dll`, `VCRUNTIME140_1.dll` | Visual C++ 2015–2022-runtime | Fundet i buildet fra commit `17d16ff`. **Ikke en licensrisiko**, men et brugerproblem: Runtime skulle være installeret på brugerens pc. **Løst efter fase 6:** Runtime bygges nu statisk ind i pluginnet (§5.6), så disse DLL'er ikke længere importeres |
 
 Ingen GPL- eller LGPL-biblioteker indgår i Windows-udgaverne.
 
@@ -203,11 +203,20 @@ Alt er selv genereret. De 15 presetnavne med varemærkepræg er omdøbt til neut
 
 **Rest fundet i fase 6:** én kommentar, `Source/BassSynth.h:374` "Muff-style tone". Forslag: skriv i stedet "Scooped fuzz tone". Ændringen rører kun en kommentar, og binæren er uændret. **Indsats: meget lille.** *Ikke udført, fordi fase 6 kun ændrer dokumentation. Afventer din beslutning.*
 
-### 5.6 Visual C++-runtime på Windows (ikke licens, men salg og support)
+### 5.6 Visual C++-runtime på Windows (ikke licens, men salg og support) – udført
 
 Windows-binærerne kræver Microsoft Visual C++ Redistributable (§1c-2). Mangler den, indlæses pluginnet ikke, og DAW'en viser typisk kun "kunne ikke indlæses". Det giver supporthenvendelser.
 
-**Forslag:** Byg med statisk runtime (`set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")` i `CMakeLists.txt`, svarer til `/MT`). Det er almindelig praksis for plugins. Ifølge Microsofts licensvilkår for Visual Studio (afsnittet om "Distributable Code") må runtime bygges ind i dine egne programmer. Vilkårene stiller dog betingelser, fx at dit produkt tilfører væsentlig egen funktionalitet *(tjek de aktuelle vilkår)*. Der kræves ingen notits i `THIRD-PARTY-NOTICES.txt`. Alternativt kan `INSTALL-windows.txt` henvise til Microsofts download af Redistributable. **Indsats: lille** (én CMake-linje og en ny CI-build). *Ikke udført i fase 6. Afventer din beslutning.*
+**Forslag:** Byg med statisk runtime (`set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")` i `CMakeLists.txt`, svarer til `/MT`). Det er almindelig praksis for plugins. Ifølge Microsofts licensvilkår for Visual Studio (afsnittet om "Distributable Code") må runtime bygges ind i dine egne programmer. Vilkårene stiller dog betingelser, fx at dit produkt tilfører væsentlig egen funktionalitet *(tjek de aktuelle vilkår)*. Der kræves ingen notits i `THIRD-PARTY-NOTICES.txt`. Alternativt kan `INSTALL-windows.txt` henvise til Microsofts download af Redistributable. **Indsats: lille** (én CMake-linje og en ny CI-build).
+
+**Status:** Udført efter fase 6 efter din beslutning. `CMAKE_MSVC_RUNTIME_LIBRARY` er sat til `MultiThreaded` i `CMakeLists.txt`, før JUCE og CLAP-wrapperen indlæses, så alle dele bruger samme runtime. Linux påvirkes ikke. Bekræftes ved at tjekke DLL-importerne i næste Windows-build fra CI.
+
+**Licens for statisk runtime:** Microsofts Visual C++-runtime er "Distributable Code" under Visual Studio-licensen. Det gælder både, når den distribueres som DLL, og når den linkes statisk ind i dit eget program. Betingelserne er bl.a.:
+- Dit program skal tilføje væsentlig egen funktionalitet. Det gør en synth.
+- Du må ikke bruge Microsofts varemærker i dit produktnavn.
+- Dine slutbrugervilkår må ikke give mindre beskyttelse af Microsofts kode end Microsofts egne vilkår. En almindelig EULA, der forbyder reverse engineering i det omfang loven tillader, dækker det.
+
+Du skal selv have ret til at bruge den compiler, der bygger. **Visual Studio Community** er gratis til kommerciel brug for enkeltpersoner. GitHub Actions' Windows-runner har Visual Studio installeret, og byggeriet dér sker under GitHubs vilkår for runner-billedet *(tjek begge dele)*.
 
 ---
 
@@ -222,6 +231,6 @@ Windows-binærerne kræver Microsoft Visual C++ Redistributable (§1c-2). Mangle
 
 Der er ikke fundet andet, der forhindrer salg med lukket kildekode. Fase 6-gennemgangen (2026-10-11) fandt ingen nye afhængigheder og ingen copyleft-kode, og Windows-udgaverne linker ikke GPL- eller LGPL-biblioteker.
 
-**Anbefalet før salg (ikke licenskrav):** Den statiske Visual C++-runtime (§5.6) og den lille kommentarrettelse (§5.5).
+**Anbefalet før salg (ikke licenskrav):** Den lille kommentarrettelse (§5.5). Den statiske Visual C++-runtime (§5.6) er udført.
 
 **Varemærke (ikke licens):** VST3-udgaven må distribueres under MIT-licensen. Bruger du ordet "VST" eller VST-logoet i markedsføring, på salgssider eller i pakken, skal Steinbergs retningslinjer i `VST3_Usage_Guidelines.pdf` følges. `INSTALL.txt` indeholder allerede "VST is a registered trademark of Steinberg Media Technologies GmbH."

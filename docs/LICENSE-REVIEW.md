@@ -1,8 +1,8 @@
 # Licensgennemgang – SubForge
 
-**Dato:** 2026-10-10 (opdateret efter migrering til JUCE 8.0.15)
-**Omfang:** hele repoet, de biblioteker der bygges ind, og de færdige binærer `SubForge.clap` og `SubForge.vst3` bygget mod JUCE 8.0.15
-**Metode:** licenser er læst fra pakkernes egne licensfiler, fra Debian-copyrightfiler for systembiblioteker, fra JUCE 8-EULA'en (juce.com/legal/juce-8-licence, læst 2026-10-10) og fra `strings`/`ldd` på den byggede binær. Hvor noget ikke kunne afgøres, står der **ukendt**.
+**Dato:** 2026-10-11 (gennemgået igen i fase 6, efter VST3 (fase 4) og Windows-forberedelse (fase 5))
+**Omfang:** hele repoet, de biblioteker der bygges ind, og de færdige binærer `SubForge.clap` og `SubForge.vst3` bygget mod JUCE 8.0.15 – både Linux-udgaverne (lokal build, commit `17d16ff`) og Windows-udgaverne fra CI (GitHub Actions run 38084238176, MSVC, samme commit)
+**Metode:** licenser er læst fra pakkernes egne licensfiler, fra Debian-copyrightfiler for systembiblioteker, fra JUCE 8-EULA'en (juce.com/legal/juce-8-licence, læst 2026-10-10) og fra `strings`/`ldd` på de byggede Linux-binærer og `objdump -p` (DLL-imports) på Windows-binærerne. Hvor noget ikke kunne afgøres, står der **ukendt**.
 
 > ⚠️ **Det skal du selv gøre:** Bekræft vilkårene for **JUCE 8 Starter** på juce.com, og **tegn licensen**, før SubForge distribueres. Gennemgangen nedenfor bygger på EULA-teksten, som den så ud 2026-10-10. Vilkår, priser og omsætningsgrænser kan ændre sig.
 >
@@ -12,7 +12,7 @@
 
 ## 1. Afhængigheder
 
-Projektet bruger **ingen pakkehåndtering** (ingen NuGet, npm, pip, vcpkg eller Conan). Afhængighederne ligger som kildekode i `~/SDKs` og bygges ind via CMake (`JUCE_DIR` og `CLAP_JUCE_EXTENSIONS_DIR` i `CMakeLists.txt`). Licenserne nedenfor er læst fra filerne i de mapper.
+Projektet bruger **ingen pakkehåndtering** (ingen NuGet, npm, pip, vcpkg eller Conan). Afhængighederne ligger som kildekode i `~/SDKs` og bygges ind via CMake (`JUCE_DIR` og `CLAP_JUCE_EXTENSIONS_DIR` i `CMakeLists.txt`). Licenserne nedenfor er læst fra filerne i de mapper. CI (`.github/workflows/build.yml`) henter de **samme versioner** (JUCE-tag `8.0.15`, clap-juce-extensions-commit `7adee3a` med submoduler), så Windows- og Linux-pakkerne fra CI indeholder de samme komponenter.
 
 ### 1a. Biblioteker der bygges ind i pluginnet
 
@@ -35,7 +35,7 @@ Listen bygger på `JUCE-8.0.15/LICENSE.md` ("The JUCE Framework Dependencies"), 
 | **SheenBidi** (ny i JUCE 8) | `juce_graphics/unicode/sheenbidi` | **Apache-2.0** (`LICENSE`). Ingen NOTICE-fil. JUCEs ændringer står i `JUCE_CHANGES.txt` | **Sandsynligvis**: 1 spor fundet. Bruges af JUCE 8's tekstmotor |
 | IJG libjpeg | `juce_graphics/image_formats/jpglib` | **IJG-licens** (README, samme tekst som i JUCE 7): binær distribution kræver, at dokumentationen skriver *"this software is based in part on the work of the Independent JPEG Group"* | **Ja**: `JPEGMEM` |
 | libpng | `juce_graphics/image_formats/pnglib` | **PNG Reference Library License v2** (`LICENSE`). *JUCEs `LICENSE.md` kalder den "zlib", men selve licensfilen er PNG v2. Rapporten følger filen* | **Ja**: `libpng error` |
-| zlib | `juce_core/zip/zlib` | **zlib-licens** (README) | **Ukendt**: ikke entydigt fundet i binæren |
+| zlib | `juce_core/zip/zlib` | **zlib-licens** (README) | **Ja**: symboler i `juce::zlibNamespace` (`inflate_table` m.fl.) |
 | VST3 SDK 3.8.0 | `juce_audio_processors_headless/format_types/VST3_SDK` | **MIT** (`LICENSE.txt`). Navnet "VST" og VST-logoet er Steinbergs varemærker. Brugen i markedsføring styres af `VST3_Usage_Guidelines.pdf` i samme mappe | **Ja, i VST3-udgaven** (`SubForge.vst3`, 636 `Steinberg`-spor). Ikke i CLAP-udgaven |
 | FLAC, Ogg Vorbis | `juce_audio_formats/codecs` | BSD (ifølge JUCEs `LICENSE.md`) | **Nej**: fjernet af linkeren |
 | CHOC/QuickJS, Box2D, GLEW, Oboe, AAX, ASIO, AudioUnitSDK, LV2 | diverse moduler | ISC/MIT, zlib, BSD/MIT, Apache-2.0, proprietær/GPLv3, proprietær/GPLv3, Apache-2.0, ISC | **Nej**: modulerne bruges ikke, eller funktionerne er slået fra. AAX og ASIO er **ikke** i brug |
@@ -54,10 +54,26 @@ Fra `ldd` på JUCE 8-binæren. Licenser fra `/usr/share/doc/<pakke>/copyright`:
 | libbz2.so.1.0 | BSD-variant | Debian-filen nævner også GPL-2, sandsynligvis for hjælpefiler |
 | libbrotli | MIT | |
 | libasound.so.2 (kun standalone) | LGPL-2.1+ | Dynamisk linkning: OK |
-| libstdc++, libgcc_s, libc, libm | **ikke aflæst** | Normalt GPL med GCC Runtime Library Exception og LGPL. Bør bekræftes, men er normalt uproblematisk ved dynamisk linkning |
+| libstdc++, libgcc_s | GPL-3 med **GCC Runtime Library Exception** (`/usr/share/doc/libstdc++6/copyright`) | Undtagelsen tillader at distribuere programmer bygget med GCC under enhver licens |
+| libc, libm | **LGPL-2.1** (`/usr/share/doc/libc6/copyright`) | Dynamisk linkning: OK |
+
+### 1c-2. Windows: systembiblioteker og C++-runtime (fra `objdump -p` på CI-binærerne)
+
+`SubForge.clap` og `SubForge.vst3` (Windows) importerer de samme DLL'er:
+
+| DLL'er | Hvad | Licens / bemærkning |
+|---|---|---|
+| `KERNEL32`, `USER32`, `GDI32`, `ADVAPI32`, `SHELL32`, `SHLWAPI`, `ole32`, `OLEAUT32`, `COMCTL32`, `COMDLG32`, `IMM32`, `WINMM`, `WININET`, `WS2_32`, `dwmapi`, `d2d1`, `d3d11`, `dxgi`, `dcomp`, `api-ms-win-shcore-scaling-*` | Windows' egne systembiblioteker | Del af Windows. Distribueres ikke |
+| `api-ms-win-crt-*` | Universal C Runtime | Del af Windows 10 og nyere. Distribueres ikke |
+| `MSVCP140.dll`, `VCRUNTIME140.dll`, `VCRUNTIME140_1.dll` | Visual C++ 2015–2022-runtime | **Ikke en licensrisiko**, men et **brugerproblem**: Den skal være installeret på brugerens pc (Microsoft Visual C++ Redistributable). De fleste musik-pc'er har den, men ikke alle, og så indlæses pluginnet ikke. Se anbefalingen i §5.6 |
+
+Ingen GPL- eller LGPL-biblioteker indgår i Windows-udgaverne.
 
 ### 1d. Byggeværktøjer (distribueres ikke)
-CMake 3.28.3 og GCC 13.3.
+- **Linux, lokalt:** CMake 3.28.3 og GCC 13.3.
+- **CI:** GitHub Actions på `ubuntu-24.04` (GCC, Ninja) og `windows-2022` (MSVC). Actions `actions/checkout`, `actions/setup-python` og `actions/upload-artifact` er MIT. De bruges kun til at bygge og distribueres ikke.
+- `scripts/generate-third-party-notices.py` bruger kun Pythons standardbibliotek.
+- Testene i `tests/` bruger kun C++-standardbiblioteket.
 
 ---
 
@@ -67,19 +83,23 @@ CMake 3.28.3 og GCC 13.3.
 - `grep` efter `copyright`, `license`, `http`, `www.`, `github`, `based on`, `adapted`, `ported` og navne på kendte projekter gav **ingen** fremmede copyright- eller licensheadere og **ingen** links til eksterne kilder i `Source/` eller `CMakeLists.txt`.
 - Al kode i `Source/` er skrevet i dette projekt af en AI-assistent (Claude) i samarbejde med ejeren. Jeg kender ikke til, at noget er kopieret ordret fra andre projekter. En AI-model kan dog ikke helt udelukke, at korte, meget udbredte kodestykker ligner noget fra dens træningsdata.
 - Migreringen til JUCE 8 ændrede kun to linjer i `Source/` (`FontOptions` i `SubForgeLookAndFeel.h`).
+- **Fase 6, ny søgning (2026-10-11):** Den samme `grep` over `Source/`, `tests/`, `scripts/` og `CMakeLists.txt` fandt kun projektets egne henvisninger (til denne rapport og til licensfilerne, som scriptet læser). Der er ikke tilføjet afhængigheder siden sidste gennemgang. Fase 4 og 5 tilføjede kun JUCEs egen VST3-understøttelse, CI-opsætning og egen kode.
+- **Varemærkeord:** En søgning efter kendte produkt- og firmanavne (Moog, Roland, TB-303, Big Muff, Tube Screamer m.fl.) fandt kun én kommentar: `Source/BassSynth.h:374` "Muff-style tone". Den er kun en kodekommentar og kommer ikke med i binæren eller GUI'en, men kan omformuleres for en sikkerheds skyld (forslag i §5.5). `kDiode303` er et internt enum-navn, som vises som "Diode".
 
 | Fil / linjer | Hvad | Sandsynlig kilde | Licens | Vurdering |
 |---|---|---|---|---|
 | `Source/BassSynth.h` `stepResidual()`, `stepResidualAtWrap()` (tidl. `polyBlep()`) | Anti-aliasing af saw og firkant | **Omskrevet i fase 3** ud fra specifikationen i §5.2. Udledningen står trin for trin i kodekommentaren. Den tidligere version var identisk med en udbredt tutorial-formulering. **Forbehold:** Omskrivningen er lavet af den samme AI-assistent, som skrev den tidligere version, og den var derfor ikke et strengt clean room. Resultatet er numerisk identisk med den tidligere version (forskel ≤ 6·10⁻⁸), fordi matematikken entydigt bestemmer det. Koden har nu sin egen struktur og navngivning | Selv genereret ud fra publiceret matematik | OK |
-| `Source/BassSynth.h` 89–102 `polyBlamp()` | Anti-aliasing af trekant | Udledt i projektet som integralet af `polyBlep`. Svarer til formler i litteraturen. Fortegnet er verificeret numerisk | Selv genereret | OK |
-| `Source/BassSynth.h` 104–151 `Oscillator` | Bølgeformer | Selv skrevet | Selv genereret | OK |
-| `Source/BassSynth.h` 153–187 `LadderFilter` | 4-polet ladder-filter, zero-delay feedback | Metoden er fra Vadim Zavalishins bog *The Art of VA Filter Design*. Koden er skrevet ud fra metoden, ikke kopieret. LP12/BP12-koefficienterne er Oberheim Xpander-teknikken fra litteraturen | Selv genereret | OK |
-| `Source/BassSynth.h` 189–258 `DiodeLadderFilter` | Diode-ladder i 303-stil | Ligningssystemet og konstanterne er udledt og målt i projektet. Dominique Wurtz' open source-implementering blev overvejet fra hukommelsen, men **ikke brugt** | Selv genereret | OK |
-| `Source/BassSynth.h` 260–386 `OnePole`, `Distortion` | Distortion-typer | Selv skrevet. Kun *inspireret* af pedalnavne, ingen kredsløbsmodeller | Selv genereret | OK |
-| `Source/BassSynth.h` 388–719 | Envelopes, LFO, stemme | Selv skrevet | Selv genereret | OK |
+| `Source/BassSynth.h` 107–119 `polyBlamp()` | Anti-aliasing af trekant | Udledt i projektet som integralet af `polyBlep`. Svarer til formler i litteraturen. Fortegnet er verificeret numerisk | Selv genereret | OK |
+| `Source/BassSynth.h` 122–170 `Oscillator` | Bølgeformer | Selv skrevet | Selv genereret | OK |
+| `Source/BassSynth.h` 172–203 `LadderFilter` | 4-polet ladder-filter, zero-delay feedback | Metoden er fra Vadim Zavalishins bog *The Art of VA Filter Design*. Koden er skrevet ud fra metoden, ikke kopieret. LP12/BP12-koefficienterne er Oberheim Xpander-teknikken fra litteraturen | Selv genereret | OK |
+| `Source/BassSynth.h` 208–276 `DiodeLadderFilter` | Diode-ladder i 303-stil | Ligningssystemet og konstanterne er udledt og målt i projektet. Dominique Wurtz' open source-implementering blev overvejet fra hukommelsen, men **ikke brugt** | Selv genereret | OK |
+| `Source/BassSynth.h` 279–405 `OnePole`, `Distortion` | Distortion-typer | Selv skrevet. Kun *inspireret* af pedalnavne, ingen kredsløbsmodeller | Selv genereret | OK |
+| `Source/BassSynth.h` 407–738 | Envelopes, LFO, stemme | Selv skrevet | Selv genereret | OK |
 | `Source/Sequencer.h`, `Source/PatternLibrary.h` | Sequencer, mønstre, generator | Selv skrevet | Selv genereret | OK |
-| `Source/PluginProcessor.cpp` `moveToTrash()` | Papirkurv på Linux | Skrevet ud fra freedesktop.org's *Trash Specification*. Ingen kode kopieret | Selv genereret | OK (bliver platformsuafhængig i fase 5) |
-| Øvrige `Source/*.cpp` | Plugin, GUI, presets | Almindelig brug af JUCEs API | Selv genereret (bundet til JUCE-licensen, se §4) | OK |
+| `Source/PresetFiles.h` `moveToTrash()` | Papirkurv | Linux: skrevet ud fra freedesktop.org's *Trash Specification*. Ingen kode kopieret. Andre platforme: JUCEs `File::moveToTrash()` | Selv genereret | OK |
+| Øvrige `Source/*` (`MainView`, `Widgets`, `StepGrid`, `FilterResponse.h`, `SoundPresets`, `PatternPresets` m.fl.) | Plugin, GUI, presets | Almindelig brug af JUCEs API | Selv genereret (bundet til JUCE-licensen, se §4) | OK |
+| `tests/*.cpp` | Enhedstest | Selv skrevet, kun C++-standardbiblioteket | Selv genereret | OK |
+| `.github/workflows/build.yml`, `scripts/*.py` | CI og notices-generator | Selv skrevet | Selv genereret | OK |
 | `CMakeLists.txt` `clap_juce_extensions_plugin(...)` | Byggeopsætning | Kaldets form blev set i Vaporizer2 (GPL). Det er wrapperens dokumenterede API, ikke beskyttet udtryk | Selv genereret | OK |
 
 ---
@@ -111,11 +131,14 @@ CMake 3.28.3 og GCC 13.3.
 | SheenBidi | **OK** | Apache-2.0. Licensteksten skal følge med |
 | IJG libjpeg | **OK** (permissiv) | Kræver attribution i dokumentationen |
 | libpng | **OK** (permissiv) | PNG Reference Library License v2 |
-| zlib (muligvis i binæren) | **OK** (permissiv) | zlib-licens |
+| zlib (i binæren) | **OK** (permissiv) | zlib-licens. Står allerede i `THIRD-PARTY-NOTICES.txt` |
 | VST3 SDK 3.8.0 (i VST3-udgaven) | **OK** | MIT (følger med i JUCE 8). Varemærket "VST" er ikke en licensbetingelse, men se §6 |
 | FLAC, Vorbis, AAX, ASIO m.fl. | **Ikke relevant** | Ikke med i binæren |
 | Systembiblioteker (dynamiske) | **OK** | Distribueres ikke |
-| libstdc++/libc | **UKENDT** (formelt) | Licens ikke aflæst lokalt. Normalt uproblematisk |
+| libstdc++/libgcc (Linux) | **OK** | GCC Runtime Library Exception (aflæst i fase 6) |
+| libc/libm (Linux) | **OK** | LGPL-2.1, dynamisk linket, distribueres ikke |
+| Windows-systembiblioteker og UCRT | **OK** | Del af Windows |
+| Visual C++-runtime (`MSVCP140` m.fl.) | **OK** (licens), men se §5.6 | Kræver, at brugeren har runtime installeret |
 | Chakra Petch og JetBrains Mono | **SVAG COPYLEFT** (kun selve fontene) | OFL kræver kun, at fontene forbliver under OFL, og at licensteksterne følger med. Påvirker ikke din kode |
 | `stepResidual()` (tidl. `polyBlep()`) | **OK** | Omskrevet ud fra specifikationen (§5.2). Se forbeholdet om clean room i §2 |
 | Al øvrig kode i `Source/` | **OK** | Selv genereret |
@@ -161,7 +184,7 @@ Ingen erstatning er nødvendig. Krav:
 
 ### 5.4 Attributionskrav – udført (fase 2)
 
-`THIRD-PARTY-NOTICES.txt` genereres af `scripts/generate-third-party-notices.py` direkte fra licensfilerne (`--check` verificerer, at den stadig passer). Den vises i pluginnet under tandhjul → "About SubForge…" og ligger i Linux-pakken (`cmake --build … --target package-linux`). Den indeholder de fulde licenstekster for:
+`THIRD-PARTY-NOTICES.txt` genereres af `scripts/generate-third-party-notices.py` direkte fra licensfilerne (`--check` verificerer, at den stadig passer). Den vises i pluginnet under tandhjul → "About SubForge…" og ligger i både Linux-pakken (`package-linux`, tar.gz) og Windows-pakken (`package-windows`, zip). Kontrolleret i fase 6 i CI-pakken `SubForge-0.1.0-windows-x64.zip`. CI kører `--check` ved hver build, så filen ikke kan blive forældet uden at buildet fejler. Den indeholder de fulde licenstekster for:
 - clap-juce-extensions, CLAP SDK og clap-helpers (MIT)
 - HarfBuzz (Old MIT)
 - SheenBidi (Apache-2.0)
@@ -178,6 +201,14 @@ JUCE 8 har ingen ISC-moduler, så der er ingen JUCE-ISC-note. JUCE selv er dækk
 
 Alt er selv genereret. De 15 presetnavne med varemærkepræg er omdøbt til neutrale navne, og kommentarer i kildekoden beskriver nu acid-stilen uden varemærkenavne.
 
+**Rest fundet i fase 6:** én kommentar, `Source/BassSynth.h:374` "Muff-style tone". Forslag: skriv i stedet "Scooped fuzz tone". Ændringen rører kun en kommentar, og binæren er uændret. **Indsats: meget lille.** *Ikke udført, fordi fase 6 kun ændrer dokumentation. Afventer din beslutning.*
+
+### 5.6 Visual C++-runtime på Windows (ikke licens, men salg og support)
+
+Windows-binærerne kræver Microsoft Visual C++ Redistributable (§1c-2). Mangler den, indlæses pluginnet ikke, og DAW'en viser typisk kun "kunne ikke indlæses". Det giver supporthenvendelser.
+
+**Forslag:** Byg med statisk runtime (`set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")` i `CMakeLists.txt`, svarer til `/MT`). Det er almindelig praksis for plugins. Ifølge Microsofts licensvilkår for Visual Studio (afsnittet om "Distributable Code") må runtime bygges ind i dine egne programmer. Vilkårene stiller dog betingelser, fx at dit produkt tilfører væsentlig egen funktionalitet *(tjek de aktuelle vilkår)*. Der kræves ingen notits i `THIRD-PARTY-NOTICES.txt`. Alternativt kan `INSTALL-windows.txt` henvise til Microsofts download af Redistributable. **Indsats: lille** (én CMake-linje og en ny CI-build). *Ikke udført i fase 6. Afventer din beslutning.*
+
 ---
 
 ## 6. Opsummering
@@ -185,10 +216,12 @@ Alt er selv genereret. De 15 presetnavne med varemærkepræg er omdøbt til neut
 **Kan SubForge sælges med lukket kildekode og de medfølgende mønstre? Ja, når to ting er på plads:**
 
 1. **Du har tegnet JUCE 8 Starter-licensen** og bekræftet vilkårene på juce.com (§5.1). Det gælder kun, så længe din samlede omsætning eller funding er højst 20.000 USD over 12 måneder.
-2. **`THIRD-PARTY-NOTICES.txt` følger med.** ✅ Udført i fase 2: den ligger i pakken og vises i "About SubForge…".
+2. **`THIRD-PARTY-NOTICES.txt` følger med.** ✅ Udført i fase 2: den ligger i Linux- og Windows-pakken og vises i "About SubForge…". CI kontrollerer, at den er opdateret.
 
 **Fase 3 er udført:** `polyBlep()` er omskrevet ud fra specifikationen (med forbeholdet i §2), og presetnavnene er neutrale.
 
-Der er ikke fundet andet, der forhindrer salg med lukket kildekode.
+Der er ikke fundet andet, der forhindrer salg med lukket kildekode. Fase 6-gennemgangen (2026-10-11) fandt ingen nye afhængigheder og ingen copyleft-kode, og Windows-udgaverne linker ikke GPL- eller LGPL-biblioteker.
+
+**Anbefalet før salg (ikke licenskrav):** Den statiske Visual C++-runtime (§5.6) og den lille kommentarrettelse (§5.5).
 
 **Varemærke (ikke licens):** VST3-udgaven må distribueres under MIT-licensen. Bruger du ordet "VST" eller VST-logoet i markedsføring, på salgssider eller i pakken, skal Steinbergs retningslinjer i `VST3_Usage_Guidelines.pdf` følges. `INSTALL.txt` indeholder allerede "VST is a registered trademark of Steinberg Media Technologies GmbH."

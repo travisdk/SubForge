@@ -1,7 +1,7 @@
 # Licensgennemgang – SubForge
 
 **Dato:** 2026-10-11 (gennemgået igen i fase 6, efter VST3 (fase 4) og Windows-forberedelse (fase 5). Opdateret samme dag til udgivelse som open source under AGPLv3, se §5.1 og §6)
-**Omfang:** hele repoet, de biblioteker der bygges ind, og de færdige binærer `SubForge.clap` og `SubForge.vst3` bygget mod JUCE 8.0.15 – både Linux-udgaverne (lokal build, commit `17d16ff`) og Windows-udgaverne fra CI (GitHub Actions run 38084238176, MSVC, samme commit)
+**Omfang:** hele repoet, de biblioteker der bygges ind, og de færdige binærer `SubForge.clap` og `SubForge.vst3` bygget mod JUCE 8.0.15 – både Linux-udgaverne (lokal build, commit `8a25b1d`) og Windows-udgaverne fra CI (GitHub Actions run 38084238176, MSVC, samme commit)
 **Metode:** licenser er læst fra pakkernes egne licensfiler, fra Debian-copyrightfiler for systembiblioteker, fra JUCE 8-EULA'en (juce.com/legal/juce-8-licence, læst 2026-10-10) og fra `strings`/`ldd` på de byggede Linux-binærer og `objdump -p` (DLL-imports) på Windows-binærerne. Hvor noget ikke kunne afgøres, står der **ukendt**.
 
 > **Beslutning 2026-10-11:** SubForge sælges ikke. Det udgives gratis som open source under **GNU AGPLv3** (`LICENSE`), og JUCE bruges under AGPLv3 i stedet for JUCE 8 Starter. Afsnit, der handler om salg med lukket kildekode, er bevaret som historik og markeret.
@@ -65,7 +65,7 @@ Fra `ldd` på JUCE 8-binæren. Licenser fra `/usr/share/doc/<pakke>/copyright`:
 |---|---|---|
 | `KERNEL32`, `USER32`, `GDI32`, `ADVAPI32`, `SHELL32`, `SHLWAPI`, `ole32`, `OLEAUT32`, `COMCTL32`, `COMDLG32`, `IMM32`, `WINMM`, `WININET`, `WS2_32`, `dwmapi`, `d2d1`, `d3d11`, `dxgi`, `dcomp`, `api-ms-win-shcore-scaling-*` | Windows' egne systembiblioteker | Del af Windows. Distribueres ikke |
 | `api-ms-win-crt-*` | Universal C Runtime | Del af Windows 10 og nyere. Distribueres ikke |
-| `MSVCP140.dll`, `VCRUNTIME140.dll`, `VCRUNTIME140_1.dll` | Visual C++ 2015–2022-runtime | Fundet i buildet fra commit `17d16ff`. **Ikke en licensrisiko**, men et brugerproblem: Runtime skulle være installeret på brugerens pc. **Løst efter fase 6:** Runtime bygges nu statisk ind i pluginnet (§5.6), så disse DLL'er ikke længere importeres |
+| `MSVCP140.dll`, `VCRUNTIME140.dll`, `VCRUNTIME140_1.dll` | Visual C++ 2015–2022-runtime | Fundet i buildet fra commit `8a25b1d`. **Ikke en licensrisiko**, men et brugerproblem: Runtime skulle være installeret på brugerens pc. **Løst efter fase 6:** Runtime bygges nu statisk ind i pluginnet (§5.6), så disse DLL'er ikke længere importeres |
 
 Ingen GPL- eller LGPL-biblioteker indgår i Windows-udgaverne.
 
@@ -222,7 +222,7 @@ Windows-binærerne kræver Microsoft Visual C++ Redistributable (§1c-2). Mangle
 
 **Forslag:** Byg med statisk runtime (`set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")` i `CMakeLists.txt`, svarer til `/MT`). Det er almindelig praksis for plugins. Ifølge Microsofts licensvilkår for Visual Studio (afsnittet om "Distributable Code") må runtime bygges ind i dine egne programmer. Vilkårene stiller dog betingelser, fx at dit produkt tilfører væsentlig egen funktionalitet *(tjek de aktuelle vilkår)*. Der kræves ingen notits i `THIRD-PARTY-NOTICES.txt`. Alternativt kan `INSTALL-windows.txt` henvise til Microsofts download af Redistributable. **Indsats: lille** (én CMake-linje og en ny CI-build).
 
-**Status:** Udført efter fase 6 efter din beslutning. `CMAKE_MSVC_RUNTIME_LIBRARY` er sat til `MultiThreaded` i `CMakeLists.txt`, før JUCE og CLAP-wrapperen indlæses, så alle dele bruger samme runtime. Linux påvirkes ikke. **Bekræftet** i CI-run 38137286377 (commit `e4120be`): `objdump -p` viser, at hverken `SubForge.clap` eller `SubForge.vst3` importerer `MSVCP140`, `VCRUNTIME140` eller `api-ms-win-crt-*`. Tilbage er kun Windows' egne systembiblioteker. Plugin-filerne voksede til ca. 7,5 MB (CLAP) og 7,8 MB (VST3).
+**Status:** Udført efter fase 6 efter din beslutning. `CMAKE_MSVC_RUNTIME_LIBRARY` er sat til `MultiThreaded` i `CMakeLists.txt`, før JUCE og CLAP-wrapperen indlæses, så alle dele bruger samme runtime. Linux påvirkes ikke. **Bekræftet** i CI-run 38137286377 (commit `8c592ab`): `objdump -p` viser, at hverken `SubForge.clap` eller `SubForge.vst3` importerer `MSVCP140`, `VCRUNTIME140` eller `api-ms-win-crt-*`. Tilbage er kun Windows' egne systembiblioteker. Plugin-filerne voksede til ca. 7,5 MB (CLAP) og 7,8 MB (VST3).
 
 **Licens for statisk runtime:** Microsofts Visual C++-runtime er "Distributable Code" under Visual Studio-licensen. Det gælder både, når den distribueres som DLL, og når den linkes statisk ind i dit eget program. Betingelserne er bl.a.:
 - Dit program skal tilføje væsentlig egen funktionalitet. Det gør en synth.

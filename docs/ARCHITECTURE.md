@@ -1,6 +1,6 @@
 # SubForge – arkitektur
 
-Dette dokument forklarer, hvordan SubForge er bygget op, og hvorfor de vigtigste valg er truffet. Det er skrevet, så du kan forklare og forsvare koden over for en bruger eller en anden udvikler. Henvisninger som `Source/BassSynth.h:172` peger på stedet i koden (commit `11cb005`).
+Dette dokument forklarer, hvordan SubForge er bygget op, og hvorfor de vigtigste valg er truffet. Det er skrevet, så du kan forklare og forsvare koden over for en bruger eller en anden udvikler. Henvisninger som `Source/BassSynth.h:172` peger på stedet i koden (commit `e6e8e59`).
 
 **Kort fortalt:** SubForge er en monofonisk bas-synth med en indbygget step-sequencer. Den er skrevet i C++17 oven på JUCE 8 og leveres som CLAP og VST3 (og en standalone-app til test) på Linux og Windows. Al lydkode er skrevet til projektet. Der bruges ingen eksterne DSP-biblioteker ud over JUCEs oversampler.
 

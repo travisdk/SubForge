@@ -6,7 +6,7 @@
 
 ## Hvorfor signere?
 
-- **Uden signatur** viser Windows ofte en SmartScreen-advarsel ("Windows beskyttede din pc" eller "ukendt udgiver"), når brugeren åbner en downloadet fil. Det koster tillid og salg.
+- **Uden signatur** viser Windows ofte en SmartScreen-advarsel ("Windows beskyttede din pc" eller "ukendt udgiver"), når brugeren åbner en downloadet fil. Det koster tillid.
 - **Med signatur** står dit navn som udgiver, og filen kan ikke ændres ubemærket efter signeringen.
 - **DAW'er** kræver normalt ikke signerede plugins. Det er først og fremmest download- og installationsoplevelsen, signaturen påvirker.
 - **SmartScreen-omdømme** bygges op over tid ud fra antal downloads uden problemer, også med signatur. De første brugere kan derfor stadig se en advarsel *(tjek, hvordan Microsoft håndterer det aktuelt)*.

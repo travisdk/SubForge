@@ -1,6 +1,6 @@
 # SubForge – arkitektur
 
-Dette dokument forklarer, hvordan SubForge er bygget op, og hvorfor de vigtigste valg er truffet. Det er skrevet, så du kan forklare og forsvare koden over for en kunde, en revisor eller en anden udvikler. Henvisninger som `Source/BassSynth.h:172` peger på stedet i koden (commit `11cb005`).
+Dette dokument forklarer, hvordan SubForge er bygget op, og hvorfor de vigtigste valg er truffet. Det er skrevet, så du kan forklare og forsvare koden over for en bruger eller en anden udvikler. Henvisninger som `Source/BassSynth.h:172` peger på stedet i koden (commit `11cb005`).
 
 **Kort fortalt:** SubForge er en monofonisk bas-synth med en indbygget step-sequencer. Den er skrevet i C++17 oven på JUCE 8 og leveres som CLAP og VST3 (og en standalone-app til test) på Linux og Windows. Al lydkode er skrevet til projektet. Der bruges ingen eksterne DSP-biblioteker ud over JUCEs oversampler.
 
@@ -166,7 +166,7 @@ Hostprojektet gemmer én XML-blok med:
 |---|---|---|
 | Producentkode og pluginkode | `Hjuh` / `SbFg` | **Aldrig.** VST3-klassens ID beregnes ud fra dem. Ændres de, finder eksisterende projekter ikke pluginnet |
 | CLAP-ID | `dk.hjuhl.subforge` | **Aldrig**, af samme grund |
-| Produktnavn, version | `SubForge`, `0.1.0` | Version: ja, ved hver udgivelse |
+| Produktnavn, version | `SubForge`, `1.0.0` | Version: ja, ved hver udgivelse |
 
 ---
 
@@ -254,7 +254,7 @@ JUCE- og clap-juce-extensions-versionerne er låst i workflowet.
 
 | Valg | Hvorfor | Alternativ fravalgt |
 |---|---|---|
-| JUCE 8 | Modent, dækker GUI, parametre og VST3/standalone på tværs af platforme. Gratis under Starter-licensen op til 20.000 USD | Egen ramme (meget arbejde), iPlug2 (mindre økosystem) |
+| JUCE 8 | Modent, dækker GUI, parametre og VST3/standalone på tværs af platforme. Bruges under AGPLv3, så SubForge er open source under samme licens | Egen ramme (meget arbejde), iPlug2 (mindre økosystem) |
 | CLAP via clap-juce-extensions (MIT) | JUCE 8 har ikke CLAP indbygget. Wrapperen er den gængse løsning | – |
 | Mono-stemme | En bas-synth i acid-stil er mono. Det gør glide, legato og accent enkle og billige | Polyfoni (giver ingen mening for formålet) |
 | Zero-delay-feedback-filtre | Korrekt cutoff og resonans, stabil selvsvingning, god modulation | Simple filtre med en samples forsinkelse (ustemte ved høj resonans) |

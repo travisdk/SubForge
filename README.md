@@ -1,0 +1,122 @@
+# SubForge
+
+SubForge is a monophonic bass synthesizer with a built-in 16-step sequencer,
+for Linux and Windows. It comes as a CLAP and a VST®3 plug-in, plus a
+standalone app.
+
+<a href="https://www.steinberg.net/"><img src="docs/images/VST_Compatible_Logo_Steinberg.png" alt="VST Compatible" width="96"></a>
+
+![SubForge](docs/images/screenshot.png)
+
+> **Not actively maintained.** SubForge is shared as it is. I may fix things
+> now and then, but there is no support and no promise of updates. Bug
+> reports and pull requests are welcome, but may go unanswered. You are free
+> to fork it and carry it on.
+
+## Features
+
+- Saw, square, pulse, sine and triangle waveforms, band-limited to keep
+  aliasing low, plus a sine or square sub-oscillator.
+- Filter with LP 24, LP 12, BP 12 and diode ladder modes, key tracking and an
+  accent sweep.
+- Pitch envelope, tempo-synced LFO, glide, click, distortion (overdrive,
+  distortion, fuzz, tube amp) and 4x oversampling.
+- 16-step sequencer with pitch, accent and slide per step, synced to the
+  host's tempo.
+- 89 sound presets and 42 patterns, plus your own presets and patterns.
+- Vector interface that scales from 75 % to 200 %.
+
+See [CHANGELOG.md](CHANGELOG.md) for the full list.
+
+## Download and install
+
+Ready-built plug-ins are on the
+[Releases page](https://github.com/travisdk/SubForge/releases):
+
+- `SubForge-<version>-linux-x86_64.tar.gz` for Linux (x86-64)
+- `SubForge-<version>-windows-x64.zip` for Windows (64-bit)
+
+Each archive contains `INSTALL.txt` with the install steps. In short, copy
+`SubForge.clap` and/or the `SubForge.vst3` folder to your plug-in folder:
+
+| | CLAP | VST3 |
+|---|---|---|
+| Linux | `~/.clap/` | `~/.vst3/` |
+| Windows | `%LOCALAPPDATA%\Programs\Common\CLAP\` | `%LOCALAPPDATA%\Programs\Common\VST3\` |
+
+Then rescan plug-ins in your DAW. SubForge appears as an instrument.
+
+**Tested with:** REAPER, Bitwig Studio and Ardour on Linux. The Windows build
+is made by CI and has not been tested much on real hardware.
+
+**No macOS version.** I have no Mac to build and test on. The code is plain
+JUCE and may well build on macOS, but you are on your own there.
+
+### Known DAW quirks
+
+- **Ardour:** After installing a new version, Ardour hides the plug-in until
+  you rescan it (Window > Plugin Manager > Re-scan).
+- **Ableton Live on Windows:** Turn off "Auto-Scale Plug-in Window" for
+  SubForge (right-click it in the browser). SubForge scales itself.
+- **Window size:** SubForge remembers its size separately for each DAW,
+  because DAWs scale plug-in windows differently. Change it from the gear
+  menu or by dragging the corner.
+
+## Building from source
+
+You need CMake 3.22 or newer, a C++17 compiler (GCC or Clang on Linux,
+Visual Studio 2022 on Windows) and two SDKs:
+
+- [JUCE](https://github.com/juce-framework/JUCE) **8.0.15**
+- [clap-juce-extensions](https://github.com/free-audio/clap-juce-extensions),
+  commit `7adee3a`, with its submodules
+
+```sh
+mkdir -p ~/SDKs
+git clone --depth 1 --branch 8.0.15 https://github.com/juce-framework/JUCE.git ~/SDKs/JUCE-8.0.15
+git clone https://github.com/free-audio/clap-juce-extensions.git ~/SDKs/clap-juce-extensions-main
+git -C ~/SDKs/clap-juce-extensions-main checkout 7adee3a1bd4684d4caa5601100e364abccff4b4d
+git -C ~/SDKs/clap-juce-extensions-main submodule update --init --recursive
+```
+
+On Linux, also install the JUCE build dependencies (Debian/Ubuntu names):
+
+```sh
+sudo apt install ninja-build libasound2-dev libfreetype-dev libfontconfig1-dev \
+  libx11-dev libxcomposite-dev libxcursor-dev libxext-dev libxinerama-dev \
+  libxrandr-dev libxrender-dev
+```
+
+Then build (on Windows, leave out `-G Ninja` and add `--config Release` to the
+build and test commands):
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+ctest --test-dir build                        # unit tests
+cmake --build build --target package-linux   # release archive in dist/ (package-windows on Windows)
+```
+
+The SDKs are looked for in `~/SDKs` (`%USERPROFILE%\SDKs` on Windows).
+Use `-DJUCE_DIR=…` and `-DCLAP_JUCE_EXTENSIONS_DIR=…` to point elsewhere. By
+default each build copies the plug-ins into your user plug-in folders; turn
+that off with `-DSUBFORGE_INSTALL_AFTER_BUILD=OFF`.
+
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) explains how the code is put
+together (in Danish).
+
+## Licence
+
+SubForge is free software: you can redistribute it and/or modify it under
+the terms of the [GNU Affero General Public License, version 3](LICENSE). It
+comes with **no warranty**.
+
+SubForge is built with [JUCE](https://juce.com), used under the AGPLv3. The
+other bundled components (CLAP, the VST3 SDK, HarfBuzz, the Chakra Petch and
+JetBrains Mono fonts and others) are under permissive licences, listed with
+their full texts in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+
+If you distribute a modified version, the AGPLv3 requires you to make your
+source code available under the same licence.
+
+VST is a registered trademark of Steinberg Media Technologies GmbH.

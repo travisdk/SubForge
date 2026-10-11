@@ -1,12 +1,12 @@
 # Licensgennemgang – SubForge
 
-**Dato:** 2026-10-11 (gennemgået igen i fase 6, efter VST3 (fase 4) og Windows-forberedelse (fase 5))
+**Dato:** 2026-10-11 (gennemgået igen i fase 6, efter VST3 (fase 4) og Windows-forberedelse (fase 5). Opdateret samme dag til udgivelse som open source under AGPLv3, se §5.1 og §6)
 **Omfang:** hele repoet, de biblioteker der bygges ind, og de færdige binærer `SubForge.clap` og `SubForge.vst3` bygget mod JUCE 8.0.15 – både Linux-udgaverne (lokal build, commit `17d16ff`) og Windows-udgaverne fra CI (GitHub Actions run 38084238176, MSVC, samme commit)
 **Metode:** licenser er læst fra pakkernes egne licensfiler, fra Debian-copyrightfiler for systembiblioteker, fra JUCE 8-EULA'en (juce.com/legal/juce-8-licence, læst 2026-10-10) og fra `strings`/`ldd` på de byggede Linux-binærer og `objdump -p` (DLL-imports) på Windows-binærerne. Hvor noget ikke kunne afgøres, står der **ukendt**.
 
-> ⚠️ **Det skal du selv gøre:** Bekræft vilkårene for **JUCE 8 Starter** på juce.com, og **tegn licensen**, før SubForge distribueres. Gennemgangen nedenfor bygger på EULA-teksten, som den så ud 2026-10-10. Vilkår, priser og omsætningsgrænser kan ændre sig.
+> **Beslutning 2026-10-11:** SubForge sælges ikke. Det udgives gratis som open source under **GNU AGPLv3** (`LICENSE`), og JUCE bruges under AGPLv3 i stedet for JUCE 8 Starter. Afsnit, der handler om salg med lukket kildekode, er bevaret som historik og markeret.
 >
-> Dette er en teknisk gennemgang, ikke juridisk rådgivning. Inden et kommercielt salg bør konklusionerne bekræftes af en jurist med kendskab til softwarelicenser.
+> Dette er en teknisk gennemgang, ikke juridisk rådgivning.
 
 ---
 
@@ -125,7 +125,7 @@ Ingen GPL- eller LGPL-biblioteker indgår i Windows-udgaverne.
 
 | Fund | Klasse | Begrundelse |
 |---|---|---|
-| **JUCE 8.0.15** (alle brugte moduler) | **Kommerciel licens (JUCE 8 Starter)**. Uden licens: **STÆRK COPYLEFT** (AGPLv3) | Se §5.1. Kræver, at du har tegnet Starter-licensen |
+| **JUCE 8.0.15** (alle brugte moduler) | **STÆRK COPYLEFT** (AGPLv3) | Se §5.1. SubForge står derfor selv under AGPLv3, og kildekoden er offentlig |
 | clap-juce-extensions, CLAP SDK, clap-helpers | **OK** | MIT. Copyright-teksten skal følge med |
 | HarfBuzz | **OK** | "Old MIT" (permissiv) |
 | SheenBidi | **OK** | Apache-2.0. Licensteksten skal følge med |
@@ -148,9 +148,22 @@ Ingen GPL- eller LGPL-biblioteker indgår i Windows-udgaverne.
 
 ## 5. Erstatningsforslag
 
-### 5.1 JUCE – JUCE 8 Starter
+### 5.1 JUCE – AGPLv3 (valgt 2026-10-11)
 
-**Valgt løsning:** SubForge bygges mod **JUCE 8.0.15** under en **JUCE 8 Starter**-licens. Ifølge JUCE 8-EULA'en (læst 2026-10-10):
+**Valgt løsning:** SubForge bygges mod **JUCE 8.0.15** under **AGPLv3**, og SubForge udgives selv under AGPLv3 (`LICENSE`, den officielle tekst fra gnu.org). JUCE skriver i `LICENSE.md`, at modulerne er "dual-licensed under the AGPLv3 and the commercial JUCE licence". Der skal derfor ikke tegnes nogen JUCE-licens, og der er ingen omsætningsgrænse.
+
+Det betyder:
+
+| Krav i AGPLv3 | Sådan opfyldes det |
+|---|---|
+| Hele programmet (SubForge + JUCE) skal stå under AGPLv3, når det distribueres | `LICENSE` i repoet, `LICENSE.txt` i begge pakker, note i README, `INSTALL.txt`, `THIRD-PARTY-NOTICES.txt` og "About SubForge" |
+| Modtagere skal kunne få den tilsvarende kildekode (§6) | Repoet er offentligt (`github.com/travisdk/SubForge`), og hver release har et git-tag. README og CI angiver de præcise versioner af JUCE (tag `8.0.15`) og clap-juce-extensions (commit `7adee3a`), som hentes fra deres officielle repos. *Forbehold:* Strengt taget skal du sikre, at kildekoden er tilgængelig, så længe du tilbyder binærerne. Vil du være helt uafhængig af JUCEs og CLAP-projektets repos, kan du lægge et kildearkiv med SDK'erne ved hver release |
+| Netværksbrug (§13, det der adskiller AGPL fra GPL) | Ikke relevant. SubForge tilbyder ingen netværkstjeneste |
+| Ingen ekstra begrænsninger | Der er ingen EULA, licensnøgle eller kopibeskyttelse |
+| Permissive komponenter (MIT, Old MIT, Apache-2.0, zlib, libpng, IJG) og fontene (OFL) | Alle kan indgå i et AGPLv3-program. Apache-2.0 (SheenBidi) er forenelig med GPLv3/AGPLv3. Deres licenstekster står i `THIRD-PARTY-NOTICES.txt` |
+| Splashskærm | JUCE 8 har ingen splashskærm. JUCE ignorerer `JUCE_DISPLAY_SPLASH_SCREEN` med en compiler-advarsel (`juce_gui_basics.cpp:60`) |
+
+**Historik (salg med lukket kildekode, fravalgt):** Den oprindelige plan var en **JUCE 8 Starter**-licens. Ifølge JUCE 8-EULA'en (læst 2026-10-10):
 
 | Punkt | EULA-tekst | Betydning for SubForge |
 |---|---|---|
@@ -193,7 +206,7 @@ Ingen erstatning er nødvendig. Krav:
 - Chakra Petch og JetBrains Mono (OFL)
 - VST3 SDK (MIT)
 
-JUCE 8 har ingen ISC-moduler, så der er ingen JUCE-ISC-note. JUCE selv er dækket af den kommercielle licens.
+JUCE 8 har ingen ISC-moduler, så der er ingen JUCE-ISC-note. JUCE selv bruges under AGPLv3 (§5.1), og overskriften i `THIRD-PARTY-NOTICES.txt` siger det. Den indeholder også Steinbergs varemærkesætning.
 
 **Indsats: lille.**
 
@@ -215,6 +228,7 @@ Windows-binærerne kræver Microsoft Visual C++ Redistributable (§1c-2). Mangle
 - Dit program skal tilføje væsentlig egen funktionalitet. Det gør en synth.
 - Du må ikke bruge Microsofts varemærker i dit produktnavn.
 - Dine slutbrugervilkår må ikke give mindre beskyttelse af Microsofts kode end Microsofts egne vilkår. En almindelig EULA, der forbyder reverse engineering i det omfang loven tillader, dækker det.
+- **Med AGPLv3 (2026-10-11):** Microsofts vilkår forbyder, at Distributable Code bliver underlagt en licens, der kræver kildekode ("Excluded License"). Visual C++-runtime hører under GPL-licensernes undtagelse for **systembiblioteker** (AGPLv3 §1, "System Libraries"), så den er ikke en del af SubForges kildekode og bliver ikke underlagt AGPLv3. Det er almindelig praksis for GPL-plugins på Windows. *Forbehold:* Det er ikke afprøvet i retten. Vil du helt undgå spørgsmålet, kan runtime linkes dynamisk igen (`/MD`), men så skal brugerne have Visual C++ Redistributable installeret *(tjek)*.
 
 Du skal selv have ret til at bruge den compiler, der bygger. **Visual Studio Community** er gratis til kommerciel brug for enkeltpersoner. GitHub Actions' Windows-runner har Visual Studio installeret, og byggeriet dér sker under GitHubs vilkår for runner-billedet *(tjek begge dele)*.
 
@@ -222,7 +236,14 @@ Du skal selv have ret til at bruge den compiler, der bygger. **Visual Studio Com
 
 ## 6. Opsummering
 
-**Kan SubForge sælges med lukket kildekode og de medfølgende mønstre? Ja, når to ting er på plads:**
+**Udgivelse som open source (gældende fra 2026-10-11):** SubForge kan udgives gratis under **AGPLv3** med de medfølgende presets og mønstre. Der skal ikke tegnes nogen JUCE-licens. Kravene er opfyldt:
+
+1. ✅ `LICENSE` (AGPLv3) i repoet og som `LICENSE.txt` i begge pakker, med licensnote i README, `INSTALL.txt`, `THIRD-PARTY-NOTICES.txt` og "About SubForge".
+2. ✅ Kildekoden er tilgængelig i det offentlige repo med et tag pr. release, og SDK-versionerne står i README og CI (se forbeholdet i §5.1).
+3. ✅ `THIRD-PARTY-NOTICES.txt` følger med og kontrolleres af CI.
+4. ✅ VST-varemærket: "VST®" ved første omtale, Steinbergs "VST Compatible"-logo i README og ændringslog, og varemærkesætningen i dokumentationen og "About SubForge" (via `THIRD-PARTY-NOTICES.txt`). Se `docs/RELEASE-CHECKLIST.md`.
+
+**Historik – salg med lukket kildekode (fravalgt). Kan SubForge sælges med lukket kildekode og de medfølgende mønstre? Ja, når to ting er på plads:**
 
 1. **Du har tegnet JUCE 8 Starter-licensen** og bekræftet vilkårene på juce.com (§5.1). Det gælder kun, så længe din samlede omsætning eller funding er højst 20.000 USD over 12 måneder.
 2. **`THIRD-PARTY-NOTICES.txt` følger med.** ✅ Udført i fase 2: den ligger i Linux- og Windows-pakken og vises i "About SubForge…". CI kontrollerer, at den er opdateret.
@@ -233,4 +254,4 @@ Der er ikke fundet andet, der forhindrer salg med lukket kildekode. Fase 6-genne
 
 **Begge anbefalinger fra fase 6 er udført:** Kommentarrettelsen (§5.5) og den statiske Visual C++-runtime (§5.6).
 
-**Varemærke (ikke licens):** VST3-udgaven må distribueres under MIT-licensen. Bruger du ordet "VST" eller VST-logoet i markedsføring, på salgssider eller i pakken, skal Steinbergs retningslinjer i `VST3_Usage_Guidelines.pdf` følges. `INSTALL.txt` indeholder allerede "VST is a registered trademark of Steinberg Media Technologies GmbH."
+**Varemærke (ikke licens):** VST3-udgaven må distribueres under MIT-licensen. Bruger du ordet "VST" eller VST-logoet i markedsføring, på websider eller i pakken, skal Steinbergs retningslinjer i `VST3_Usage_Guidelines.pdf` følges: logoet på hver webside, der nævner VST, "VST®" ved første omtale og varemærkesætningen i dokumentation og credits. Logoet i `docs/images/` er hentet fra Steinbergs officielle repo `steinbergmedia/vst3_doc` (`artwork/`, MIT).

@@ -109,19 +109,20 @@ if (SUBFORGE_INSTALL_AFTER_BUILD)
 endif()
 
 # Release archive with the CLAP and VST3 plug-ins, the licence, the changelog,
-# the third-party notices and install notes: dist/SubForge-<version>-linux-x86_64.tar.gz on Linux,
-# dist/SubForge-<version>-windows-x64.zip on Windows.
+# the third-party notices and install notes: dist/SubForge-linux-x86_64.tar.gz on Linux,
+# dist/SubForge-windows-x64.zip on Windows. The file names carry no version so the README can
+# link to the latest release; the folder inside the archive does.
 if (WIN32)
     set(SUBFORGE_PACKAGE_TARGET package-windows)
     set(SUBFORGE_PACKAGE_NAME "SubForge-${PROJECT_VERSION}-windows-x64")
-    set(SUBFORGE_PACKAGE_FILE "${SUBFORGE_PACKAGE_NAME}.zip")
+    set(SUBFORGE_PACKAGE_FILE "SubForge-windows-x64.zip")
     set(SUBFORGE_TAR_FLAGS cf)
     set(SUBFORGE_PACKAGE_FORMAT --format=zip)
     set(SUBFORGE_INSTALL_NOTES "${CMAKE_SOURCE_DIR}/packaging/INSTALL-windows.txt")
 else()
     set(SUBFORGE_PACKAGE_TARGET package-linux)
     set(SUBFORGE_PACKAGE_NAME "SubForge-${PROJECT_VERSION}-linux-x86_64")
-    set(SUBFORGE_PACKAGE_FILE "${SUBFORGE_PACKAGE_NAME}.tar.gz")
+    set(SUBFORGE_PACKAGE_FILE "SubForge-linux-x86_64.tar.gz")
     set(SUBFORGE_TAR_FLAGS cfz)
     set(SUBFORGE_PACKAGE_FORMAT --format=gnutar)
     set(SUBFORGE_INSTALL_NOTES "${CMAKE_SOURCE_DIR}/packaging/INSTALL-linux.txt")

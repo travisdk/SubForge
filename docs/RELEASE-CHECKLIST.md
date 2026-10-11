@@ -10,7 +10,7 @@ SubForge udgives gratis som open source under **GNU AGPLv3** og vedligeholdes ik
 2. **Ændringslog:** Flyt punkterne under "Unreleased" i `CHANGELOG.md` til en ny versionssektion med dato, og opdatér linkene nederst.
 3. **Tredjepartsnoter:** Kør `python3 scripts/generate-third-party-notices.py`, hvis en afhængighed er ændret. CI fejler, hvis filen er forældet.
 4. **Commit og push** til `master`, og vent på, at CI ("Build") er grøn.
-5. **Tag og release:** `git tag vX.Y.Z` og `git push origin vX.Y.Z`. Opret en GitHub Release fra tagget med de to pakker fra CI-kørslen (`SubForge-X.Y.Z-linux-x86_64.tar.gz` og `SubForge-X.Y.Z-windows-x64.zip`) og ændringerne fra `CHANGELOG.md`.
+5. **Tag og release:** `git tag vX.Y.Z` og `git push origin vX.Y.Z`. Opret en GitHub Release fra tagget med de to pakker fra CI-kørslen (`SubForge-linux-x86_64.tar.gz` og `SubForge-windows-x64.zip`) og ændringerne fra `CHANGELOG.md`. Navnene må ikke ændres, for README linker direkte til dem via `releases/latest/download/…`.
 6. **Test i Ardour:** Husk at scanne pluginnet igen (Window → Plugin Manager → Re-scan), ellers skjuler Ardour den nye build.
 
 ## Skal altid overholdes

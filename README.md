@@ -2,16 +2,22 @@
 
 SubForge is a monophonic bass synthesizer with a built-in 16-step sequencer,
 for Linux and Windows. It comes as a CLAP and a VST®3 plug-in, plus a
-standalone app.
+standalone app. Free and open source.
+
+**Download the latest version:**
+[**Linux** (x86-64, .tar.gz)](https://github.com/travisdk/SubForge/releases/latest/download/SubForge-linux-x86_64.tar.gz)
+·
+[**Windows** (64-bit, .zip)](https://github.com/travisdk/SubForge/releases/latest/download/SubForge-windows-x64.zip)
+· [all releases](https://github.com/travisdk/SubForge/releases)
+
+> **Not actively maintained.** I am not working on SubForge any more and
+> share it as it is. I may fix things now and then, but there is no support
+> and no promise of updates. Bug reports and pull requests are welcome, but
+> may go unanswered. You are free to fork it and carry it on.
 
 <a href="https://www.steinberg.net/"><img src="docs/images/VST_Compatible_Logo_Steinberg.png" alt="VST Compatible" width="96"></a>
 
 ![SubForge](docs/images/screenshot.png)
-
-> **Not actively maintained.** SubForge is shared as it is. I may fix things
-> now and then, but there is no support and no promise of updates. Bug
-> reports and pull requests are welcome, but may go unanswered. You are free
-> to fork it and carry it on.
 
 ## Features
 
@@ -30,11 +36,15 @@ See [CHANGELOG.md](CHANGELOG.md) for the full list.
 
 ## Download and install
 
-Ready-built plug-ins are on the
-[Releases page](https://github.com/travisdk/SubForge/releases):
+Download the ready-built plug-ins for your system (always the latest
+release):
 
-- `SubForge-<version>-linux-x86_64.tar.gz` for Linux (x86-64)
-- `SubForge-<version>-windows-x64.zip` for Windows (64-bit)
+- **Linux** (x86-64):
+  [SubForge-linux-x86_64.tar.gz](https://github.com/travisdk/SubForge/releases/latest/download/SubForge-linux-x86_64.tar.gz)
+- **Windows** (64-bit):
+  [SubForge-windows-x64.zip](https://github.com/travisdk/SubForge/releases/latest/download/SubForge-windows-x64.zip)
+
+Older versions are on the [Releases page](https://github.com/travisdk/SubForge/releases).
 
 Each archive contains `INSTALL.txt` with the install steps. In short, copy
 `SubForge.clap` and/or the `SubForge.vst3` folder to your plug-in folder:

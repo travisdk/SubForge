@@ -13,6 +13,10 @@ tag the commit (`vX.Y.Z`).
 ### Changed
 - Every source file now carries a copyright and licence notice
   (`AGPL-3.0-only`), and the README explains the rules for forks.
+- The release archives are named without a version
+  (`SubForge-linux-x86_64.tar.gz`, `SubForge-windows-x64.zip`), so the README
+  can link straight to the latest download. The folder inside still has the
+  version.
 
 ## [1.0.0] – 2026-10-11
 

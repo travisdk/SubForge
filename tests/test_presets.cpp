@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Henrik Juhl. Part of SubForge, licensed under the GNU AGPLv3 (see LICENSE).
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Factory presets and the randomizer: every patch renders finite audio and gets
 // a sensible normalised volume; preset names are unique.
 #include "Patches.h"

@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Henrik Juhl. Part of SubForge, licensed under the GNU AGPLv3 (see LICENSE).
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Sequencer engine: timing independent of the host block size, swing,
 // no stuck notes after slides, loops or stopping.
 #include "Sequencer.h"

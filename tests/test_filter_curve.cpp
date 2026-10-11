@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Henrik Juhl. Part of SubForge, licensed under the GNU AGPLv3 (see LICENSE).
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // The GUI's filter curve (FilterResponse.h) must match the DSP filters: drive
 // each filter with small sine waves and compare the measured gain.
 #include "FilterResponse.h"

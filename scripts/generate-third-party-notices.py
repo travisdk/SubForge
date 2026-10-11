@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# Copyright (C) 2026 Henrik Juhl. Part of SubForge, licensed under the GNU AGPLv3 (see LICENSE).
+# SPDX-License-Identifier: AGPL-3.0-only
+
 """Builds THIRD-PARTY-NOTICES.txt from the licence files that ship with the
 dependencies, so no licence text is ever typed by hand.
 

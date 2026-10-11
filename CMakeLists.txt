@@ -1,3 +1,6 @@
+# Copyright (C) 2026 Henrik Juhl. Part of SubForge, licensed under the GNU AGPLv3 (see LICENSE).
+# SPDX-License-Identifier: AGPL-3.0-only
+
 cmake_minimum_required(VERSION 3.22)
 project(SubForge VERSION 1.0.0)
 

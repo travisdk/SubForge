@@ -1,3 +1,6 @@
+# Copyright (C) 2026 Henrik Juhl. Part of SubForge, licensed under the GNU AGPLv3 (see LICENSE).
+# SPDX-License-Identifier: AGPL-3.0-only
+
 # Builds SubForge (CLAP + VST3) on Linux and Windows, runs the unit tests,
 # checks the third-party notices and uploads the release archives.
 # Runs on GitHub only after a push; nothing here is needed for local builds.

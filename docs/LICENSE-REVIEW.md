@@ -156,7 +156,7 @@ Det betyder:
 
 | Krav i AGPLv3 | Sådan opfyldes det |
 |---|---|
-| Hele programmet (SubForge + JUCE) skal stå under AGPLv3, når det distribueres | `LICENSE` i repoet, `LICENSE.txt` i begge pakker, note i README, `INSTALL.txt`, `THIRD-PARTY-NOTICES.txt` og "About SubForge" |
+| Hele programmet (SubForge + JUCE) skal stå under AGPLv3, når det distribueres | Valgt variant: **AGPL-3.0-only** (kun version 3, som JUCE). Hver kildefil har en copyright- og SPDX-linje. `LICENSE` i repoet, `LICENSE.txt` i begge pakker, note i README, `INSTALL.txt`, `THIRD-PARTY-NOTICES.txt` og "About SubForge" |
 | Modtagere skal kunne få den tilsvarende kildekode (§6) | Repoet er offentligt (`github.com/travisdk/SubForge`), og hver release har et git-tag. README og CI angiver de præcise versioner af JUCE (tag `8.0.15`) og clap-juce-extensions (commit `7adee3a`), som hentes fra deres officielle repos. *Forbehold:* Strengt taget skal du sikre, at kildekoden er tilgængelig, så længe du tilbyder binærerne. Vil du være helt uafhængig af JUCEs og CLAP-projektets repos, kan du lægge et kildearkiv med SDK'erne ved hver release |
 | Netværksbrug (§13, det der adskiller AGPL fra GPL) | Ikke relevant. SubForge tilbyder ingen netværkstjeneste |
 | Ingen ekstra begrænsninger | Der er ingen EULA, licensnøgle eller kopibeskyttelse |

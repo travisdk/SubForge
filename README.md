@@ -105,18 +105,27 @@ that off with `-DSUBFORGE_INSTALL_AFTER_BUILD=OFF`.
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) explains how the code is put
 together (in Danish).
 
+## Forks and contributions
+
+You are welcome to fork SubForge and change it in your own repository. Only
+I can change this repository: pull requests are welcome, but I decide
+whether to merge them, and they may go unanswered.
+
+If you share a modified version, the licence requires that you keep the
+copyright and licence notices, mark your changes as yours, and publish your
+source code under the same licence.
+
 ## Licence
 
+Copyright © 2026 Henrik Juhl
+
 SubForge is free software: you can redistribute it and/or modify it under
-the terms of the [GNU Affero General Public License, version 3](LICENSE). It
-comes with **no warranty**.
+the terms of the [GNU Affero General Public License, version 3](LICENSE)
+(SPDX: `AGPL-3.0-only`). It comes with **no warranty**.
 
 SubForge is built with [JUCE](https://juce.com), used under the AGPLv3. The
 other bundled components (CLAP, the VST3 SDK, HarfBuzz, the Chakra Petch and
 JetBrains Mono fonts and others) are under permissive licences, listed with
 their full texts in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
-
-If you distribute a modified version, the AGPLv3 requires you to make your
-source code available under the same licence.
 
 VST is a registered trademark of Steinberg Media Technologies GmbH.

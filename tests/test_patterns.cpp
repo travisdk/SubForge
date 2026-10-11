@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Henrik Juhl. Part of SubForge, licensed under the GNU AGPLv3 (see LICENSE).
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Factory patterns, the compact text form and the project-state string form.
 #include "PatternLibrary.h"
 #include "TestUtils.h"

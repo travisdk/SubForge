@@ -1,3 +1,6 @@
+// Copyright (C) 2026 Henrik Juhl. Part of SubForge, licensed under the GNU AGPLv3 (see LICENSE).
+// SPDX-License-Identifier: AGPL-3.0-only
+
 // Anti-aliasing: saw and square with the band-limited step, and the triangle
 // with its integrated version, must be clearly closer to an additive
 // band-limited reference than the naive waveforms.

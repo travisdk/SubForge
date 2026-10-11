@@ -10,6 +10,10 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+### Changed
+- Every source file now carries a copyright and licence notice
+  (`AGPL-3.0-only`), and the README explains the rules for forks.
+
 ## [1.0.0] – 2026-10-11
 
 First public release, as free software under the GNU AGPLv3.

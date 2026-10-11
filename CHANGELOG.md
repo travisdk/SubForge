@@ -10,7 +10,9 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
-First version, not yet released. Everything below is new.
+## [1.0.0] – 2026-10-11
+
+First public release, as free software under the GNU AGPLv3.
 
 ### Sound
 - Monophonic bass synth with saw, square, pulse, sine and triangle
@@ -44,7 +46,14 @@ First version, not yet released. Everything below is new.
 - "About SubForge" panel with the third-party notices.
 
 ### Formats and platforms
-- CLAP and VST3 plug-ins plus a standalone app, for Linux (x86-64) and
-  Windows (x64).
+- CLAP and VST®3 plug-ins plus a standalone app, for Linux (x86-64) and
+  Windows (x64). No macOS version.
 - The Windows build includes the Visual C++ runtime, so nothing extra has to
   be installed.
+
+<img src="docs/images/VST_Compatible_Logo_Steinberg.png" alt="VST Compatible" width="72">
+
+VST is a registered trademark of Steinberg Media Technologies GmbH.
+
+[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/travisdk/SubForge/releases/tag/v1.0.0

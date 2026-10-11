@@ -5,6 +5,11 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# MSVC: link the C++ runtime statically (/MT). A plug-in runs inside the host's process, so a
+# dynamic MSVCP140.dll would have to be installed on the user's PC and could be an older version
+# already loaded by the host. Set before any target is created, so JUCE and the CLAP wrapper match.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 # SDKs default to ~/SDKs (Linux, macOS) or %USERPROFILE%\SDKs (Windows); override with -DJUCE_DIR=... etc.
 if (WIN32)
     file(TO_CMAKE_PATH "$ENV{USERPROFILE}" SUBFORGE_HOME)

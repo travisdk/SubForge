@@ -20,7 +20,10 @@ HOME = Path.home()
 HEADER = """SubForge – Third-party notices
 © 2026 Henrik Juhl
 
-Built with JUCE, used under a commercial JUCE licence.
+SubForge is free software under the GNU Affero General Public License v3
+(see the LICENSE file). Source code: https://github.com/travisdk/SubForge
+Built with JUCE, used under the AGPLv3.
+VST is a registered trademark of Steinberg Media Technologies GmbH.
 
 SubForge includes the third-party components listed below. Each section
 reproduces the component's licence text exactly as it appears in the

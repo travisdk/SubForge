@@ -4,7 +4,7 @@
 namespace
 {
 using P = SubForgeLookAndFeel::Palette;
-constexpr int kPanelWidth = 640, kPanelHeight = 420, kHeaderHeight = 96;
+constexpr int kPanelWidth = 640, kPanelHeight = 440, kHeaderHeight = 116;
 } // namespace
 
 AboutOverlay::AboutOverlay (SubForgeLookAndFeel& lf, std::function<void()> onClose)
@@ -55,8 +55,9 @@ void AboutOverlay::paint (juce::Graphics& g)
     g.drawText (juce::String::fromUTF8 ("Mono bass synth  \xc2\xb7  version ") + JucePlugin_VersionString,
                 header.removeFromTop (20), juce::Justification::centredLeft);
     g.setColour (P::dimText);
-    g.drawText (juce::String::fromUTF8 ("\xc2\xa9 2026 Henrik Juhl  \xc2\xb7  Built with JUCE, used under a commercial JUCE licence."),
+    g.drawText (juce::String::fromUTF8 ("\xc2\xa9 2026 Henrik Juhl  \xc2\xb7  Free software under the GNU AGPLv3, with no warranty"),
                 header.removeFromTop (20), juce::Justification::centredLeft);
+    g.drawText ("Source code: github.com/travisdk/SubForge", header.removeFromTop (20), juce::Justification::centredLeft);
 }
 
 void AboutOverlay::resized()

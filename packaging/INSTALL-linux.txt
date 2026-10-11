@@ -1,8 +1,8 @@
 SubForge – installation on Linux
 ================================
 
-The archive contains SubForge in two plug-in formats. Install the one your
-DAW uses, or both.
+The archive contains SubForge in two plug-in formats, CLAP and VST®3.
+Install the one your DAW uses, or both.
 
 CLAP (Bitwig Studio, REAPER and others):
 
@@ -21,6 +21,11 @@ Restart your DAW or rescan plug-ins. SubForge appears as an instrument.
 Your sound presets are saved in ~/Documents/SubForge/Presets/, patterns in
 ~/Documents/SubForge/Patterns/ and settings in ~/.config/SubForge/.
 Removing the plug-in leaves them in place.
+
+SubForge is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License, version 3 (LICENSE.txt).
+It comes with no warranty. Source code and releases:
+https://github.com/travisdk/SubForge
 
 Third-party licences are listed in THIRD-PARTY-NOTICES.txt and in the
 plug-in under the gear menu > About SubForge.

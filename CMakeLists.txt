@@ -105,8 +105,8 @@ if (SUBFORGE_INSTALL_AFTER_BUILD)
         COMMENT "Installing SubForge.clap into ${CLAP_INSTALL_DIR}")
 endif()
 
-# Release archive with the CLAP and VST3 plug-ins, the third-party notices and
-# install notes: dist/SubForge-<version>-linux-x86_64.tar.gz on Linux,
+# Release archive with the CLAP and VST3 plug-ins, the licence, the changelog,
+# the third-party notices and install notes: dist/SubForge-<version>-linux-x86_64.tar.gz on Linux,
 # dist/SubForge-<version>-windows-x64.zip on Windows.
 if (WIN32)
     set(SUBFORGE_PACKAGE_TARGET package-windows)
@@ -129,6 +129,8 @@ add_custom_target(${SUBFORGE_PACKAGE_TARGET}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${SUBFORGE_PACKAGE_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:SubForge_CLAP> ${SUBFORGE_PACKAGE_DIR}/
     COMMAND ${CMAKE_COMMAND} -E copy_directory $<TARGET_FILE_DIR:SubForge_VST3>/../.. ${SUBFORGE_PACKAGE_DIR}/SubForge.vst3
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/LICENSE ${SUBFORGE_PACKAGE_DIR}/LICENSE.txt
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/CHANGELOG.md ${SUBFORGE_PACKAGE_DIR}/
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_SOURCE_DIR}/THIRD-PARTY-NOTICES.txt ${SUBFORGE_PACKAGE_DIR}/
     COMMAND ${CMAKE_COMMAND} -E copy ${SUBFORGE_INSTALL_NOTES} ${SUBFORGE_PACKAGE_DIR}/INSTALL.txt
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/dist

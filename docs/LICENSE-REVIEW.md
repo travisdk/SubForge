@@ -84,7 +84,7 @@ Ingen GPL- eller LGPL-biblioteker indgår i Windows-udgaverne.
 - Al kode i `Source/` er skrevet i dette projekt af en AI-assistent (Claude) i samarbejde med ejeren. Jeg kender ikke til, at noget er kopieret ordret fra andre projekter. En AI-model kan dog ikke helt udelukke, at korte, meget udbredte kodestykker ligner noget fra dens træningsdata.
 - Migreringen til JUCE 8 ændrede kun to linjer i `Source/` (`FontOptions` i `SubForgeLookAndFeel.h`).
 - **Fase 6, ny søgning (2026-10-11):** Den samme `grep` over `Source/`, `tests/`, `scripts/` og `CMakeLists.txt` fandt kun projektets egne henvisninger (til denne rapport og til licensfilerne, som scriptet læser). Der er ikke tilføjet afhængigheder siden sidste gennemgang. Fase 4 og 5 tilføjede kun JUCEs egen VST3-understøttelse, CI-opsætning og egen kode.
-- **Varemærkeord:** En søgning efter kendte produkt- og firmanavne (Moog, Roland, TB-303, Big Muff, Tube Screamer m.fl.) fandt kun én kommentar: `Source/BassSynth.h:374` "Muff-style tone". Den er kun en kodekommentar og kommer ikke med i binæren eller GUI'en, men kan omformuleres for en sikkerheds skyld (forslag i §5.5). `kDiode303` er et internt enum-navn, som vises som "Diode".
+- **Varemærkeord:** En søgning efter kendte produkt- og firmanavne (Moog, Roland, TB-303, Big Muff, Tube Screamer m.fl.) fandt kun én kommentar i `Source/BassSynth.h:374` med et pedal-varemærke. Den kom ikke med i binæren eller GUI'en, men er nu omformuleret til "Scooped fuzz tone" (§5.5). Ny søgning efter rettelsen finder ingen varemærkeord i `Source/`, `tests/` eller `packaging/`. `kDiode303` er et internt enum-navn, som vises som "Diode".
 
 | Fil / linjer | Hvad | Sandsynlig kilde | Licens | Vurdering |
 |---|---|---|---|---|
@@ -201,7 +201,7 @@ JUCE 8 har ingen ISC-moduler, så der er ingen JUCE-ISC-note. JUCE selv er dækk
 
 Alt er selv genereret. De 15 presetnavne med varemærkepræg er omdøbt til neutrale navne, og kommentarer i kildekoden beskriver nu acid-stilen uden varemærkenavne.
 
-**Rest fundet i fase 6:** én kommentar, `Source/BassSynth.h:374` "Muff-style tone". Forslag: skriv i stedet "Scooped fuzz tone". Ændringen rører kun en kommentar, og binæren er uændret. **Indsats: meget lille.** *Ikke udført, fordi fase 6 kun ændrer dokumentation. Afventer din beslutning.*
+**Rest fundet i fase 6:** én kodekommentar i `Source/BassSynth.h:374` med et pedal-varemærke. **Udført efter fase 6 efter din beslutning:** Kommentaren hedder nu "Scooped fuzz tone". Kun kommentaren er ændret, og lyden er bit-identisk.
 
 ### 5.6 Visual C++-runtime på Windows (ikke licens, men salg og support) – udført
 
@@ -231,6 +231,6 @@ Du skal selv have ret til at bruge den compiler, der bygger. **Visual Studio Com
 
 Der er ikke fundet andet, der forhindrer salg med lukket kildekode. Fase 6-gennemgangen (2026-10-11) fandt ingen nye afhængigheder og ingen copyleft-kode, og Windows-udgaverne linker ikke GPL- eller LGPL-biblioteker.
 
-**Anbefalet før salg (ikke licenskrav):** Den lille kommentarrettelse (§5.5). Den statiske Visual C++-runtime (§5.6) er udført.
+**Begge anbefalinger fra fase 6 er udført:** Kommentarrettelsen (§5.5) og den statiske Visual C++-runtime (§5.6).
 
 **Varemærke (ikke licens):** VST3-udgaven må distribueres under MIT-licensen. Bruger du ordet "VST" eller VST-logoet i markedsføring, på salgssider eller i pakken, skal Steinbergs retningslinjer i `VST3_Usage_Guidelines.pdf` følges. `INSTALL.txt` indeholder allerede "VST is a registered trademark of Steinberg Media Technologies GmbH."

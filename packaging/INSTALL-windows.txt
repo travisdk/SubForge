@@ -17,6 +17,12 @@ For all users (needs administrator rights):
 Create the folder if it does not exist, then restart your DAW or rescan
 plug-ins. SubForge appears as an instrument.
 
+If the SubForge window looks blurry, is the wrong size or is cut off when
+Windows display scaling is above 100 %, your DAW is probably stretching the
+plug-in window. SubForge scales itself, so turn that DAW setting off for
+SubForge. In Ableton Live: right-click SubForge in the browser and untick
+"Auto-Scale Plug-in Window", then reopen the plug-in.
+
 Your sound presets are saved in Documents\SubForge\Presets\, patterns in
 Documents\SubForge\Patterns\ and settings in %APPDATA%\SubForge\.
 Removing the plug-in leaves them in place.

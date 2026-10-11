@@ -371,7 +371,7 @@ struct Distortion
 
         if (type == kDistFuzz)
         {
-            // Muff-style tone: blend from dark lowpass to thin highpass, scooped in between
+            // Scooped fuzz tone: blend from dark lowpass to thin highpass, scooped in between
             const float low = fuzzLow.lowpass (y, fuzzLowG);
             const float high = fuzzHigh.highpass (y, fuzzHighG);
             y = (1.0f - tone) * low + tone * high * 1.5f;

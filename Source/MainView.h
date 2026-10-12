@@ -80,6 +80,7 @@ private:
     void layoutKnobRow (juce::Rectangle<int> area, std::initializer_list<juce::Component*> items);
     void drawLogo (juce::Graphics&, juce::Rectangle<float> area);
     void setSequencerVisible (bool visible);
+    void showSequencerDetails (bool visible);
     juce::Rectangle<int> sequencerPanel() const;
 
     SubForgeProcessor& processor;

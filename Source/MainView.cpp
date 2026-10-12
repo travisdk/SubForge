@@ -115,7 +115,7 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
         addAndMakeVisible (c);
     sequencerToggle.onClick = [this] { setSequencerVisible (! sequencerVisible); };
     sequencerVisible = processor.getSettings().getBoolValue ("showSequencer", true);
-    stepGrid.setVisible (sequencerVisible);
+    showSequencerDetails (sequencerVisible);
 
     processor.addChangeListener (this);
     sound().rescan(); // pick up files added since the plugin was loaded
@@ -132,18 +132,26 @@ juce::Rectangle<int> MainView::sequencerPanel() const
     return sequencerVisible ? kSeqPanel : kSeqPanel.withHeight (42);
 }
 
-// Hiding the steps keeps the sequencer's control row (on/off, groove, patterns)
-// and makes the whole interface shorter; the choice is remembered globally.
+// Collapsing the sequencer leaves only its title and on/off switch, so a running
+// sequencer can still be stopped; the choice is remembered globally.
 void MainView::setSequencerVisible (bool visible)
 {
     sequencerVisible = visible;
-    stepGrid.setVisible (visible);
+    showSequencerDetails (visible);
     processor.getSettings().setValue ("showSequencer", visible);
     processor.getSettings().saveIfNeeded();
     setSize (kWidth, designHeight());
     resized();
     repaint();
     designHeightChanged();
+}
+
+void MainView::showSequencerDetails (bool visible)
+{
+    for (auto* c : std::initializer_list<juce::Component*> { &seqRate, &seqSteps, &seqGate, &seqSwing, &seqRoot,
+                                                              &patternPrev, &patternBox, &patternNext, &patternSave,
+                                                              &generateButton, &patternMenuButton, &stepGrid })
+        c->setVisible (visible);
 }
 
 MainView::~MainView()
@@ -211,8 +219,11 @@ void MainView::paint (juce::Graphics& g)
     g.setColour (P::dimText);
     g.setFont (lookAndFeel.titleFont (10.5f).withExtraKerningFactor (0.18f));
     g.drawText ("SOUND", 334, 16, 46, 34, juce::Justification::centredRight);
-    g.setFont (lookAndFeel.titleFont (9.5f).withExtraKerningFactor (0.12f));
-    g.drawText ("PATTERN", 520, kSeqPanel.getY() + 10, 40, 24, juce::Justification::centredRight);
+    if (sequencerVisible)
+    {
+        g.setFont (lookAndFeel.titleFont (9.5f).withExtraKerningFactor (0.12f));
+        g.drawText ("PATTERN", 520, kSeqPanel.getY() + 10, 40, 24, juce::Justification::centredRight);
+    }
 
     g.setColour (P::dimText);
     g.setFont (lookAndFeel.labelFont (11.0f).withExtraKerningFactor (0.1f));

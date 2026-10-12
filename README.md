@@ -56,8 +56,8 @@ Each archive contains `INSTALL.txt` with the install steps. In short, copy
 
 Then rescan plug-ins in your DAW. SubForge appears as an instrument.
 
-**Tested with:** REAPER, Bitwig Studio and Ardour on Linux. The Windows build
-is made by CI and has not been tested much on real hardware.
+**Tested with:** REAPER and Bitwig Studio 6.1 on Linux Mint, and Ableton
+Live 12 and FL Studio 2026 on Windows.
 
 **No macOS version.** I have no Mac to build and test on. The code is plain
 JUCE and may well build on macOS, but you are on your own there.

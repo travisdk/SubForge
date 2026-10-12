@@ -66,7 +66,7 @@ Sådan deler de data uden låse:
 
 ```
  osc1 + osc2 (detune) ──┐
-                        ├─► + sub-osc ─► drive ─► filter ─► reso-makeup ─► + click ─► × amp-env × velocity × accent ─► distortion ─► × volume
+                        ├─► + sub-osc ─► drive ─► filter ─► reso-makeup ─► + click ─► × amp-env × velocity × accent ─► distortion ─► DC-blocker ─► × volume
  pitch: tone + glide + bend + oktav + vibrato + pitch-envelope
  cutoff: knap + filter-env + accent(+sweep) + LFO + key track + modhjul/aftertouch
 ```
@@ -112,7 +112,15 @@ Sådan deler de data uden låse:
 - **Hvorfor IIR og ikke FIR:** lav latens og lavt CPU-forbrug. Faseforvrængningen høres ikke på en bas.
 - Stemmen er mono. Til sidst kopieres den til alle udgangskanaler.
 
-### 3.6 Niveau på fabrikspresets (`Patches.h:280`)
+### 3.6 Klik og DC
+
+- **DC-blocker:** `tanh` på filterets indgang gør asymmetriske bølgeformer (saw, pulse, saw + sub) til en DC-forskydning, også uden distortion. Med Diode-filteret kunne den komme op på 3 dB under signalets RMS. Et 5 Hz highpass til sidst i kæden (`postProcess`) fjerner den.
+- **Hale efter tonen:** Når amp-envelopen er færdig, kører distortion og DC-blocker videre på stilhed, til deres filtre er faldet til ro (`tailSettled`). Før blev de skåret af midt i halen, hvilket gav et klik på op til -12 dB ved hver tone-slutning med distortion slået til.
+- **Udglattede knapper:** Volume, Drive, Sub, Resonance, Distortion Gain og Mix glider over ca. 5 ms i stedet for at springe én gang pr. blok. Velocity og accent glider over 2 ms, når en tone genstartes, mens den forrige stadig klinger. Starter tonen fra stilhed, gælder de nye værdier med det samme.
+- **Skift mellem valg:** Filter mode og distortion-type skiftes, mens udgangen er tonet ud (1,5 ms ned og 1,5 ms op). Et filter, der kommer i brug igen, starter fra nul i stedet for fra gammel tilstand. Bølgeform og sub-bølgeform krydstones over 5 ms ved samme fase.
+- `tests/test_voice.cpp` måler alle fire ting. Mod den gamle kode fejler 22 af kontrollerne.
+
+### 3.7 Niveau på fabrikspresets (`Patches.h:280`)
 
 Når et fabrikspreset indlæses, renderer `normalizedVolumeDb()` en kort tone offline og sætter Volume, så alle presets spiller omtrent lige højt. Det sker på beskedtråden og ikke under afspilning. Brugerpresets gemmer deres Volume direkte og normaliseres ikke.
 
@@ -234,6 +242,7 @@ Lyd og mønstre er **to uafhængige systemer**. Et lydpreset rører aldrig seque
 | `test_sequencer` | Identisk timing ved tre blokstørrelser, ingen hængende toner, swing, loop-spring |
 | `test_filter_curve` | GUI-kurven stemmer med filteret (±0,5 dB) |
 | `test_oscillator` | Anti-aliasing virker (målt mod naive bølgeformer) |
+| `test_voice` | Ingen DC på udgangen, intet klik ved tone-slutning, genstart eller skift af filter, distortion og bølgeform |
 
 Testene bruger kun C++-standardbiblioteket, fordi DSP og sequencer ikke afhænger af JUCE.
 

@@ -10,6 +10,18 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+### Fixed
+- The output no longer carries a DC offset. The saturating filter input made
+  one from asymmetric waveforms, even with the distortion off.
+- No click at the end of a note when the distortion is on. Its filters now
+  ring out instead of being cut off.
+- No click when a note restarts while the previous one is still sounding
+  with a different velocity or accent, as in sequencer lines at 100 % gate.
+- Volume, Drive, Sub, Resonance and the distortion knobs glide instead of
+  stepping, so automating them no longer crackles.
+- Switching the filter mode, distortion type or waveform during a note no
+  longer clicks.
+
 ### Changed
 - Every source file now carries a copyright and licence notice
   (`AGPL-3.0-only`), and the README explains the rules for forks.

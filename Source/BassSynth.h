@@ -131,7 +131,30 @@ struct Oscillator
     // wave: 0 saw, 1 square, 2 pulse 25%, 3 sine, 4 triangle
     float next (float inc, int wave)
     {
-        const float t = phase;
+        const float out = shape (phase, inc, wave);
+        advance (inc);
+        return out;
+    }
+
+    // Blends from one wave to another at the same phase, for click-free switching.
+    float nextCrossfade (float inc, int fromWave, int toWave, float amount)
+    {
+        const float from = shape (phase, inc, fromWave);
+        const float out = from + amount * (shape (phase, inc, toWave) - from);
+        advance (inc);
+        return out;
+    }
+
+private:
+    void advance (float inc)
+    {
+        phase += inc;
+        if (phase >= 1.0f)
+            phase -= 1.0f;
+    }
+
+    static float shape (float t, float inc, int wave)
+    {
         float out;
 
         if (wave == 0)
@@ -162,10 +185,6 @@ struct Oscillator
             out += -2.0f * stepResidualAtWrap (t2, inc); // falls by 2 at phase pw
             out -= 2.0f * pw - 1.0f; // remove DC of asymmetric pulse
         }
-
-        phase += inc;
-        if (phase >= 1.0f)
-            phase -= 1.0f;
         return out;
     }
 };
@@ -325,6 +344,15 @@ struct Distortion
     {
         for (auto* filter : { &preHighpass, &toneA, &toneB, &dcBlocker, &cabA, &cabB, &fuzzLow, &fuzzHigh })
             filter->s = 0.0f;
+    }
+
+    // True once the filters have rung out, so feeding silence would give silence.
+    bool isSettled() const
+    {
+        for (auto* filter : { &preHighpass, &toneA, &toneB, &dcBlocker, &cabA, &cabB, &fuzzLow, &fuzzHigh })
+            if (std::abs (filter->s) > 1.0e-6f)
+                return false;
+        return true;
     }
 
     void setTone (float tone) { toneG = OnePole::coefFor (800.0f * std::pow (20.0f, tone), fs); } // 800 Hz..16 kHz
@@ -507,10 +535,19 @@ public:
         lfoSmoothCoef = std::exp (-1.0f / (0.002f * fs));
         clickLowpass = 1.0f - std::exp (-2.0f * kPi * 6000.0f / fs);
         diodeHighpassG = std::tan (kPi * 60.0f / fs);
+        paramSmoothCoef = std::exp (-1.0f / (0.005f * fs));
+        noteSmoothCoef = std::exp (-1.0f / (0.002f * fs));
+        switchRampStep = 1.0f / (0.0015f * fs);
+        waveFadeStep = 1.0f / (0.005f * fs);
+        outputDcG = OnePole::coefFor (5.0f, fs);
         distortion.prepare (fs);
         reset();
         setParams (params);
         logCutoff = std::log2 (params.cutoffHz);
+        active = params;
+        smoothed = params;
+        switchGain = 1.0f;
+        waveFade = 1.0f;
     }
 
     void reset()
@@ -528,6 +565,8 @@ public:
         pitchEnv = 0.0f;
         clickEnv = 0.0f;
         sweepState = 0.0f;
+        outputDcBlocker.s = 0.0f;
+        tailSettled = true;
     }
 
     void setParams (const BassParams& p)
@@ -581,7 +620,11 @@ public:
                 osc1.reset();
                 osc2.reset();
                 subOsc.reset();
+                // nothing is sounding, so the new level can start at once; a retrigger glides to it
+                velScaleSmoothed = velScale;
+                accentSmoothed = accented ? params.accent : 0.0f;
             }
+            tailSettled = false;
             if (params.lfoRetrigger)
                 lfo.reset();
             amp.noteOn();
@@ -616,20 +659,24 @@ public:
 
     void render (float* out, int numSamples)
     {
-        const bool useDiode = params.filterMode == kDiode303;
-        const float maxFeedback = useDiode ? DiodeLadderFilter::kCriticalFeedback : 3.95f;
-        const float driveGain = 1.0f + params.drive * 9.0f;
-        const float driveMakeup = 1.0f / (1.0f + params.drive * 2.0f);
         const float targetLogCutoff = std::log2 (params.cutoffHz);
-        const float accentAmount = accented ? params.accent : 0.0f;
         const float envOctaves = params.envAmount * 7.0f;
-        const float accentGain = 1.0f + accentAmount * 0.5f;
         const float maxCutoff = std::min (20000.0f, 0.45f * fs);
-        const int subWave = params.subWave == 0 ? 3 : 1;
+        const float accentTarget = accented ? params.accent : 0.0f;
 
         const float syncBeats = kLfoSyncBeats[std::clamp (params.lfoSync, 0, kNumLfoSyncs - 1)];
         const float lfoHz = syncBeats > 0.0f ? tempoBpm / 60.0f / syncBeats : params.lfoRateHz;
         const float lfoInc = lfoHz / fs;
+
+        if (params.wave != active.wave || params.subWave != active.subWave)
+        {
+            previousWave = active.wave;
+            previousSubWave = active.subWave;
+            active.wave = params.wave;
+            active.subWave = params.subWave;
+            waveFade = amp.isActive() ? 0.0f : 1.0f;
+        }
+        bool switchPending = params.filterMode != active.filterMode || params.distType != active.distType;
 
         for (int i = 0; i < numSamples; ++i)
         {
@@ -637,28 +684,61 @@ public:
             const float lfoValue = lfo.next (lfoInc, params.lfoShape, lfoSmoothCoef);
             wheelValue = wheelTarget + (wheelValue - wheelTarget) * modSmoothCoef;
             aftertouchValue = aftertouchTarget + (aftertouchValue - aftertouchTarget) * modSmoothCoef;
+            smoothContinuousParams();
+            velScaleSmoothed = velScale + (velScaleSmoothed - velScale) * noteSmoothCoef;
+            accentSmoothed = accentTarget + (accentSmoothed - accentTarget) * noteSmoothCoef;
 
-            if (! amp.isActive())
+            // Filter mode and distortion type change while the output is faded
+            // out, so the jump between them does not click.
+            if (switchPending)
             {
-                out[i] = 0.0f;
-                continue;
+                if (switchGain <= 0.0f || (! amp.isActive() && tailSettled))
+                {
+                    applySwitches();
+                    switchPending = false;
+                }
+                else
+                {
+                    switchGain = std::max (0.0f, switchGain - switchRampStep);
+                }
+            }
+            else if (switchGain < 1.0f)
+            {
+                switchGain = std::min (1.0f, switchGain + switchRampStep);
             }
 
             float mod[kNumModDestinations] {};
             mod[std::clamp (params.wheelDest, 0, kNumModDestinations - 1)] += wheelValue * params.wheelAmount;
             mod[std::clamp (params.aftertouchDest, 0, kNumModDestinations - 1)] += aftertouchValue * params.aftertouchAmount;
+            const float distDrive = std::clamp (smoothed.distDrive + mod[kModDistGain], 0.0f, 1.0f);
+
+            if (! amp.isActive())
+            {
+                // let the distortion and DC blocker ring out instead of cutting them off
+                if (tailSettled)
+                {
+                    out[i] = 0.0f;
+                    continue;
+                }
+                out[i] = postProcess (0.0f, distDrive);
+                tailSettled = distortion.isSettled() && std::abs (outputDcBlocker.s) < 1.0e-6f;
+                continue;
+            }
 
             vibratoPhase += 5.5f / fs;
             if (vibratoPhase >= 1.0f)
                 vibratoPhase -= 1.0f;
             const float vibrato = mod[kModVibrato] * 0.6f * std::sin (2.0f * kPi * vibratoPhase);
 
-            const float resonance = std::clamp (params.resonance + mod[kModResonance], 0.0f, 1.0f);
+            const bool useDiode = active.filterMode == kDiode303;
+            const float maxFeedback = useDiode ? DiodeLadderFilter::kCriticalFeedback : 3.95f;
+            const float driveGain = 1.0f + smoothed.drive * 9.0f;
+            const float driveMakeup = 1.0f / (1.0f + smoothed.drive * 2.0f);
+            const float resonance = std::clamp (smoothed.resonance + mod[kModResonance], 0.0f, 1.0f);
             const float k = resonance * maxFeedback;
             // the diode ladder keeps more of its characteristic bass loss as resonance rises
             const float resoMakeup = useDiode ? 1.0f + 0.6f * resonance : 1.0f + 0.5f * k;
             const float lfoOctaves = std::clamp (params.lfoDepth + mod[kModLfoDepth], 0.0f, 1.0f) * 6.0f;
-            const float distDrive = std::clamp (params.distDrive + mod[kModDistGain], 0.0f, 1.0f);
 
             currentNote = targetNote + (currentNote - targetNote) * glideCoef;
             const float pitch = currentNote + bend + 12.0f * (float) params.octave + vibrato;
@@ -666,25 +746,37 @@ public:
             const float oscPitch = pitch + params.pitchEnvSemis * pitchEnv;
             const float inc = std::min (0.45f, 440.0f * std::exp2 ((oscPitch - 69.0f) / 12.0f) / fs);
 
-            const float osc = 0.5f * (osc1.next (inc, params.wave) + osc2.next (inc * detuneRatio, params.wave));
-            const float x = osc + params.sub * subOsc.next (inc * 0.5f, subWave);
+            float osc, sub;
+            if (waveFade < 1.0f)
+            {
+                // a new wave is blended in at the same phase rather than switched
+                waveFade = std::min (1.0f, waveFade + waveFadeStep);
+                osc = 0.5f * (osc1.nextCrossfade (inc, previousWave, active.wave, waveFade)
+                              + osc2.nextCrossfade (inc * detuneRatio, previousWave, active.wave, waveFade));
+                sub = subOsc.nextCrossfade (inc * 0.5f, subOscWave (previousSubWave), subOscWave (active.subWave), waveFade);
+            }
+            else
+            {
+                osc = 0.5f * (osc1.next (inc, active.wave) + osc2.next (inc * detuneRatio, active.wave));
+                sub = subOsc.next (inc * 0.5f, subOscWave (active.subWave));
+            }
+            const float x = osc + smoothed.sub * sub;
 
             const float envValue = filterEnv.next();
-            const float fe = envValue * velScale;
+            const float fe = envValue * velScaleSmoothed;
 
             // Accent sweep: accented envelopes charge a slow-discharging "capacitor",
             // so accents in quick succession open the filter further and further.
             const float accentInput = accented ? envValue : 0.0f;
             sweepState += (accentInput - sweepState) * (1.0f - (accentInput > sweepState ? sweepChargeCoef : sweepDischargeCoef));
-            const float accentShape = accented ? (1.0f - params.accentSweep) * envValue + params.accentSweep * 1.6f * sweepState
-                                               : 0.0f;
+            const float accentShape = (1.0f - params.accentSweep) * envValue + params.accentSweep * 1.6f * sweepState;
 
-            const float logFc = logCutoff + envOctaves * fe + accentAmount * 3.0f * accentShape + lfoOctaves * lfoValue
+            const float logFc = logCutoff + envOctaves * fe + accentSmoothed * 3.0f * accentShape + lfoOctaves * lfoValue
                                 + params.keyTrack * (pitch - 36.0f) / 12.0f + mod[kModCutoff] * 4.0f;
             const float cutoff = std::clamp (std::exp2 (logFc), 10.0f, maxCutoff);
             float y = useDiode
                 ? diode.process (x * driveGain, std::tan (kPi * cutoff / (DiodeLadderFilter::kPeakRatio * fs)), k, diodeHighpassG)
-                : ladder.process (x * driveGain, std::tan (kPi * cutoff / fs), k, params.filterMode);
+                : ladder.process (x * driveGain, std::tan (kPi * cutoff / fs), k, active.filterMode);
             y *= resoMakeup * driveMakeup;
 
             if (clickEnv > 1.0e-4f)
@@ -696,14 +788,52 @@ public:
                 clickEnv *= clickCoef;
             }
 
-            const float voice = y * amp.next() * velScale * accentGain;
-            out[i] = distortion.process (voice, params.distType, distDrive, params.distTone, params.distMix)
-                     * params.gain;
+            const float voice = y * amp.next() * velScaleSmoothed * (1.0f + accentSmoothed * 0.5f);
+            out[i] = postProcess (voice, distDrive);
         }
     }
 
 private:
     static constexpr int kMaxHeld = 128;
+
+    // Distortion, then a 5 Hz DC blocker: the saturating filter input turns
+    // asymmetric waveforms into a DC offset even with the distortion off.
+    float postProcess (float voice, float distDrive)
+    {
+        float y = distortion.process (voice, active.distType, distDrive, params.distTone, smoothed.distMix);
+        y = outputDcBlocker.highpass (y, outputDcG);
+        return y * smoothed.gain * switchGain;
+    }
+
+    // Level-like knobs glide over a few ms instead of stepping once per block.
+    void smoothContinuousParams()
+    {
+        auto glide = [this] (float& value, float target) { value = target + (value - target) * paramSmoothCoef; };
+        glide (smoothed.gain, params.gain);
+        glide (smoothed.drive, params.drive);
+        glide (smoothed.sub, params.sub);
+        glide (smoothed.resonance, params.resonance);
+        glide (smoothed.distDrive, params.distDrive);
+        glide (smoothed.distMix, params.distMix);
+    }
+
+    // Called while the output is faded out (or silent). A filter or distortion
+    // that comes back into use starts clean rather than from stale state.
+    void applySwitches()
+    {
+        if (params.distType != active.distType)
+            distortion.reset();
+        const bool wasDiode = active.filterMode == kDiode303, isDiode = params.filterMode == kDiode303;
+        if (isDiode && ! wasDiode)
+            diode.reset();
+        else if (wasDiode && ! isDiode)
+            ladder.reset();
+
+        active.filterMode = params.filterMode;
+        active.distType = params.distType;
+    }
+
+    static int subOscWave (int subWave) { return subWave == 0 ? 3 : 1; } // sine or square
 
     void removeHeld (int note)
     {
@@ -712,6 +842,8 @@ private:
     }
 
     BassParams params;
+    BassParams active;   // only the waves, filter mode and distortion type are used: they change gradually
+    BassParams smoothed; // only the knobs in smoothContinuousParams() are used
     float fs = 44100.0f;
 
     Oscillator osc1, osc2, subOsc;
@@ -736,6 +868,14 @@ private:
     uint32_t noiseSeed = 0xdeadbeefu;
     float lfoSmoothCoef = 0.0f, tempoBpm = 120.0f;
     float diodeHighpassG = 0.0f;
+    float paramSmoothCoef = 0.0f, noteSmoothCoef = 0.0f;
+    float velScaleSmoothed = 1.0f, accentSmoothed = 0.0f;
+    float switchGain = 1.0f, switchRampStep = 1.0f;
+    int previousWave = 0, previousSubWave = 0;
+    float waveFade = 1.0f, waveFadeStep = 1.0f;
+    OnePole outputDcBlocker;
+    float outputDcG = 0.0f;
+    bool tailSettled = true;
 };
 
 } // namespace subforge

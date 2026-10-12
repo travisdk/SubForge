@@ -101,6 +101,13 @@ clap_juce_extensions_plugin(TARGET SubForge
     CLAP_ID "dk.hjuhl.subforge"
     CLAP_FEATURES instrument synthesizer mono)
 
+# Renders the README screenshot (not part of a normal build):
+#   cmake --build build --target SubForge_Screenshot && build/SubForge_Screenshot docs/images/screenshot.png
+add_executable(SubForge_Screenshot EXCLUDE_FROM_ALL tools/screenshot.cpp)
+target_include_directories(SubForge_Screenshot PRIVATE Source $<TARGET_PROPERTY:SubForge,INCLUDE_DIRECTORIES>)
+target_compile_definitions(SubForge_Screenshot PRIVATE $<TARGET_PROPERTY:SubForge,COMPILE_DEFINITIONS>)
+target_link_libraries(SubForge_Screenshot PRIVATE SubForge)
+
 if (SUBFORGE_INSTALL_AFTER_BUILD)
     add_custom_command(TARGET SubForge_CLAP POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CLAP_INSTALL_DIR}

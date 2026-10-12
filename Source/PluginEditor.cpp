@@ -47,6 +47,7 @@ SubForgeEditor::SubForgeEditor (SubForgeProcessor& p)
     auto& settings = processor.getSettings();
     preferredScale = juce::jlimit (kMinScale, kMaxScale,
                                    (float) settings.getDoubleValue (scaleKey, settings.getDoubleValue ("uiScale", 1.0)));
+    setConstrainer (&constrainer);
     setResizable (true, true);
     applyLayout (preferredScale);
 }
@@ -65,14 +66,34 @@ void SubForgeEditor::paint (juce::Graphics& g)
     g.fillAll (SubForgeLookAndFeel::Palette::background);
 }
 
+void SubForgeEditor::Constrainer::checkBounds (juce::Rectangle<int>& bounds, const juce::Rectangle<int>& previous,
+                                              const juce::Rectangle<int>& limits, bool top, bool left, bool bottom, bool right)
+{
+    const auto ratio = getFixedAspectRatio();
+    if (! (top || left || bottom || right)) // not the resize corner
+        setFixedAspectRatio (0.0);
+    ComponentBoundsConstrainer::checkBounds (bounds, previous, limits, top, left, bottom, right);
+    setFixedAspectRatio (ratio);
+}
+
+// The largest scale at which the whole view fits the editor.
+float SubForgeEditor::currentScale() const
+{
+    return juce::jmin ((float) getWidth() / (float) MainView::kWidth, (float) getHeight() / (float) view->designHeight());
+}
+
 void SubForgeEditor::resized()
 {
-    // a resize we did not make ourselves is the user dragging the corner
-    if (! applyingLayout)
+    // only a drag of the resize corner is the user's choice; other resizes come from the host
+    if (! applyingLayout && resizableCorner != nullptr && resizableCorner->isMouseButtonDown())
         preferredScale = currentScale();
 
-    // vector drawing throughout, so a transform keeps everything sharp at any scale
-    view->setTransform (juce::AffineTransform::scale (currentScale()));
+    // vector drawing throughout, so a transform keeps everything sharp at any scale;
+    // a host-set size with another aspect ratio leaves the view centred with margins
+    const auto scale = currentScale();
+    view->setTransform (juce::AffineTransform::scale (scale).translated (
+        ((float) getWidth() - (float) MainView::kWidth * scale) * 0.5f,
+        ((float) getHeight() - (float) view->designHeight() * scale) * 0.5f));
     view->setBounds (0, 0, MainView::kWidth, view->designHeight());
 }
 
@@ -87,10 +108,11 @@ void SubForgeEditor::applyLayout (float scale)
     const juce::ScopedValueSetter<bool> guard (applyingLayout, true);
     const int height = view->designHeight();
     scale = juce::jlimit (kMinScale, juce::jmin (kMaxScale, largestFittingScale (*this, height)), scale);
-    setResizeLimits (juce::roundToInt (MainView::kWidth * kMinScale), juce::roundToInt ((float) height * kMinScale),
-                     juce::roundToInt (MainView::kWidth * kMaxScale), juce::roundToInt ((float) height * kMaxScale));
-    if (auto* aspect = getConstrainer())
-        aspect->setFixedAspectRatio ((double) MainView::kWidth / (double) height);
+    // set on the constrainer directly: setResizeLimits() would first re-fit the current size
+    // to the new limits with the old aspect ratio and send the host an extra, wrong-sized resize
+    constrainer.setSizeLimits (juce::roundToInt (MainView::kWidth * kMinScale), juce::roundToInt ((float) height * kMinScale),
+                               juce::roundToInt (MainView::kWidth * kMaxScale), juce::roundToInt ((float) height * kMaxScale));
+    constrainer.setFixedAspectRatio ((double) MainView::kWidth / (double) height);
     setSize (juce::roundToInt (MainView::kWidth * scale), juce::roundToInt ((float) height * scale));
 }
 

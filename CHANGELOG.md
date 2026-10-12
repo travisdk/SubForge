@@ -10,6 +10,12 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+## [1.0.2] – 2026-10-12
+
+### Fixed
+- On Windows with display scaling above 100 %, the CLAP version's interface
+  is no longer cropped. The VST3 version was not affected.
+
 ## [1.0.1] – 2026-10-12
 
 ### Fixed
@@ -88,6 +94,7 @@ First public release, as free software under the GNU AGPLv3.
 
 VST is a registered trademark of Steinberg Media Technologies GmbH.
 
-[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/travisdk/SubForge/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/travisdk/SubForge/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/travisdk/SubForge/releases/tag/v1.0.0

@@ -10,7 +10,13 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+## [1.0.1] – 2026-10-12
+
 ### Fixed
+- In Ardour, the interface no longer gets cut off when the sequencer is
+  shown or hidden, and a window size forced by Ardour is no longer saved as
+  your chosen size. Ardour cannot make an open plug-in window smaller, so a
+  smaller size takes effect the next time the window opens.
 - The output no longer carries a DC offset. The saturating filter input made
   one from asymmetric waveforms, even with the distortion off.
 - No click at the end of a note when the distortion is on. Its filters now
@@ -23,6 +29,9 @@ tag the commit (`vX.Y.Z`).
   longer clicks.
 
 ### Changed
+- Collapsing the sequencer also hides its rate, steps, gate, swing, root
+  and pattern controls. The on/off switch stays visible.
+- The section titles no longer have numbers (01 OSC, 02 FILTER and so on).
 - Every source file now carries a copyright and licence notice
   (`AGPL-3.0-only`), and the README explains the rules for forks.
 - The release archives are named without a version
@@ -79,5 +88,6 @@ First public release, as free software under the GNU AGPLv3.
 
 VST is a registered trademark of Steinberg Media Technologies GmbH.
 
-[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/travisdk/SubForge/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/travisdk/SubForge/releases/tag/v1.0.0

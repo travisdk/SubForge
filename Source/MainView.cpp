@@ -18,7 +18,7 @@ const juce::Rectangle<int> kModPanel { 552, 328, 116, 120 };
 const juce::Rectangle<int> kPlayPanel { 676, 328, 228, 120 };
 const juce::Rectangle<int> kSeqPanel { 16, 458, 888, 212 };
 
-constexpr int kPanelTitle = 30; // height reserved for "02 FILTER" etc.
+constexpr int kPanelTitle = 30; // height reserved for "FILTER" etc.
 } // namespace
 
 MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function<void (float)> onScaleChosen,
@@ -29,10 +29,9 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
     setLookAndFeel (&lookAndFeel); // before any child is laid out, so the controls find the SubForge look
 
     panels = {
-        // sound sections are numbered; the sequencer is a separate zone without a number
-        { "02", "FILTER", kFilterPanel }, { "01", "OSC", kOscPanel }, { "03", "DRIVE", kDrivePanel },
-        { "04", "AMP ENV", kAmpPanel },   { "05", "PITCH", kPitchPanel }, { "06", "LFO > CUT", kLfoPanel },
-        { "07", "MOD", kModPanel },       { "08", "PLAY", kPlayPanel },   { "", "SEQUENCER", kSeqPanel },
+        { "FILTER", kFilterPanel },  { "OSC", kOscPanel },   { "DRIVE", kDrivePanel },
+        { "AMP ENV", kAmpPanel },    { "PITCH", kPitchPanel }, { "LFO > CUT", kLfoPanel },
+        { "MOD", kModPanel },        { "PLAY", kPlayPanel },   { "SEQUENCER", kSeqPanel, true },
     };
 
     // header
@@ -169,7 +168,7 @@ void MainView::paint (juce::Graphics& g)
 
     for (const auto& panel : panels)
     {
-        const bool sequencer = panel.number.isEmpty();
+        const bool sequencer = panel.sequencer;
         const auto r = panel.bounds.toFloat();
         const auto titleArea = panel.bounds.withHeight (kPanelTitle).withTrimmedLeft (14).withTrimmedTop (4);
 
@@ -203,12 +202,9 @@ void MainView::paint (juce::Graphics& g)
             continue;
         }
 
-        g.setColour (lookAndFeel.getAccent());
-        g.setFont (lookAndFeel.valueFont (13.0f));
-        g.drawText (panel.number, titleArea, juce::Justification::centredLeft);
         g.setColour (P::text.withAlpha (0.85f));
         g.setFont (lookAndFeel.labelFont (13.0f).withExtraKerningFactor (0.2f));
-        g.drawText (panel.title, titleArea.withTrimmedLeft (26), juce::Justification::centredLeft);
+        g.drawText (panel.title, titleArea, juce::Justification::centredLeft);
     }
 
     // which browser loads what
@@ -276,19 +272,19 @@ void MainView::resized()
     mutateButton.setBounds (780, 16, 80, 34);
     settingsButton.setBounds (868, 16, 36, 34);
 
-    // 02 filter
+    // filter
     filterMode.setBounds (kFilterPanel.getRight() - 14 - 236, kFilterPanel.getY() + 10, 236, 26);
     filterCurve.setBounds (30, kFilterPanel.getY() + 46, 288, 112);
     layoutKnobRow ({ 30, 226, 288, 84 }, { &envAmount, &filterDecay, &drive, &keyTrack });
     cutoff.setBounds (328, 112, 100, 172);
     resonance.setBounds (430, 112, 100, 172);
 
-    // 01 osc
+    // osc
     wave.setBounds (kOscPanel.getRight() - 14 - 200, kOscPanel.getY() + 10, 200, 24);
     layoutKnobRow ({ 560, 98, 240, 82 }, { &octave, &detune, &sub });
     subWave.setBounds (812, 126, 78, 26);
 
-    // 03 drive
+    // drive
     distType.setBounds (kDrivePanel.getRight() - 14 - 120, kDrivePanel.getY() + 10, 120, 24);
     layoutKnobRow ({ 560, kDrivePanel.getY() + 34, 330, 82 }, { &distGain, &distTone, &distMix });
 

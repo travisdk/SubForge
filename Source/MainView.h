@@ -35,8 +35,9 @@ private:
 
     struct Panel
     {
-        juce::String number, title;
+        juce::String title;
         juce::Rectangle<int> bounds;
+        bool sequencer = false;
     };
 
     // Invisible button over the sequencer title: click to show or hide the steps.
@@ -97,7 +98,7 @@ private:
     juce::TextButton randomButton { "RANDOMIZE" }, mutateButton { "MUTATE" };
     SettingsButton settingsButton;
 
-    // 02 filter
+    // filter
     subforge::ui::SegmentedChoice filterMode { param ("filterMode"), { "LP24", "LP12", "BP12", "DIODE" } };
     subforge::ui::FilterCurve filterCurve { processor.apvts };
     Knob envAmount { processor.apvts, "envAmount", "Env", small() };
@@ -107,20 +108,20 @@ private:
     Knob cutoff { processor.apvts, "cutoff", "Cutoff", { 92, false, 26.0f, 14.0f } };
     Knob resonance { processor.apvts, "resonance", "Resonance", { 92, false, 26.0f, 14.0f } };
 
-    // 01 osc
+    // osc
     subforge::ui::SegmentedChoice wave { param ("wave"), { "SAW", "SQR", "PLS", "SIN", "TRI" } };
     Knob octave { processor.apvts, "octave", "Octave", small() };
     Knob detune { processor.apvts, "detune", "Detune", small() };
     Knob sub { processor.apvts, "sub", "Sub", small() };
     subforge::ui::ChoiceChip subWave { param ("subWave"), { "Sine", "Square" } };
 
-    // 03 drive
+    // drive
     subforge::ui::ChoiceChip distType { param ("distType") };
     Knob distGain { processor.apvts, "distDrive", "Gain", small (true) };
     Knob distTone { processor.apvts, "distTone", "Tone", small (true) };
     Knob distMix { processor.apvts, "distMix", "Mix", small (true) };
 
-    // 04 amp env, 05 pitch
+    // amp env, pitch
     Knob attack { processor.apvts, "attack", "A", small() };
     Knob decay { processor.apvts, "decay", "D", small() };
     Knob sustain { processor.apvts, "sustain", "S", small() };
@@ -129,7 +130,7 @@ private:
     Knob pitchDecay { processor.apvts, "pitchDecay", "Decay", small() };
     Knob click { processor.apvts, "click", "Click", small() };
 
-    // 06 lfo, 07 mod, 09 play
+    // lfo, mod, play
     Knob lfoSync { processor.apvts, "lfoSync", "Sync", small() };
     Knob lfoRate { processor.apvts, "lfoRate", "Rate", small() };
     Knob lfoDepth { processor.apvts, "lfoDepth", "Depth", small() };
@@ -146,7 +147,7 @@ private:
     Knob accentSweep { processor.apvts, "accentSweep", "Sweep", small() };
     Knob volume { processor.apvts, "volume", "Vol", small() };
 
-    // 08 sequencer
+    // sequencer
     juce::ToggleButton seqOn;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> seqOnAttachment;
     subforge::ui::ValueChip seqRate { param ("seqRate"), "Rate" };

@@ -30,6 +30,10 @@ tag the commit (`vX.Y.Z`).
   can link straight to the latest download. The folder inside still has the
   version.
 
+### Removed
+- The standalone app is no longer built. It was never in the release
+  archives, and the sequencer could not run in it without a host transport.
+
 ## [1.0.0] – 2026-10-11
 
 First public release, as free software under the GNU AGPLv3.
@@ -66,8 +70,8 @@ First public release, as free software under the GNU AGPLv3.
 - "About SubForge" panel with the third-party notices.
 
 ### Formats and platforms
-- CLAP and VST®3 plug-ins plus a standalone app, for Linux (x86-64) and
-  Windows (x64). No macOS version.
+- CLAP and VST®3 plug-ins for Linux (x86-64) and Windows (x64). No macOS
+  version.
 - The Windows build includes the Visual C++ runtime, so nothing extra has to
   be installed.
 

@@ -53,7 +53,6 @@ Fra `ldd` på JUCE 8-binæren. Licenser fra `/usr/share/doc/<pakke>/copyright`:
 | libz.so.1 | Zlib | |
 | libbz2.so.1.0 | BSD-variant | Debian-filen nævner også GPL-2, sandsynligvis for hjælpefiler |
 | libbrotli | MIT | |
-| libasound.so.2 (kun standalone) | LGPL-2.1+ | Dynamisk linkning: OK |
 | libstdc++, libgcc_s | GPL-3 med **GCC Runtime Library Exception** (`/usr/share/doc/libstdc++6/copyright`) | Undtagelsen tillader at distribuere programmer bygget med GCC under enhver licens |
 | libc, libm | **LGPL-2.1** (`/usr/share/doc/libc6/copyright`) | Dynamisk linkning: OK |
 

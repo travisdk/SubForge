@@ -53,7 +53,7 @@ juce_add_plugin(SubForge
     PLUGIN_MANUFACTURER_CODE Hjuh
     PLUGIN_CODE SbFg
     PRODUCT_NAME "SubForge"
-    FORMATS Standalone VST3
+    FORMATS VST3
     VST3_CATEGORIES Instrument Synth Mono
     COPY_PLUGIN_AFTER_BUILD ${SUBFORGE_INSTALL_AFTER_BUILD}   # VST3 (CLAP is copied by the command further down)
     VST3_COPY_DIR "${VST3_INSTALL_DIR}"

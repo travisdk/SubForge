@@ -1,8 +1,8 @@
 # SubForge
 
 SubForge is a monophonic bass synthesizer with a built-in 16-step sequencer,
-for Linux and Windows. It comes as a CLAP and a VST®3 plug-in, plus a
-standalone app. Free and open source.
+for Linux and Windows. It comes as a CLAP and a VST®3 plug-in. Free and open
+source.
 
 **Download the latest version:**
 [**Linux** (x86-64, .tar.gz)](https://github.com/travisdk/SubForge/releases/latest/download/SubForge-linux-x86_64.tar.gz)

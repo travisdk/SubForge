@@ -21,6 +21,7 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
     void setScaleFactor (float newScale) override;
+    void parentHierarchyChanged() override;
 
 private:
     // Keeps the aspect ratio while the resize corner is dragged, but takes a size set by the

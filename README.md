@@ -62,16 +62,6 @@ is made by CI and has not been tested much on real hardware.
 **No macOS version.** I have no Mac to build and test on. The code is plain
 JUCE and may well build on macOS, but you are on your own there.
 
-### Known DAW quirks
-
-- **Ardour:** After installing a new version, Ardour hides the plug-in until
-  you rescan it (Window > Plugin Manager > Re-scan).
-- **Ableton Live on Windows:** Turn off "Auto-Scale Plug-in Window" for
-  SubForge (right-click it in the browser). SubForge scales itself.
-- **Window size:** SubForge remembers its size separately for each DAW,
-  because DAWs scale plug-in windows differently. Change it from the gear
-  menu or by dragging the corner.
-
 ## Building from source
 
 You need CMake 3.22 or newer, a C++17 compiler (GCC or Clang on Linux,

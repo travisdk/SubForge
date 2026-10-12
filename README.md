@@ -12,8 +12,8 @@ source.
 
 > **Not actively maintained.** I am not working on SubForge any more and
 > share it as it is. I may fix things now and then, but there is no support
-> and no promise of updates. Bug reports and pull requests are welcome, but
-> may go unanswered. You are free to fork it and carry it on.
+> and no promise of updates. Pull requests with fixes are welcome, but may
+> go unanswered. You are free to fork it and carry it on.
 
 <a href="https://www.steinberg.net/"><img src="docs/images/VST_Compatible_Logo_Steinberg.png" alt="VST Compatible" width="96"></a>
 

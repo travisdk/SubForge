@@ -21,7 +21,7 @@ source.
 **Listen:** six factory sounds, each played by a factory pattern from the
 built-in sequencer (124 BPM).
 
-https://github.com/user-attachments/assets/00478f35-d787-48ef-a34d-db9814f08fc5
+https://github.com/user-attachments/assets/3b5655d9-1d9e-4a71-944f-db04779f6a4d
 
 ## Features
 

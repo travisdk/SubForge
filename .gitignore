@@ -4,3 +4,8 @@ compile_commands.json
 build-juce8/
 dist/
 _sdks/
+
+# Claude Code
+.claude/
+CLAUDE.md
+CLAUDE.local.md

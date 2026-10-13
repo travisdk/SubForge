@@ -17,10 +17,11 @@ source.
 <a href="https://www.steinberg.net/"><img src="docs/images/VST_Compatible_Logo_Steinberg.png" alt="VST Compatible" width="96"></a>
 
 ![SubForge](docs/images/screenshot.png)
+
 **Listen:** six factory sounds, each played by a factory pattern from the
 built-in sequencer (124 BPM).
 
-https://github.com/user-attachments/assets/…
+https://github.com/user-attachments/assets/00478f35-d787-48ef-a34d-db9814f08fc5
 
 ## Features
 

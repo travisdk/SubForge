@@ -10,46 +10,7 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
-## [1.0.2] – 2026-10-12
-
-### Fixed
-- On Windows with display scaling above 100 %, the CLAP version's interface
-  is no longer cropped. The VST3 version was not affected.
-
-## [1.0.1] – 2026-10-12
-
-### Fixed
-- In Ardour, the interface no longer gets cut off when the sequencer is
-  shown or hidden, and a window size forced by Ardour is no longer saved as
-  your chosen size. Ardour cannot make an open plug-in window smaller, so a
-  smaller size takes effect the next time the window opens.
-- The output no longer carries a DC offset. The saturating filter input made
-  one from asymmetric waveforms, even with the distortion off.
-- No click at the end of a note when the distortion is on. Its filters now
-  ring out instead of being cut off.
-- No click when a note restarts while the previous one is still sounding
-  with a different velocity or accent, as in sequencer lines at 100 % gate.
-- Volume, Drive, Sub, Resonance and the distortion knobs glide instead of
-  stepping, so automating them no longer crackles.
-- Switching the filter mode, distortion type or waveform during a note no
-  longer clicks.
-
-### Changed
-- Collapsing the sequencer also hides its rate, steps, gate, swing, root
-  and pattern controls. The on/off switch stays visible.
-- The section titles no longer have numbers (01 OSC, 02 FILTER and so on).
-- Every source file now carries a copyright and licence notice
-  (`AGPL-3.0-only`), and the README explains the rules for forks.
-- The release archives are named without a version
-  (`SubForge-linux-x86_64.tar.gz`, `SubForge-windows-x64.zip`), so the README
-  can link straight to the latest download. The folder inside still has the
-  version.
-
-### Removed
-- The standalone app is no longer built. It was never in the release
-  archives, and the sequencer could not run in it without a host transport.
-
-## [1.0.0] – 2026-10-11
+## [1.0.0] – 2026-10-13
 
 First public release, as free software under the GNU AGPLv3.
 
@@ -74,7 +35,8 @@ First public release, as free software under the GNU AGPLv3.
   generator.
 - Sound presets and patterns are kept separate, so you can change one without
   the other.
-- The sequencer steps can be hidden to make the window smaller.
+- The sequencer section can be collapsed to make the window smaller. Its
+  on/off switch stays visible.
 
 ### Interface
 - Vector interface that scales from 75 % to 200 % from the gear menu or by
@@ -89,12 +51,12 @@ First public release, as free software under the GNU AGPLv3.
   version.
 - The Windows build includes the Visual C++ runtime, so nothing extra has to
   be installed.
+- Plug-ins only. There is no standalone app, since the sequencer follows the
+  host transport.
 
 <img src="docs/images/VST_Compatible_Logo_Steinberg.png" alt="VST Compatible" width="72">
 
 VST is a registered trademark of Steinberg Media Technologies GmbH.
 
-[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.0.2...HEAD
-[1.0.2]: https://github.com/travisdk/SubForge/compare/v1.0.1...v1.0.2
-[1.0.1]: https://github.com/travisdk/SubForge/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/travisdk/SubForge/tree/v1.0.0
+[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/travisdk/SubForge/releases/tag/v1.0.0

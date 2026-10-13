@@ -97,4 +97,4 @@ VST is a registered trademark of Steinberg Media Technologies GmbH.
 [Unreleased]: https://github.com/travisdk/SubForge/compare/v1.0.2...HEAD
 [1.0.2]: https://github.com/travisdk/SubForge/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/travisdk/SubForge/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/travisdk/SubForge/releases/tag/v1.0.0
+[1.0.0]: https://github.com/travisdk/SubForge/tree/v1.0.0

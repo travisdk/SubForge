@@ -8,7 +8,6 @@ source.
 [**Linux** (x86-64, .tar.gz)](https://github.com/travisdk/SubForge/releases/latest/download/SubForge-linux-x86_64.tar.gz)
 ·
 [**Windows** (64-bit, .zip)](https://github.com/travisdk/SubForge/releases/latest/download/SubForge-windows-x64.zip)
-· [all releases](https://github.com/travisdk/SubForge/releases)
 
 > **Not actively maintained.** I am not working on SubForge any more and
 > share it as it is. I may fix things now and then, but there is no support
@@ -43,8 +42,6 @@ release):
   [SubForge-linux-x86_64.tar.gz](https://github.com/travisdk/SubForge/releases/latest/download/SubForge-linux-x86_64.tar.gz)
 - **Windows** (64-bit):
   [SubForge-windows-x64.zip](https://github.com/travisdk/SubForge/releases/latest/download/SubForge-windows-x64.zip)
-
-Older versions are on the [Releases page](https://github.com/travisdk/SubForge/releases).
 
 Each archive contains `INSTALL.txt` with the install steps. In short, copy
 `SubForge.clap` and/or the `SubForge.vst3` folder to your plug-in folder:

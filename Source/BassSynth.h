@@ -417,19 +417,21 @@ struct Distortion
     }
 
     // Keeps the loudness roughly constant across the Gain knob and equal to the
-    // dry voice. Measured as K-weighted (BS.1770) loudness of the Init patch
-    // held at full sustain, notes 36 and 48; the waveshapers saturate, so a
-    // much quieter or louder voice ends up a few dB off. See the levels test.
+    // dry voice at a typical playing point: the Init patch (Sustain 0.7), a held
+    // C2 and C3 at velocity 100, measured as BS.1770 loudness through the plug-in
+    // at 48 kHz. The waveshapers saturate and even out the dynamics, so softer
+    // playing comes out a little louder than dry and harder playing a little
+    // quieter. See the levels test.
     static float makeupGain (int type, float drive)
     {
         // rows: off, overdrive, distortion, fuzz, tube amp | columns: drive 0, 1/8, .., 1
         static constexpr int kColumns = 9;
         static constexpr float table[5][kColumns] = {
             { 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f },
-            { 1.22f, 0.94f, 0.77f, 0.73f, 0.71f, 0.70f, 0.70f, 0.69f, 0.69f },
-            { 1.16f, 0.73f, 0.70f, 0.69f, 0.69f, 0.69f, 0.69f, 0.69f, 0.69f },
-            { 1.75f, 1.55f, 1.47f, 1.44f, 1.42f, 1.41f, 1.40f, 1.40f, 1.40f },
-            { 1.39f, 1.21f, 1.01f, 0.93f, 0.90f, 0.88f, 0.87f, 0.87f, 0.86f },
+            { 1.10f, 0.76f, 0.53f, 0.47f, 0.46f, 0.45f, 0.44f, 0.44f, 0.44f },
+            { 1.08f, 0.48f, 0.44f, 0.43f, 0.43f, 0.43f, 0.43f, 0.43f, 0.43f },
+            { 1.25f, 1.00f, 0.94f, 0.91f, 0.90f, 0.89f, 0.89f, 0.88f, 0.88f },
+            { 1.21f, 0.99f, 0.73f, 0.63f, 0.59f, 0.57f, 0.56f, 0.55f, 0.55f },
         };
         const float pos = std::clamp (drive, 0.0f, 1.0f) * (float) (kColumns - 1);
         const int i = std::min (kColumns - 2, (int) pos);

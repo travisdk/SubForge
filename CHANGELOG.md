@@ -15,17 +15,23 @@ tag the commit (`vX.Y.Z`).
 ### Fixed
 - The distortion stage no longer drops the level when you turn it on. Its
   automatic level compensation was set for a much quieter signal, so all four
-  types came out 3–9 dB below the dry sound as the Gain knob went up
-  (Overdrive at the default Gain: about 6 dB quieter, or about 3 dB at half
-  Mix). All types now stay within 1 dB of the dry sound across the Gain knob.
+  types came out quieter than the dry sound as the Gain knob went up: up to
+  about 5 dB in typical playing, and more when played hard. The compensation
+  is now set for typical playing (a held note at medium velocity with the
+  Init patch), where all types stay within 1 dB of the dry sound across the
+  Gain knob. Distortion evens out the dynamics, so with the distortion on,
+  soft playing comes out a little louder than the dry sound (about 2–3 dB at
+  low velocity) and hard playing a little quieter (up to about 4 dB at full
+  velocity and full Sustain).
 
 ### Changed
 - **Projects and user presets that use distortion play louder.** Projects
   saved with 1.0.0, and your own saved presets, keep their Volume setting.
-  With the distortion on, they now play about 3–9 dB louder than before
-  (Overdrive +6.6 dB, Distortion and Fuzz +8.4 dB and Tube Amp +5.8 dB at the
-  default Gain), and peaks may go above 0 dBFS. Turn Volume down by that
-  amount, or reselect a factory preset, to get the old level back.
+  With the distortion on, they now play up to about 5 dB louder than before
+  (at the default Gain: Overdrive +2.9 dB, Distortion and Fuzz +4.4 dB, Tube
+  Amp +2.2 dB; at very low Gain settings slightly quieter instead), and peaks
+  rise by the same amount. Turn Volume down by that amount, or reselect a
+  factory preset, to get the old level back.
 - Factory presets sound exactly as before when you load them. Woolly Fuzz and
   Parallel Dirt Sub have a lower Mix to keep their old blend. In projects
   saved with these two, the distortion will be stronger as well as louder, so

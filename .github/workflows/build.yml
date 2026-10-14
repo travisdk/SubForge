@@ -68,7 +68,7 @@ jobs:
         run: >
           cmake --build build --config Release --parallel
           --target SubForge_CLAP SubForge_VST3
-          test_presets test_patterns test_sequencer test_filter_curve test_oscillator test_voice
+          test_presets test_patterns test_sequencer test_filter_curve test_oscillator test_voice test_levels
 
       - name: Unit tests
         run: ctest --test-dir build -C Release --output-on-failure

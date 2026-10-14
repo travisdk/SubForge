@@ -10,6 +10,34 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+## [1.0.1] – 2026-10-14
+
+### Fixed
+- The distortion stage no longer drops the level when you turn it on. Its
+  automatic level compensation was set for a much quieter signal, so all four
+  types came out 3–9 dB below the dry sound as the Gain knob went up
+  (Overdrive at the default Gain: about 6 dB quieter, or about 3 dB at half
+  Mix). All types now stay within 1 dB of the dry sound across the Gain knob.
+
+### Changed
+- **Projects and user presets that use distortion play louder.** Projects
+  saved with 1.0.0, and your own saved presets, keep their Volume setting.
+  With the distortion on, they now play about 3–9 dB louder than before
+  (Overdrive +6.6 dB, Distortion and Fuzz +8.4 dB and Tube Amp +5.8 dB at the
+  default Gain), and peaks may go above 0 dBFS. Turn Volume down by that
+  amount, or reselect a factory preset, to get the old level back.
+- Factory presets sound exactly as before when you load them. Woolly Fuzz and
+  Parallel Dirt Sub have a lower Mix to keep their old blend. In projects
+  saved with these two, the distortion will be stronger as well as louder, so
+  reload the preset to get the old sound.
+- Projects now save a state version, so later releases can adapt older
+  projects when needed.
+
+### Known issues
+- Fuzz: the Tone control changes the output level, and at high Tone settings
+  short peaks can exceed 0 dBFS. Lower Volume if needed. This may be improved
+  in a later version.
+
 ## [1.0.0] – 2026-10-13
 
 First public release, as free software under the GNU AGPLv3.
@@ -58,5 +86,6 @@ First public release, as free software under the GNU AGPLv3.
 
 VST is a registered trademark of Steinberg Media Technologies GmbH.
 
-[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/travisdk/SubForge/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/travisdk/SubForge/releases/tag/v1.0.0

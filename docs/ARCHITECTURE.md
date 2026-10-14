@@ -174,7 +174,7 @@ Hostprojektet gemmer én XML-blok med:
 |---|---|---|
 | Producentkode og pluginkode | `Hjuh` / `SbFg` | **Aldrig.** VST3-klassens ID beregnes ud fra dem. Ændres de, finder eksisterende projekter ikke pluginnet |
 | CLAP-ID | `dk.hjuhl.subforge` | **Aldrig**, af samme grund |
-| Produktnavn, version | `SubForge`, `1.0.0` | Version: ja, ved hver udgivelse |
+| Produktnavn, version | `SubForge`, `1.0.1` | Version: ja, ved hver udgivelse |
 
 ---
 

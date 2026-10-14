@@ -23,6 +23,10 @@ built-in sequencer (124 BPM).
 
 https://github.com/user-attachments/assets/3b5655d9-1d9e-4a71-944f-db04779f6a4d
 
+## Video demo
+
+[![SubForge video demo](https://img.youtube.com/vi/k_AJfmAUOYA/maxresdefault.jpg)](https://youtu.be/k_AJfmAUOYA)
+
 ## Features
 
 - Saw, square, pulse, sine and triangle waveforms, band-limited to keep

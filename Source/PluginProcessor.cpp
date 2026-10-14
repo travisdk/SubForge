@@ -311,6 +311,7 @@ juce::AudioProcessorEditor* SubForgeProcessor::createEditor()
 void SubForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     auto state = apvts.copyState();
+    state.setProperty ("stateVersion", kStateVersion, nullptr);
     soundPresets.writeState (state);
     patternPresets.writeState (state);
 
@@ -325,6 +326,8 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
         if (xml->hasTagName (apvts.state.getType()))
         {
             auto state = juce::ValueTree::fromXml (*xml);
+            const int version = state.getProperty ("stateVersion", 1);
+            juce::ignoreUnused (version); // migrations from older versions go here
             soundPresets.readState (state);
             patternPresets.readState (state);
             apvts.replaceState (state);

@@ -66,6 +66,12 @@ private:
 
     static constexpr int kOversampling = 4;
 
+    // Saved with the plug-in state so later versions can migrate older projects.
+    // State without a number was saved by 1.0.0 and counts as version 1.
+    //   1: 1.0.0
+    //   2: 1.0.1, distortion auto-gain recalibrated (no migration: old projects play louder)
+    static constexpr int kStateVersion = 2;
+
     subforge::BassSynth synth;
     subforge::Pattern pattern;
     subforge::SequencerEngine sequencer;

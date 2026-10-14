@@ -416,20 +416,23 @@ struct Distortion
         return x + mix * (y - x);
     }
 
-    // Keeps the level roughly constant across the Gain knob. Measured with a
-    // filtered saw bass at typical voice level, see the levels test.
+    // Keeps the loudness roughly constant across the Gain knob and equal to the
+    // dry voice. Measured as K-weighted (BS.1770) loudness of the Init patch
+    // held at full sustain, notes 36 and 48; the waveshapers saturate, so a
+    // much quieter or louder voice ends up a few dB off. See the levels test.
     static float makeupGain (int type, float drive)
     {
-        // rows: off, overdrive, distortion, fuzz, tube amp | columns: drive 0, .25, .5, .75, 1
-        static constexpr float table[5][5] = {
-            { 1.00f, 1.00f, 1.00f, 1.00f, 1.00f },
-            { 1.26f, 0.51f, 0.33f, 0.29f, 0.27f },
-            { 1.16f, 0.29f, 0.26f, 0.25f, 0.25f },
-            { 1.16f, 0.60f, 0.54f, 0.52f, 0.51f },
-            { 1.30f, 0.71f, 0.46f, 0.39f, 0.36f },
+        // rows: off, overdrive, distortion, fuzz, tube amp | columns: drive 0, 1/8, .., 1
+        static constexpr int kColumns = 9;
+        static constexpr float table[5][kColumns] = {
+            { 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f, 1.00f },
+            { 1.22f, 0.94f, 0.77f, 0.73f, 0.71f, 0.70f, 0.70f, 0.69f, 0.69f },
+            { 1.16f, 0.73f, 0.70f, 0.69f, 0.69f, 0.69f, 0.69f, 0.69f, 0.69f },
+            { 1.75f, 1.55f, 1.47f, 1.44f, 1.42f, 1.41f, 1.40f, 1.40f, 1.40f },
+            { 1.39f, 1.21f, 1.01f, 0.93f, 0.90f, 0.88f, 0.87f, 0.87f, 0.86f },
         };
-        const float pos = std::clamp (drive, 0.0f, 1.0f) * 4.0f;
-        const int i = std::min (3, (int) pos);
+        const float pos = std::clamp (drive, 0.0f, 1.0f) * (float) (kColumns - 1);
+        const int i = std::min (kColumns - 2, (int) pos);
         const float frac = pos - (float) i;
         return table[type][i] + frac * (table[type][i + 1] - table[type][i]);
     }

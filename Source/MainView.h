@@ -49,7 +49,7 @@ private:
 
     struct SettingsButton : juce::Button
     {
-        SettingsButton() : juce::Button ("Settings") {}
+        SettingsButton() : juce::Button ("Settings") { setTooltip ("Settings"); }
         void paintButton (juce::Graphics&, bool isHighlighted, bool isDown) override;
     };
 
@@ -98,6 +98,7 @@ private:
     juce::TextButton presetPrev { "<" }, presetNext { ">" }, saveButton { "SAVE" };
     juce::TextButton randomButton { "RANDOMIZE" }, mutateButton { "MUTATE" };
     SettingsButton settingsButton;
+    juce::TooltipWindow tooltipWindow { this, 600 }; // child of the view, so tooltips scale with it
 
     // filter
     subforge::ui::SegmentedChoice filterMode { param ("filterMode"), { "LP24", "LP12", "BP12", "DIODE" } };

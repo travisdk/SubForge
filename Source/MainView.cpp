@@ -636,14 +636,30 @@ void MainView::SettingsButton::paintButton (juce::Graphics& g, bool isHighlighte
     g.setColour (isHighlighted ? P::panelEdge.brighter (0.5f) : P::panelEdge.brighter (0.15f));
     g.drawRoundedRectangle (bounds, 6.0f, 1.0f);
 
-    // sun-like gear: ring plus eight short rays
+    // gear: eight square teeth around a ring, with a hole in the middle
     const auto centre = bounds.getCentre();
     const auto colour = isDown || isHighlighted ? P::text : P::dimText;
-    g.setColour (colour);
-    g.drawEllipse (juce::Rectangle<float> (9.0f, 9.0f).withCentre (centre), 1.6f);
-    for (int i = 0; i < 8; ++i)
+    constexpr int teeth = 8;
+    constexpr float outer = 9.5f, root = 7.0f, hole = 3.0f;
+    const float step = juce::MathConstants<float>::twoPi / (float) teeth;
+    const float halfTooth = 1.6f; // half width of a tooth, so its sides stay parallel
+
+    const float aRoot = std::asin (halfTooth / root), aTip = std::asin (halfTooth / outer);
+    const auto at = [centre] (float r, float angle) { return centre.getPointOnCircumference (r, angle); };
+
+    juce::Path gear;
+    gear.startNewSubPath (at (root, -aRoot));
+    for (int i = 0; i < teeth; ++i)
     {
-        const float a = (float) i * juce::MathConstants<float>::pi / 4.0f;
-        g.drawLine ({ centre.getPointOnCircumference (7.0f, a), centre.getPointOnCircumference (9.5f, a) }, 1.6f);
+        const float a = (float) i * step;
+        gear.lineTo (at (outer, a - aTip));
+        gear.lineTo (at (outer, a + aTip));
+        gear.lineTo (at (root, a + aRoot));
+        gear.addCentredArc (centre.x, centre.y, root, root, 0.0f, a + aRoot, a + step - aRoot);
     }
+    gear.closeSubPath();
+
+    g.setColour (colour);
+    g.strokePath (gear, juce::PathStrokeType (1.4f, juce::PathStrokeType::mitered));
+    g.drawEllipse (juce::Rectangle<float> (2.0f * hole, 2.0f * hole).withCentre (centre), 1.4f);
 }

@@ -149,12 +149,15 @@ void SubForgeLookAndFeel::drawPopupMenuBackground (juce::Graphics& g, int width,
     g.drawRect (0, 0, width, height, 1);
 }
 
+// Room left of popup menu text for the tick dot or colour swatch.
+static constexpr int popupMenuTextIndent = 20;
+
 void SubForgeLookAndFeel::drawPopupMenuItem (juce::Graphics& g, const juce::Rectangle<int>& area, bool isSeparator,
                                              bool isActive, bool isHighlighted, bool isTicked, bool hasSubMenu,
                                              const juce::String& text, const juce::String& shortcutKeyText,
                                              const juce::Drawable* icon, const juce::Colour* textColour)
 {
-    if (isSeparator || hasSubMenu || icon != nullptr || shortcutKeyText.isNotEmpty())
+    if (isSeparator || icon != nullptr || shortcutKeyText.isNotEmpty())
     {
         LookAndFeel_V4::drawPopupMenuItem (g, area, isSeparator, isActive, isHighlighted, isTicked, hasSubMenu,
                                            text, shortcutKeyText, icon, textColour);
@@ -188,7 +191,18 @@ void SubForgeLookAndFeel::drawPopupMenuItem (juce::Graphics& g, const juce::Rect
 
     g.setColour (isActive ? (isTicked && textColour == nullptr ? accent : P::text) : P::dimText);
     g.setFont (getPopupMenuFont());
-    g.drawFittedText (text, r.withTrimmedLeft (20).withTrimmedRight (6), juce::Justification::centredLeft, 1);
+    g.drawFittedText (text, r.withTrimmedLeft (popupMenuTextIndent).withTrimmedRight (hasSubMenu ? 20 : 6),
+                      juce::Justification::centredLeft, 1);
+
+    if (hasSubMenu)
+    {
+        const float x = (float) r.getRight() - 12.0f, y = (float) r.getCentreY();
+        juce::Path arrow;
+        arrow.startNewSubPath (x - 3.0f, y - 4.0f);
+        arrow.lineTo (x + 1.0f, y);
+        arrow.lineTo (x - 3.0f, y + 4.0f);
+        g.strokePath (arrow, juce::PathStrokeType (1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
 }
 
 void SubForgeLookAndFeel::drawPopupMenuSectionHeader (juce::Graphics& g, const juce::Rectangle<int>& area,
@@ -196,7 +210,19 @@ void SubForgeLookAndFeel::drawPopupMenuSectionHeader (juce::Graphics& g, const j
 {
     g.setColour (P::dimText);
     g.setFont (titleFont (11.0f).withExtraKerningFactor (0.14f));
-    g.drawText (sectionName.toUpperCase(), area.reduced (10, 0), juce::Justification::bottomLeft);
+    // lined up with the item text below it
+    g.drawText (sectionName.toUpperCase(), area.withTrimmedLeft (3 + popupMenuTextIndent).withTrimmedRight (10),
+                juce::Justification::centredLeft);
+}
+
+// The header's small capitals need less height than an item.
+void SubForgeLookAndFeel::getIdealPopupMenuSectionHeaderSizeWithOptions (const juce::String& text, int standardMenuItemHeight,
+                                                                        int& idealWidth, int& idealHeight,
+                                                                        const juce::PopupMenu::Options& options)
+{
+    LookAndFeel_V4::getIdealPopupMenuSectionHeaderSizeWithOptions (text, standardMenuItemHeight, idealWidth, idealHeight,
+                                                                   options);
+    idealHeight = 18;
 }
 
 // Buttons are flat chips. A toggled-on button is filled with its accent;

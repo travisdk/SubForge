@@ -267,14 +267,28 @@ void MainView::paint (juce::Graphics& g)
 {
     g.fillAll (P::background);
 
-    // header: SF badge, name and tagline
-    drawLogo (g, { 16.0f, 14.0f, 38.0f, 38.0f });
+    // header: SF badge, and beside it the name over the tagline, the two centred on the badge by their ink
+    const juce::Rectangle<float> logo { 16.0f, 14.0f, 38.0f, 38.0f };
+    drawLogo (g, logo);
+    const auto nameFont = lookAndFeel.titleFont (24.0f).withExtraKerningFactor (0.08f);
+    const auto taglineFont = lookAndFeel.labelFont (10.5f).withExtraKerningFactor (0.2f);
+    const auto inkOf = [] (const juce::Font& font, const juce::String& text)
+    {
+        juce::GlyphArrangement glyphs;
+        glyphs.addLineOfText (font, text, 0.0f, 0.0f);
+        return glyphs.getBoundingBox (0, -1, true); // relative to the baseline
+    };
+    const auto nameInk = inkOf (nameFont, "SUBFORGE"), taglineInk = inkOf (taglineFont, "MONO BASS SYNTH");
+    constexpr float lineGap = 6.0f;
+    const float top = logo.getCentreY() - (nameInk.getHeight() + lineGap + taglineInk.getHeight()) / 2.0f;
+    const float nameBaseline = top - nameInk.getY();
+    const float taglineBaseline = top + nameInk.getHeight() + lineGap - taglineInk.getY();
     g.setColour (lookAndFeel.getAccent());
-    g.setFont (lookAndFeel.titleFont (24.0f).withExtraKerningFactor (0.08f));
-    g.drawText ("SUBFORGE", 64, 12, 130, 42, juce::Justification::centredLeft);
+    g.setFont (nameFont);
+    g.drawSingleLineText ("SUBFORGE", 64, juce::roundToInt (nameBaseline));
     g.setColour (P::dimText);
-    g.setFont (lookAndFeel.labelFont (10.5f).withExtraKerningFactor (0.2f));
-    g.drawText ("MONO BASS SYNTH", 196, 24, 130, 20, juce::Justification::centredLeft);
+    g.setFont (taglineFont);
+    g.drawSingleLineText ("MONO BASS SYNTH", 65, juce::roundToInt (taglineBaseline));
 
     for (const auto& panel : panels)
     {
@@ -417,15 +431,15 @@ void MainView::resized()
 
     // sequencer header (its panel shrinks to this row when the steps are hidden)
     panels.back().bounds = sequencerPanel();
-    sequencerToggle.setBounds (kSeqPanel.getX() + 8, kSeqPanel.getY() + 6, 118, 30);
+    sequencerToggle.setBounds (kSeqPanel.getX() + 8, kSeqPanel.getY() + 6, 110, 30);
     const int seqTop = kSeqPanel.getY() + 9;
-    seqOn.setBounds (146, seqTop + 2, 50, 22);
-    int x = 200;
+    seqOn.setBounds (136, seqTop + 2, 50, 22);
+    int x = 190; // ends clear of the PATTERN label
     for (auto [chip, width] : { std::pair<juce::Component*, int> { &seqRate, 60 }, { &seqSteps, 54 }, { &seqGate, 62 },
                                 { &seqSwing, 68 }, { &seqRoot, 60 } })
     {
         chip->setBounds (x, seqTop + 1, width, 24);
-        x += width + 4;
+        x += width + 3;
     }
     int right = kSeqPanel.getRight() - 14;
     auto placeRight = [&] (juce::Component& c, int width, int gap)
@@ -657,7 +671,9 @@ void MainView::showSlotMenu (int slot)
         copyMenu.addItem (juce::String::charToString ((juce::juce_wchar) ('A' + i)) + "   " + patterns().slotName (i),
                           i != slot, false, [this, slot, i] { patterns().copySlot (slot, i); });
     menu.addSubMenu ("Copy to slot", copyMenu);
-    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&slotColumn).withDeletionCheck (*this));
+    // opens beside the slot that was clicked, not below the whole column
+    const auto area = slotColumn.localAreaToGlobal (slotColumn.cell (slot).getSmallestIntegerContainer());
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetScreenArea (area).withDeletionCheck (*this));
 }
 
 // Exports to the MIDI folder and says where, with a button that opens it.

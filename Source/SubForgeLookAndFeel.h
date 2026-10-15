@@ -66,6 +66,8 @@ public:
     juce::Font getPopupMenuFont() override { return labelFont (14.0f); }
     void drawPopupMenuSectionHeader (juce::Graphics&, const juce::Rectangle<int>& area,
                                      const juce::String& sectionName) override;
+    void getIdealPopupMenuSectionHeaderSizeWithOptions (const juce::String&, int, int& idealWidth, int& idealHeight,
+                                                        const juce::PopupMenu::Options&) override;
 
     void drawButtonBackground (juce::Graphics&, juce::Button&, const juce::Colour& backgroundColour,
                                bool isHighlighted, bool isDown) override;

@@ -43,6 +43,26 @@ https://github.com/user-attachments/assets/3b5655d9-1d9e-4a71-944f-db04779f6a4d
 
 See [CHANGELOG.md](CHANGELOG.md) for the full list.
 
+## Switching patterns
+
+The sequencer holds eight patterns in slots A-H, saved with your project.
+Click A-H next to the steps to choose the one that plays. In a song, you can
+switch slots in two ways:
+
+- **Automation:** automate the **Sequencer Pattern** parameter. Draw it in
+  an automation lane, or record it: put the track in latch or write mode and
+  click A-H while the song plays. (In touch mode a click is too short to
+  stick.) If the parameter is missing from your DAW's list, rescan plug-ins
+  or insert SubForge again.
+- **MIDI notes:** while the sequencer runs, notes C-2 to G-2 choose slots
+  A-H. Put them in the same MIDI clip as the notes that transpose the
+  pattern. Turn this off under **Settings > MIDI C-2 to G-2 choose pattern**
+  if you need those notes to transpose.
+
+Either way, the new slot starts when the playing pattern starts over, so
+put the switch on or just before the bar line. If you use both ways, the
+latest change wins.
+
 ## Download and install
 
 Download the ready-built plug-ins for your system (always the latest

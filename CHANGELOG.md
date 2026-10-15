@@ -10,6 +10,8 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+## [1.1.0] – 2026-10-15
+
 ### Added
 - **Pattern slots A-H.** The sequencer holds eight patterns, saved with the
   project, and plays one at a time. Choose the slot with the A-H buttons next
@@ -118,6 +120,7 @@ First public release, as free software under the GNU AGPLv3.
 
 VST is a registered trademark of Steinberg Media Technologies GmbH.
 
-[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/travisdk/SubForge/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/travisdk/SubForge/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/travisdk/SubForge/releases/tag/v1.0.0

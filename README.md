@@ -43,6 +43,17 @@ https://github.com/user-attachments/assets/3b5655d9-1d9e-4a71-944f-db04779f6a4d
 
 See [CHANGELOG.md](CHANGELOG.md) for the full list.
 
+## Playing with the sequencer
+
+While the sequencer runs (sequencer on and your DAW playing), the notes you
+play don't sound themselves. They transpose the pattern: the key you hold
+becomes the pattern's root note, so holding F2 plays the pattern from F2. If
+you hold several keys, the last one pressed wins. Release them all and the
+**Root** setting applies again. The new root starts on the next step.
+
+Pitch bend, mod wheel and aftertouch still work as usual. While the DAW is
+stopped, or with the sequencer off, notes play SubForge like any synth.
+
 ## Switching patterns
 
 The sequencer holds eight patterns in slots A-H, saved with your project.

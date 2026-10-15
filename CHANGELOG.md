@@ -10,6 +10,17 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+### Added
+- Tooltips on all controls. Each one explains in a few words what the
+  control does. **Settings > Show tooltips** turns them off; the choice is
+  saved for all projects.
+- Settings and About show the exact build version (for example
+  `1.0.1-3-g945938c` for a build between releases).
+
+### Changed
+- The settings button is now drawn as a gear. The old icon looked like a sun
+  and could be mistaken for a theme switch.
+
 ## [1.0.1] – 2026-10-14
 
 ### Fixed

@@ -122,6 +122,13 @@ target_include_directories(SubForge_Screenshot PRIVATE Source $<TARGET_PROPERTY:
 target_compile_definitions(SubForge_Screenshot PRIVATE $<TARGET_PROPERTY:SubForge,COMPILE_DEFINITIONS>)
 target_link_libraries(SubForge_Screenshot PRIVATE SubForge)
 
+# Renders the audio demo (not part of a normal build):
+#   cmake --build build --target SubForge_RenderDemo && build/SubForge_RenderDemo demo.wav timecodes.txt
+add_executable(SubForge_RenderDemo EXCLUDE_FROM_ALL tools/render_demo.cpp)
+target_include_directories(SubForge_RenderDemo PRIVATE Source $<TARGET_PROPERTY:SubForge,INCLUDE_DIRECTORIES>)
+target_compile_definitions(SubForge_RenderDemo PRIVATE $<TARGET_PROPERTY:SubForge,COMPILE_DEFINITIONS>)
+target_link_libraries(SubForge_RenderDemo PRIVATE SubForge)
+
 if (SUBFORGE_INSTALL_AFTER_BUILD)
     add_custom_command(TARGET SubForge_CLAP POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory ${CLAP_INSTALL_DIR}

@@ -9,10 +9,16 @@ SubForge udgives gratis som open source under **GNU AGPLv3** og vedligeholdes ik
 1. **Version:** Hæv `project(SubForge VERSION …)` i `CMakeLists.txt`. Brug `1.0.1` til rettelser, `1.1.0` til nye funktioner og `2.0.0`, hvis gamle projekter eller presets ikke længere virker.
 2. **Ændringslog:** Flyt punkterne under "Unreleased" i `CHANGELOG.md` til en ny versionssektion med dato, og opdatér linkene nederst.
 3. **Tredjepartsnoter:** Kør `python3 scripts/generate-third-party-notices.py`, hvis en afhængighed er ændret. CI fejler, hvis filen er forældet.
-4. **Commit og push** til `master`, og vent på, at CI ("Build") er grøn.
-5. **Tag og release:** `git tag vX.Y.Z` og `git push origin vX.Y.Z`. Opret en GitHub Release fra tagget med de to pakker fra CI-kørslen (`SubForge-linux-x86_64.tar.gz` og `SubForge-windows-x64.zip`) og ændringerne fra `CHANGELOG.md`. Navnene må ikke ændres, for README linker direkte til dem via `releases/latest/download/…`.
-6. **Skærmbillede:** Er udseendet ændret, så lav `docs/images/screenshot.png` igen: `cmake --build build --target SubForge_Screenshot` og `build/SubForge_Screenshot docs/images/screenshot.png`. Det bruger standardlyd, -mønster og Lime-temaet, uanset dine egne indstillinger.
-7. **Test i Ardour:** Husk at scanne pluginnet igen (Window → Plugin Manager → Re-scan), ellers skjuler Ardour den nye build.
+4. **Lydtjek:** Lav demoen med den nye kode, og sammenlign den med referencen fra sidste release:
+   `cmake --build build --target SubForge_RenderDemo`, `build/SubForge_RenderDemo new.wav new.txt` og
+   `build/SubForge_RenderDemo --compare private/demo/reference-<forrige version>.wav new.wav`.
+   Hver sektion (lyd) skal stå som `OK`. Står der `CHANGED`, skal ændringen være tilsigtet og nævnt i
+   `CHANGELOG.md`. Ellers find ud af hvorfor, før der udgives. Gem bagefter `new.wav` som
+   `private/demo/reference-<ny version>.wav` til næste gang. Referencerne ligger uden for git, fordi de er store.
+5. **Commit og push** til `master`, og vent på, at CI ("Build") er grøn.
+6. **Tag og release:** `git tag vX.Y.Z` og `git push origin vX.Y.Z`. Opret en GitHub Release fra tagget med de to pakker fra CI-kørslen (`SubForge-linux-x86_64.tar.gz` og `SubForge-windows-x64.zip`) og ændringerne fra `CHANGELOG.md`. Navnene må ikke ændres, for README linker direkte til dem via `releases/latest/download/…`.
+7. **Skærmbillede:** Er udseendet ændret, så lav `docs/images/screenshot.png` igen: `cmake --build build --target SubForge_Screenshot` og `build/SubForge_Screenshot docs/images/screenshot.png`. Det bruger standardlyd, -mønster og Lime-temaet, uanset dine egne indstillinger.
+8. **Test i Ardour:** Husk at scanne pluginnet igen (Window → Plugin Manager → Re-scan), ellers skjuler Ardour den nye build.
 
 ## Skal altid overholdes
 

@@ -50,9 +50,19 @@ public:
     SoundPresets& getSoundPresets() { return soundPresets; }
     PatternPresets& getPatternPresets() { return patternPresets; }
 
-    // Step sequencer pattern, edited by the GUI while the audio thread plays it.
-    subforge::Pattern& getPattern() { return pattern; }
+    // Step sequencer pattern slots, edited by the GUI while the audio thread plays them.
+    // The GUI edits the slot that plays.
+    subforge::PatternBank& getPatternBank() { return patternBank; }
+    subforge::Pattern& getPattern() { return patternBank.activePattern(); }
     int getSequencerStep() const { return sequencer.getCurrentStep(); }
+
+    // A slot chosen in the GUI: sets the Pattern parameter (so hosts can record it) and
+    // switches at once while the sequencer isn't running.
+    void choosePatternSlot (int slot);
+
+    // MIDI notes 0-7 choose the slot while the sequencer runs (a global setting, on by default).
+    bool slotNotesEnabled() const { return slotNotes.load(); }
+    void setSlotNotesEnabled (bool enabled);
 
     // Global preferences shared by all instances (accent colour, UI size, preset folder).
     juce::PropertiesFile& getSettings() { return settings; }
@@ -73,8 +83,11 @@ private:
     static constexpr int kStateVersion = 2;
 
     subforge::BassSynth synth;
-    subforge::Pattern pattern;
+    subforge::PatternBank patternBank;
     subforge::SequencerEngine sequencer;
+    std::atomic<int> lastPatternParam { 0 }; // a change of the Pattern parameter asks for its slot
+    std::atomic<bool> sequencerRunning { false };
+    std::atomic<bool> slotNotes { true };
     juce::MidiBuffer voiceMidi;              // incoming MIDI merged with sequencer notes
     std::array<int, 16> transposeKeys {};    // keys held while the sequencer runs
     int numTransposeKeys = 0;
@@ -82,7 +95,7 @@ private:
     int maxBlockSize = 512;
 
     juce::PropertiesFile settings;
-    SoundPresets soundPresets;     // declared after settings and pattern, which they use
+    SoundPresets soundPresets;     // declared after settings and patternBank, which they use
     PatternPresets patternPresets;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SubForgeProcessor)

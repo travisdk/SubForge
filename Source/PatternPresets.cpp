@@ -12,9 +12,9 @@ constexpr int kDefaultRateIndex = 1; // 1/16
 constexpr float kDefaultGate = 0.5f;
 } // namespace
 
-PatternPresets::PatternPresets (juce::AudioProcessorValueTreeState& s, Pattern& p, std::function<juce::File()> folderProvider,
+PatternPresets::PatternPresets (juce::AudioProcessorValueTreeState& s, PatternBank& b, std::function<juce::File()> folderProvider,
                                 std::function<void()> callback)
-    : state (s), pattern (p), getFolder (std::move (folderProvider)), onChange (std::move (callback))
+    : state (s), bank (b), getFolder (std::move (folderProvider)), onChange (std::move (callback))
 {
     rescan();
 }
@@ -51,15 +51,31 @@ bool PatternPresets::exists (const juce::String& patternName) const
 
 void PatternPresets::rescan()
 {
-    const auto currentFile = isUser (currentEntry) ? userFiles[currentEntry - kNumFactoryPatterns] : juce::File();
+    std::array<juce::File, kNumPatternSlots> loadedFiles;
+    for (size_t i = 0; i < slots.size(); ++i)
+        if (isUser (slots[i].entry))
+            loadedFiles[i] = userFiles[slots[i].entry - kNumFactoryPatterns];
+
     userFiles = files::listSorted (getFolder(), kExtension);
 
-    if (currentFile != juce::File())
+    for (size_t i = 0; i < slots.size(); ++i)
     {
-        const int index = userFiles.indexOf (currentFile);
-        currentEntry = index >= 0 ? kNumFactoryPatterns + index : -1;
+        if (loadedFiles[i] != juce::File())
+        {
+            const int index = userFiles.indexOf (loadedFiles[i]);
+            slots[i].entry = index >= 0 ? kNumFactoryPatterns + index : -1;
+        }
     }
     changed();
+}
+
+int PatternPresets::entryNamed (const juce::String& wanted) const
+{
+    int found = -1;
+    for (int i = 0; i < numEntries(); ++i)
+        if (entryName (i) == wanted)
+            found = i;
+    return found;
 }
 
 void PatternPresets::load (int index)
@@ -68,7 +84,7 @@ void PatternPresets::load (int index)
     {
         const auto xml = juce::parseXML (userFiles[index - kNumFactoryPatterns]);
         if (xml == nullptr || ! xml->hasTagName ("SubForgePattern")
-            || ! parseCompactPattern (xml->getStringAttribute ("steps").toRawUTF8(), pattern))
+            || ! parseCompactPattern (xml->getStringAttribute ("steps").toRawUTF8(), pattern()))
             return;
         // files from before rate and gate were stored leave the current values
         applyGroove ({ xml->getIntAttribute ("length", kMaxSteps), (float) xml->getDoubleAttribute ("swing", 0.5),
@@ -77,7 +93,7 @@ void PatternPresets::load (int index)
     else if (juce::isPositiveAndBelow (index, kNumFactoryPatterns))
     {
         const auto& factory = kFactoryPatterns[index];
-        parseCompactPattern (factory.steps, pattern);
+        parseCompactPattern (factory.steps, pattern());
         applyGroove ({ factory.length, factory.swing, kDefaultRateIndex, kDefaultGate });
     }
     else
@@ -85,8 +101,7 @@ void PatternPresets::load (int index)
         return;
     }
 
-    currentEntry = index;
-    currentName = entryName (index);
+    slot() = { entryName (index), index };
     changed();
 }
 
@@ -103,14 +118,13 @@ bool PatternPresets::save (const juce::String& patternName)
     xml.setAttribute ("swing", state.getRawParameterValue ("seqSwing")->load());
     xml.setAttribute ("rate", kSeqRateNames[juce::jlimit (0, kNumSeqRates - 1, (int) state.getRawParameterValue ("seqRate")->load())]);
     xml.setAttribute ("gate", state.getRawParameterValue ("seqGate")->load());
-    xml.setAttribute ("steps", juce::String (toCompactPattern (pattern)));
+    xml.setAttribute ("steps", juce::String (toCompactPattern (pattern())));
     if (! xml.writeTo (file))
         return false;
 
-    currentName = file.getFileNameWithoutExtension();
-    currentEntry = -1;
+    slot() = { file.getFileNameWithoutExtension(), -1 };
     rescan();
-    currentEntry = kNumFactoryPatterns + userFiles.indexOf (file);
+    slot().entry = kNumFactoryPatterns + userFiles.indexOf (file);
     changed();
     return true;
 }
@@ -121,32 +135,42 @@ void PatternPresets::remove (int index)
         return;
 
     files::moveToTrash (userFiles[index - kNumFactoryPatterns]);
-    if (currentEntry == index)
-        currentEntry = -1;
+    for (auto& s : slots)
+        if (s.entry == index)
+            s.entry = -1;
     rescan();
 }
 
 void PatternPresets::randomize()
 {
-    pattern.randomize (rng);
-    currentName = "Random " + juce::String (++randomCount);
+    pattern().randomize (rng);
+    slot() = { "Random " + juce::String (++randomCount), -1 };
     changed();
 }
 
 void PatternPresets::clear()
 {
-    pattern.clear();
-    currentName = "Empty";
+    pattern().clear();
+    slot() = { "Empty", -1 };
     changed();
 }
 
 void PatternPresets::markEdited()
 {
-    if (! currentName.endsWith ("*"))
+    if (! slot().name.endsWith ("*"))
     {
-        currentName << " *";
+        slot().name << " *";
         changed();
     }
+}
+
+void PatternPresets::copyToSlot (int target)
+{
+    if (! juce::isPositiveAndBelow (target, kNumPatternSlots) || target == bank.active())
+        return;
+    bank.slot (target).copyFrom (pattern());
+    slots[(size_t) target] = slot();
+    changed();
 }
 
 juce::String PatternPresets::asText() const
@@ -156,7 +180,7 @@ juce::String PatternPresets::asText() const
            + " | swing " + juce::String (state.getRawParameterValue ("seqSwing")->load(), 2)
            + " | rate " + kSeqRateNames[rate]
            + " | gate " + juce::String (state.getRawParameterValue ("seqGate")->load(), 2)
-           + " | " + juce::String (toCompactPattern (pattern));
+           + " | " + juce::String (toCompactPattern (pattern()));
 }
 
 // Accepts the line above (any of its fields may be missing), or just the sixteen step tokens.
@@ -164,7 +188,7 @@ bool PatternPresets::fromText (const juce::String& text)
 {
     auto parts = juce::StringArray::fromTokens (text.trim(), "|", "");
     parts.trim();
-    if (parts.isEmpty() || ! parseCompactPattern (parts[parts.size() - 1].toRawUTF8(), pattern))
+    if (parts.isEmpty() || ! parseCompactPattern (parts[parts.size() - 1].toRawUTF8(), pattern()))
         return false;
 
     Groove groove;
@@ -181,26 +205,42 @@ bool PatternPresets::fromText (const juce::String& text)
             groove.gate = value.getFloatValue();
     }
     applyGroove (groove);
-    currentName = "Pasted";
-    currentEntry = -1;
+    slot() = { "Pasted", -1 };
     changed();
     return true;
 }
 
+// Slot A: "pattern" and "patternName" as in 1.0.x; B-H: "patternB", "patternNameB" ...
+static juce::String slotSuffix (int index)
+{
+    return index == 0 ? juce::String() : juce::String::charToString ((juce::juce_wchar) ('A' + index));
+}
+
 void PatternPresets::writeState (juce::ValueTree& tree) const
 {
-    tree.setProperty ("pattern", juce::String (pattern.toString()), nullptr);
-    tree.setProperty ("patternName", currentName, nullptr);
+    for (int i = 0; i < kNumPatternSlots; ++i)
+    {
+        tree.setProperty ("pattern" + slotSuffix (i), juce::String (bank.slot (i).toString()), nullptr);
+        tree.setProperty ("patternName" + slotSuffix (i), slots[(size_t) i].name, nullptr);
+    }
 }
 
 void PatternPresets::readState (const juce::ValueTree& tree)
 {
-    if (tree.hasProperty ("pattern"))
-        pattern.fromString (tree.getProperty ("pattern").toString().toStdString());
-    currentName = tree.getProperty ("patternName", "Default").toString();
-    currentEntry = -1;
-    for (int i = 0; i < numEntries(); ++i)
-        if (entryName (i) == currentName)
-            currentEntry = i;
+    for (int i = 0; i < kNumPatternSlots; ++i)
+    {
+        const auto steps = "pattern" + slotSuffix (i), name = "patternName" + slotSuffix (i);
+        auto& target = bank.slot (i);
+        if (i > 0 && ! tree.hasProperty (steps)) // a project from 1.0.x
+        {
+            target.copyFrom (bank.slot (0));
+            slots[(size_t) i] = slots[0];
+            continue;
+        }
+        if (tree.hasProperty (steps))
+            target.fromString (tree.getProperty (steps).toString().toStdString());
+        const auto slotName = tree.getProperty (name, "Default").toString();
+        slots[(size_t) i] = { slotName, entryNamed (slotName) };
+    }
     changed();
 }

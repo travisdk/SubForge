@@ -142,11 +142,24 @@ Når et fabrikspreset indlæses, renderer `normalizedVolumeDb()` en kort tone of
 
 Når sequenceren kører, spiller de taster, man holder nede, ikke selv. I stedet flytter de mønstrets grundtone (`buildVoiceMidi`, `PluginProcessor.cpp:264`). Det er den klassiske acid-arbejdsgang. Den senest trykkede tast vinder, og slippes alle, bruges *Root*-parameteren igen.
 
+Undtagelsen er MIDI-node 0–7 (C-2 til G-2): de vælger mønster-slot A–H (afsnit 4.4) i stedet for at transponere. En grundtone så dybt ville ligge under 13 Hz, så intet spilbart går tabt. Det kan slås fra i indstillingerne.
+
 ### 4.3 Mønstre
 
 - Et step er gate, tone (-12…+24 halvtoner fra grundtonen), accent og slide.
 - **Fabriksmønstre:** De 42 fabriksmønstre ligger i kompakt tekstform i `PatternLibrary.h`.
 - **Generator:** Generatoren (`Pattern::randomize`, linje 101) laver nye linjer efter regler: skala, oktavspring, accent- og slide-sandsynlighed.
+
+### 4.4 Mønster-slots
+
+`PatternBank` (`Sequencer.h`) har 8 slots (A–H), og ét spiller ad gangen. GUI'en redigerer altid det slot, der spiller. Tre kilder kan bede om et andet slot, og den seneste vinder:
+
+- parameteret `seqPattern` (automation eller et klik på A–H i GUI'en). Det tæller kun, når værdien **ændrer sig**, så en flad automationslinje ikke overskriver valg fra MIDI.
+- MIDI-node 0–7, mens sequenceren kører.
+
+Et ønsket slot venter, til mønstret starter forfra (step 0), så skiftet lander på loopet. Når sequenceren står stille, eller hosten har sprunget i tidslinjen, skiftes der med det samme. Groove-indstillingerne (længde, rate, swing, gate) er fælles for alle slots. Et `.sfpattern` er stadig ét mønster og indlæses i det slot, der spiller.
+
+Et MIDI-valg flytter ikke parameteret, fordi lydtråden ikke pålideligt kan skrive til host-parametre. GUI'en viser derfor det slot, der faktisk spiller.
 
 ---
 
@@ -157,7 +170,9 @@ Når sequenceren kører, spiller de taster, man holder nede, ikke selv. I stedet
 Alle parametre har et fast ID og version 1 (`ParameterID { id, 1 }`). **ID'erne må aldrig ændres eller genbruges.** Hosts gemmer automation og projekter under dem.
 
 - **Lydparametre:** alle, hvis ID ikke starter med `seq`.
-- **Sequencerparametre:** `seqOn`, `seqRate`, `seqLength`, `seqGate`, `seqSwing` og `seqRoot`.
+- **Sequencerparametre:** `seqOn`, `seqRate`, `seqLength`, `seqGate`, `seqSwing`, `seqRoot` og `seqPattern`.
+
+`seqPattern` kom til i 1.1.0 og har version 2. Det står sidst i listen, så rækkefølgen, hosts viser, er uændret. **Antallet af slots må aldrig ændres**: hosts gemmer automation som 0…1, og gammel automation ville ramme andre slots.
 
 Opdelingen bruges af preset-systemet (`SoundPresets::isSoundParameter`).
 
@@ -166,7 +181,7 @@ Opdelingen bruges af preset-systemet (`SoundPresets::isSoundParameter`).
 Hostprojektet gemmer én XML-blok med:
 - alle parameterværdier (fra `AudioProcessorValueTreeState`)
 - lydpresetets navn og indeks (`SoundPresets::writeState`)
-- mønstrets steps som tekst og mønstrets navn (`PatternPresets::writeState`)
+- alle slots' steps som tekst og deres navne (`PatternPresets::writeState`). Slot A bruger de samme egenskaber som 1.0.x (`pattern`, `patternName`), B–H får nye (`patternB`, `patternNameB` …). Et projekt fra 1.0.x indlæses i slot A, og B–H starter som kopier af A. En ældre SubForge ignorerer de nye egenskaber og spiller slot A.
 
 ### 5.3 Plugin-identitet (`CMakeLists.txt`)
 
@@ -191,7 +206,7 @@ Lyd og mønstre er **to uafhængige systemer**. Et lydpreset rører aldrig seque
 | Andet | Randomize, Mutate. Hostens "programs" er fabrikspresets | Generate, Clear, kopier/indsæt som én tekstlinje |
 
 - **Fælles filhjælpere** (`PresetFiles.h`): sorteret liste, sikkert filnavn, parameterændring med host-notifikation (`beginChangeGesture`/`endChangeGesture`), og sletning til papirkurven. På Linux skrives en `.trashinfo` efter freedesktop-specifikationen, så filen kan gendannes fra filhåndteringen.
-- **Globale indstillinger:** accentfarve, UI-størrelse, sequencer vist eller skjult, og presetmappe. De gemmes i `SubForge.settings`:
+- **Globale indstillinger:** accentfarve, UI-størrelse, sequencer vist eller skjult, tooltips, om MIDI-node 0–7 vælger mønster, og presetmappe. De gemmes i `SubForge.settings`:
   - Linux: `~/.config/SubForge/`
   - Windows: `%APPDATA%\SubForge\`
 

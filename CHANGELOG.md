@@ -11,6 +11,16 @@ tag the commit (`vX.Y.Z`).
 ## [Unreleased]
 
 ### Added
+- **Pattern slots A-H.** The sequencer holds eight patterns, saved with the
+  project, and plays one at a time. Choose the slot with the A-H buttons next
+  to the steps, by automating the new **Sequencer Pattern** parameter, or by
+  playing MIDI notes C-2 to G-2 while the sequencer runs (those notes no
+  longer transpose; **Settings > MIDI C-2 to G-2 choose pattern** turns this
+  off). A new slot starts when the playing pattern starts over, so a switch
+  always lands on the loop. The steps show and edit the slot that plays.
+  **Copy pattern to slot** in the pattern menu copies it to another slot.
+  Projects from 1.0.x open with their pattern in slot A and copies of it in
+  B-H, and play as before.
 - Tooltips on all controls. Each one explains in a few words what the
   control does. **Settings > Show tooltips** turns them off; the choice is
   saved for all projects.

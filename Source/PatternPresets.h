@@ -9,26 +9,30 @@
 // Sequencer patterns: the factory patterns followed by the user's .sfpattern
 // files. A pattern covers the steps plus the groove settings (length, swing,
 // rate, gate) and nothing of the sound; the root note is left alone so a
-// pattern follows the key being played. Runs on the message thread.
+// pattern follows the key being played. Everything works on the slot that
+// plays, and each slot keeps the name of what was loaded into it. The groove
+// settings are shared by all slots. Runs on the message thread.
 class PatternPresets
 {
 public:
     static constexpr const char* kExtension = ".sfpattern";
 
-    PatternPresets (juce::AudioProcessorValueTreeState&, subforge::Pattern&, std::function<juce::File()> folderProvider,
+    PatternPresets (juce::AudioProcessorValueTreeState&, subforge::PatternBank&, std::function<juce::File()> folderProvider,
                     std::function<void()> onChange);
 
     // browser: factory entries first, then user files
     int numEntries() const { return subforge::kNumFactoryPatterns + userFiles.size(); }
     juce::String entryName (int index) const;
     bool isUser (int index) const { return index >= subforge::kNumFactoryPatterns && index < numEntries(); }
-    int current() const { return currentEntry; }
-    juce::String name() const { return currentName; }
+    int current() const { return slot().entry; }
+    juce::String name() const { return slot().name; }
+    juce::String slotName (int slotIndex) const { return slots[(size_t) slotIndex].name; }
 
     void load (int index);
     void randomize();
     void clear();
     void markEdited(); // a step was changed in the grid
+    void copyToSlot (int target);
 
     void rescan();
     bool exists (const juce::String& patternName) const;
@@ -41,7 +45,9 @@ public:
     juce::String asText() const;
     bool fromText (const juce::String& text);
 
-    // the steps, current name and entry, stored with the project
+    // the steps and names of all slots, stored with the project. Slot A uses the
+    // properties of 1.0.x, so older versions load it; slots missing from older
+    // projects start as copies of A.
     void writeState (juce::ValueTree&) const;
     void readState (const juce::ValueTree&);
 
@@ -54,18 +60,28 @@ private:
         float gate = -1.0f;  // < 0: leave the current gate
     };
 
+    struct Slot
+    {
+        juce::String name { "Default" };
+        int entry = -1;
+    };
+
+    Slot& slot() { return slots[(size_t) bank.active()]; }
+    const Slot& slot() const { return slots[(size_t) bank.active()]; }
+    subforge::Pattern& pattern() { return bank.activePattern(); }
+    const subforge::Pattern& pattern() const { return bank.activePattern(); }
+    int entryNamed (const juce::String& wanted) const;
     void applyGroove (const Groove&);
     static int rateIndexFor (const juce::String& rateName);
     void changed() { onChange(); }
 
     juce::AudioProcessorValueTreeState& state;
-    subforge::Pattern& pattern;
+    subforge::PatternBank& bank;
     std::function<juce::File()> getFolder;
     std::function<void()> onChange;
 
     juce::Array<juce::File> userFiles;
-    int currentEntry = -1;
-    juce::String currentName { "Default" };
+    std::array<Slot, subforge::kNumPatternSlots> slots;
     int randomCount = 0;
     std::mt19937 rng { std::random_device {}() };
 };

@@ -36,7 +36,8 @@ https://github.com/user-attachments/assets/3b5655d9-1d9e-4a71-944f-db04779f6a4d
 - Pitch envelope, tempo-synced LFO, glide, click, distortion (overdrive,
   distortion, fuzz, tube amp) and 4x oversampling.
 - 16-step sequencer with pitch, accent and slide per step, synced to the
-  host's tempo.
+  host's tempo, and eight pattern slots you switch with automation or MIDI
+  notes.
 - 89 sound presets and 42 patterns, plus your own presets and patterns.
 - Vector interface that scales from 75 % to 200 %.
 

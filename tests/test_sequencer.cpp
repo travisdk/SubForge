@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 // Sequencer engine: timing independent of the host block size, swing,
-// no stuck notes after slides, loops or stopping.
+// no stuck notes after slides, loops or stopping, and pattern slots that
+// switch when the pattern starts over.
 #include "Sequencer.h"
 #include "TestUtils.h"
 
@@ -23,6 +24,8 @@ static std::vector<Event> run (int blockSize, SequencerSettings settings, const 
 {
     constexpr double sampleRate = 48000.0, bpm = 120.0;
     SequencerEngine engine;
+    PatternBank bank;
+    bank.slot (0).copyFrom (pattern);
     std::vector<Event> events;
     double ppq = 0.0;
     long t = 0;
@@ -33,14 +36,60 @@ static std::vector<Event> run (int blockSize, SequencerSettings settings, const 
             ppq = 0.0;
             loopAtBeat = -1.0;
         }
-        engine.process (true, ppq, bpm, sampleRate, blockSize, settings, pattern,
+        engine.process (true, ppq, bpm, sampleRate, blockSize, settings, bank,
                         [&] (int s, bool on, int note, float) { events.push_back ({ t + s, on, note }); });
         ppq += blockSize * bpm / 60.0 / sampleRate;
         t += blockSize;
     }
-    engine.process (false, 0.0, bpm, sampleRate, 64, settings, pattern,
+    engine.process (false, 0.0, bpm, sampleRate, 64, settings, bank,
                     [&] (int s, bool on, int note, float) { events.push_back ({ t + s, on, note }); });
     return events;
+}
+
+// Slot A plays the root, slot B a fifth above. Asks for B at requestAt samples
+// (and, if jumpAt > 0, jumps back to beat 0 there) and returns the note-on times
+// and notes.
+static std::vector<Event> runSlots (int blockSize, long requestAt, long jumpAt = -1)
+{
+    constexpr double sampleRate = 48000.0, bpm = 120.0;
+    SequencerSettings settings;
+    settings.enabled = true;
+    SequencerEngine engine;
+    PatternBank bank;
+    bank.slot (0).clear();
+    bank.slot (1).clear();
+    for (int i = 0; i < kMaxSteps; ++i)
+        bank.slot (1).set (i, { true, 7, false, false });
+
+    std::vector<Event> events;
+    double ppq = 0.0;
+    bool requested = false;
+    for (long t = 0; t < 4 * 96000; t += blockSize)
+    {
+        if (! requested && t + blockSize > requestAt)
+        {
+            bank.request (1);
+            requested = true;
+            if (jumpAt > 0)
+                ppq = 0.0;
+        }
+        engine.process (true, ppq, bpm, sampleRate, blockSize, settings, bank,
+                        [&] (int s, bool on, int note, float)
+                        {
+                            if (on)
+                                events.push_back ({ t + s, on, note });
+                        });
+        ppq += blockSize * bpm / 60.0 / sampleRate;
+    }
+    return events;
+}
+
+static long firstNoteOf (const std::vector<Event>& events, int note)
+{
+    for (const auto& e : events)
+        if (e.note == note)
+            return e.sample;
+    return -1;
 }
 
 static int openNotes (const std::vector<Event>& events)
@@ -102,6 +151,42 @@ int main()
         CHECK (std::abs (ons[1] - 7920) <= 1);
         CHECK (ons[2] == 12000);
         CHECK (std::abs (ons[3] - 19920) <= 1);
+    }
+
+    // 16 steps of 1/16 at 120 bpm loop every 96000 samples. A request in the middle of
+    // the first loop switches at the start of the second, for any block size.
+    for (int blockSize : { 64, 441, 512, 1024 })
+    {
+        const auto events = runSlots (blockSize, 30000);
+        CHECK (firstNoteOf (events, 43) == 96000);
+        CHECK (firstNoteOf (events, 36) == 0);
+        long lastRoot = -1;
+        for (const auto& e : events)
+            if (e.note == 36)
+                lastRoot = e.sample;
+        CHECK (lastRoot < 96000);
+    }
+
+    // after a jump the requested slot plays straight away
+    {
+        const auto events = runSlots (512, 30208, 30208);
+        const long jumpBlock = 30208 / 512 * 512;
+        CHECK (firstNoteOf (events, 43) == jumpBlock);
+    }
+
+    // while stopped a request is applied at once
+    {
+        SequencerEngine engine;
+        PatternBank bank;
+        SequencerSettings settings;
+        settings.enabled = true;
+        bank.request (3);
+        CHECK (bank.active() == 0 && bank.pending() == 3);
+        engine.process (false, 0.0, 120.0, 48000.0, 512, settings, bank, [] (int, bool, int, float) {});
+        CHECK (bank.active() == 3 && bank.pending() == -1);
+        bank.request (5);
+        bank.select (2);
+        CHECK (bank.active() == 2 && bank.pending() == -1);
     }
 
     return finish ("sequencer");

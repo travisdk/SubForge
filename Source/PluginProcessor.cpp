@@ -3,6 +3,7 @@
 
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "PresetFiles.h"
 
 namespace
 {
@@ -60,10 +61,11 @@ SubForgeProcessor::SubForgeProcessor()
       apvts (*this, nullptr, "PARAMS", createParameterLayout()),
       settings (settingsOptions()),
       soundPresets (apvts, settings, [this] { sendChangeMessage(); }),
-      patternPresets (apvts, pattern,
+      patternPresets (apvts, patternBank,
                       [this] { return soundPresets.folder().getParentDirectory().getChildFile ("Patterns"); },
                       [this] { sendChangeMessage(); })
 {
+    slotNotes = settings.getBoolValue ("slotNotes", true);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createParameterLayout()
@@ -142,6 +144,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
             .withStringFromValueFunction ([] (int note, int) { return MidiMessage::getMidiNoteName (note, true, true, 3); })
             .withValueFromStringFunction ([] (const String& text) { return text.getIntValue(); })));
     params.push_back (floatParam ("volume", "Volume", { -36.0f, 6.0f }, -6.0f, "dB"));
+
+    // Added in 1.1.0, so last in the list and version 2. The number of slots must never
+    // change: hosts store automation as 0..1 and would land on other slots.
+    StringArray slotNames;
+    for (int i = 0; i < subforge::kNumPatternSlots; ++i)
+        slotNames.add (String::charToString ((juce_wchar) ('A' + i)));
+    params.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "seqPattern", 2 }, "Sequencer Pattern", slotNames, 0));
 
     return { params.begin(), params.end() };
 }
@@ -268,6 +277,12 @@ void SubForgeProcessor::buildVoiceMidi (const juce::MidiBuffer& midi, int numSam
 {
     auto get = [this] (const char* id) { return apvts.getRawParameterValue (id)->load(); };
     const bool running = get ("seqOn") >= 0.5f && playing;
+    sequencerRunning = running;
+
+    // Automation, the GUI or a slot note asks for a slot; the latest request wins. The
+    // parameter only counts when it changes, so a flat automation line leaves notes alone.
+    if (const int slot = (int) get ("seqPattern"); slot != lastPatternParam.exchange (slot))
+        patternBank.request (slot);
 
     voiceMidi.clear();
     for (const auto metadata : midi)
@@ -276,6 +291,12 @@ void SubForgeProcessor::buildVoiceMidi (const juce::MidiBuffer& midi, int numSam
         if (running && message.isNoteOnOrOff())
         {
             const int note = message.getNoteNumber();
+            if (slotNotes.load() && subforge::isSlotNote (note))
+            {
+                if (message.isNoteOn())
+                    patternBank.request (note - subforge::kFirstSlotNote);
+                continue;
+            }
             const auto end = transposeKeys.begin() + numTransposeKeys;
             numTransposeKeys = (int) (std::remove (transposeKeys.begin(), end, note) - transposeKeys.begin());
             if (message.isNoteOn() && numTransposeKeys < (int) transposeKeys.size())
@@ -295,7 +316,7 @@ void SubForgeProcessor::buildVoiceMidi (const juce::MidiBuffer& midi, int numSam
     seqSettings.swing = get ("seqSwing");
     seqSettings.rootNote = numTransposeKeys > 0 ? transposeKeys[(size_t) numTransposeKeys - 1] : (int) get ("seqRoot");
 
-    sequencer.process (playing, ppq, bpm, getSampleRate(), numSamples, seqSettings, pattern,
+    sequencer.process (playing, ppq, bpm, getSampleRate(), numSamples, seqSettings, patternBank,
                        [this] (int sample, bool on, int note, float velocity)
                        {
                            voiceMidi.addEvent (on ? juce::MidiMessage::noteOn (1, note, velocity)
@@ -331,8 +352,30 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
             soundPresets.readState (state);
             patternPresets.readState (state);
             apvts.replaceState (state);
+
+            // the project starts in the slot its Pattern parameter was saved on
+            const int slot = (int) apvts.getRawParameterValue ("seqPattern")->load();
+            lastPatternParam = slot;
+            patternBank.select (slot);
+            sendChangeMessage();
         }
     }
+}
+
+void SubForgeProcessor::choosePatternSlot (int slot)
+{
+    subforge::files::setParameterValue (*apvts.getParameter ("seqPattern"), (float) slot);
+    patternBank.request (slot);
+    if (! sequencerRunning.load())
+        patternBank.applyPending();
+    sendChangeMessage();
+}
+
+void SubForgeProcessor::setSlotNotesEnabled (bool enabled)
+{
+    slotNotes = enabled;
+    settings.setValue ("slotNotes", enabled);
+    settings.saveIfNeeded();
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

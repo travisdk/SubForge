@@ -53,6 +53,19 @@ private:
         void paintButton (juce::Graphics&, bool isHighlighted, bool isDown) override;
     };
 
+    // Pattern slots A-H beside the steps. The playing slot is filled; a slot that waits
+    // for the pattern to start over blinks. Click to choose.
+    struct SlotColumn : juce::Component, juce::SettableTooltipClient
+    {
+        explicit SlotColumn (SubForgeProcessor& p) : processor (p) { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
+        void paint (juce::Graphics&) override;
+        void mouseDown (const juce::MouseEvent&) override;
+        juce::Rectangle<float> cell (int slot) const;
+
+        SubForgeProcessor& processor;
+        bool blinkOn = false;
+    };
+
     // JUCE only shows tips while the plug-in's window has keyboard focus on Linux, and
     // hosts can take the focus away (e.g. after loading a pattern), which stopped all
     // tips. The window lives inside the view, so the mouse being over it is enough.
@@ -179,7 +192,8 @@ private:
     juce::TextButton patternPrev { "<" }, patternNext { ">" }, patternSave { "SAVE" };
     juce::TextButton generateButton { "GENERATE" }, patternMenuButton { "..." };
     StepGrid stepGrid { processor, lookAndFeel };
-    int shownSeqLength = -1, shownSeqRoot = -1;
+    SlotColumn slotColumn { processor };
+    int shownSeqLength = -1, shownSeqRoot = -1, shownSlot = -1, shownPendingSlot = -1;
 
     std::unique_ptr<juce::FileChooser> folderChooser;
     std::unique_ptr<AboutOverlay> aboutOverlay;

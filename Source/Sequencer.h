@@ -21,6 +21,12 @@ namespace subforge
 constexpr int kMaxSteps = 16;
 constexpr int kMinStepNote = -12, kMaxStepNote = 24; // semitones from the root
 
+// Pattern slots A-H. While the sequencer runs, MIDI notes 0-7 (C-2 to G-2) choose a
+// slot instead of transposing; a root note that low would sit below 13 Hz.
+constexpr int kNumPatternSlots = 8;
+constexpr int kFirstSlotNote = 0;
+inline bool isSlotNote (int note) { return note >= kFirstSlotNote && note < kFirstSlotNote + kNumPatternSlots; }
+
 // Sequencer rate choices, in quarter-note beats per step.
 inline constexpr float kSeqRateBeats[] = { 0.5f, 0.25f, 0.125f, 1.0f / 3.0f, 1.0f / 6.0f };
 inline constexpr const char* kSeqRateNames[] = { "1/8", "1/16", "1/32", "1/8T", "1/16T" };
@@ -68,6 +74,12 @@ public:
     {
         for (int i = 0; i < kMaxSteps; ++i)
             set (i, { true, 0, false, false });
+    }
+
+    void copyFrom (const Pattern& other)
+    {
+        for (int i = 0; i < kMaxSteps; ++i)
+            set (i, other.get (i));
     }
 
     // "gate:note:accent:slide" per step, separated by spaces, e.g. "1:0:1:0 1:12:0:1 ..."
@@ -141,6 +153,39 @@ private:
     std::array<std::atomic<uint32_t>, kMaxSteps> steps;
 };
 
+// The pattern slots and which one plays. A request for another slot (from the
+// Pattern parameter or a slot note) waits until the playing pattern starts over,
+// so the switch lands on the loop; the sequencer applies it at its step 0, or
+// straight away while it is stopped or after the host jumped. Requests may come
+// from any thread.
+class PatternBank
+{
+public:
+    Pattern& slot (int index) { return slots[(size_t) std::clamp (index, 0, kNumPatternSlots - 1)]; }
+    const Pattern& slot (int index) const { return slots[(size_t) std::clamp (index, 0, kNumPatternSlots - 1)]; }
+    Pattern& activePattern() { return slot (active()); }
+    const Pattern& activePattern() const { return slot (active()); }
+
+    int active() const { return activeSlot.load(); }
+    int pending() const { return pendingSlot.load(); } // -1: none
+
+    void request (int index) { pendingSlot.store (std::clamp (index, 0, kNumPatternSlots - 1)); }
+    void applyPending()
+    {
+        if (const int next = pendingSlot.exchange (-1); next >= 0)
+            activeSlot.store (next);
+    }
+    void select (int index) // at once, e.g. when a project is loaded
+    {
+        pendingSlot.store (-1);
+        activeSlot.store (std::clamp (index, 0, kNumPatternSlots - 1));
+    }
+
+private:
+    std::array<Pattern, kNumPatternSlots> slots;
+    std::atomic<int> activeSlot { 0 }, pendingSlot { -1 };
+};
+
 struct SequencerSettings
 {
     bool enabled = false;
@@ -170,26 +215,31 @@ public:
     // emit (int sampleOffset, bool noteOn, int note, float velocity)
     template <typename Emit>
     void process (bool playing, double ppqStart, double bpm, double sampleRate, int numSamples,
-                  const SequencerSettings& settings, const Pattern& pattern, Emit&& emit)
+                  const SequencerSettings& settings, PatternBank& bank, Emit&& emit)
     {
         if (! settings.enabled || ! playing || bpm <= 0.0 || numSamples <= 0)
         {
             if (soundingNote >= 0)
                 emit (0, false, soundingNote, 0.0f);
             reset();
+            bank.applyPending();
             return;
         }
 
         const double ppqPerSample = bpm / 60.0 / sampleRate;
         const double ppqEnd = ppqStart + numSamples * ppqPerSample;
 
-        // the host jumped or looped: stop what is sounding and pick up from here
-        if (lastPpqEnd >= 0.0 && std::abs (ppqStart - lastPpqEnd) > ppqPerSample * 4.0)
+        // the host jumped or looped: stop what is sounding and pick up from here,
+        // in the slot asked for at the new position
+        if (lastPpqEnd < 0.0)
+            bank.applyPending();
+        else if (std::abs (ppqStart - lastPpqEnd) > ppqPerSample * 4.0)
         {
             if (soundingNote >= 0)
                 emit (0, false, soundingNote, 0.0f);
             soundingNote = -1;
             pendingOffPpq = -1.0;
+            bank.applyPending();
         }
         lastPpqEnd = ppqEnd;
 
@@ -222,7 +272,7 @@ public:
                 continue;
 
             flushNoteOffUpTo (sample);
-            triggerStep (k, start, (int) sample, settings, pattern, emit);
+            triggerStep (k, start, (int) sample, settings, bank, emit);
         }
 
         flushNoteOffUpTo (numSamples - 1);
@@ -237,13 +287,15 @@ private:
     }
 
     template <typename Emit>
-    void triggerStep (int64_t k, double start, int sample, const SequencerSettings& settings, const Pattern& pattern, Emit& emit)
+    void triggerStep (int64_t k, double start, int sample, const SequencerSettings& settings, PatternBank& bank, Emit& emit)
     {
         const int length = std::clamp (settings.length, 1, kMaxSteps);
         const int index = (int) (((k % length) + length) % length);
         currentStep.store (index);
+        if (index == 0)
+            bank.applyPending();
 
-        const auto step = pattern.get (index);
+        const auto step = bank.activePattern().get (index);
         const bool tiedIn = soundingNote >= 0 && pendingOffPpq < 0.0; // previous step slid into this one
 
         if (! step.gate)

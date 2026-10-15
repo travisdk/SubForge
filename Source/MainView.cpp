@@ -112,7 +112,8 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
 
     for (auto* c : std::initializer_list<juce::Component*> { &seqOn, &seqRate, &seqSteps, &seqGate, &seqSwing, &seqRoot,
                                                               &patternPrev, &patternBox, &patternNext, &patternSave,
-                                                              &generateButton, &patternMenuButton, &stepGrid, &sequencerToggle })
+                                                              &generateButton, &patternMenuButton, &stepGrid, &slotColumn,
+                                                              &sequencerToggle })
         addAndMakeVisible (c);
     sequencerToggle.onClick = [this] { setSequencerVisible (! sequencerVisible); };
     sequencerVisible = processor.getSettings().getBoolValue ("showSequencer", true);
@@ -207,7 +208,9 @@ void MainView::setTooltips()
     patternBox.setTooltip ("Choose a pattern. Patterns keep the sound unchanged.");
     patternSave.setTooltip ("Save the current pattern as a user pattern.");
     generateButton.setTooltip ("Create a new random pattern.");
-    patternMenuButton.setTooltip ("Pattern options: clear, copy and paste as text, folder.");
+    patternMenuButton.setTooltip ("Pattern options: clear, copy to another slot, copy and paste as text, folder.");
+    slotColumn.setTooltip ("Pattern slots. Click to choose which one plays; it switches when the pattern starts over. "
+                           "Automate Sequencer Pattern, or play C-2 to G-2 while the sequencer runs.");
     stepGrid.setTooltips ("Drag or scroll to change the note, click to turn the step on or off, double-click to reset it to the root.",
                           "Accent or slide on this step. Drag across steps to paint.");
 }
@@ -245,7 +248,7 @@ void MainView::showSequencerDetails (bool visible)
 {
     for (auto* c : std::initializer_list<juce::Component*> { &seqRate, &seqSteps, &seqGate, &seqSwing, &seqRoot,
                                                               &patternPrev, &patternBox, &patternNext, &patternSave,
-                                                              &generateButton, &patternMenuButton, &stepGrid })
+                                                              &generateButton, &patternMenuButton, &stepGrid, &slotColumn })
         c->setVisible (visible);
 }
 
@@ -434,7 +437,8 @@ void MainView::resized()
     placeRight (patternBox, 104, 2);
     placeRight (patternPrev, 18, 0);
 
-    stepGrid.setBounds (30, kSeqPanel.getY() + 42, 860, kSeqPanel.getHeight() - 50);
+    slotColumn.setBounds (30, kSeqPanel.getY() + 42, 26, kSeqPanel.getHeight() - 50);
+    stepGrid.setBounds (64, kSeqPanel.getY() + 42, 826, kSeqPanel.getHeight() - 50);
 
     if (aboutOverlay != nullptr)
         aboutOverlay->setBounds (getLocalBounds());
@@ -446,6 +450,7 @@ void MainView::changeListenerCallback (juce::ChangeBroadcaster*)
     refreshPresetBox();
     refreshPatternBox();
     stepGrid.repaint(); // the pattern may have come from a preset, state or the generator
+    slotColumn.repaint();
 }
 
 void MainView::timerCallback()
@@ -456,6 +461,24 @@ void MainView::timerCallback()
     lfoRate.setAlpha (freeRunning ? 1.0f : 0.35f);
 
     stepGrid.setPlayhead (processor.getSequencerStep());
+
+    // the slot can change from automation or MIDI; the grid and name follow the one that plays
+    auto& bank = processor.getPatternBank();
+    const int slot = bank.active(), pendingSlot = bank.pending();
+    const bool blinkOn = pendingSlot >= 0 && juce::Time::getMillisecondCounter() % 500 < 250;
+    const bool slotChanged = slot != shownSlot;
+    if (slotChanged)
+    {
+        shownSlot = slot;
+        refreshPatternBox();
+        stepGrid.repaint();
+    }
+    if (slotChanged || pendingSlot != shownPendingSlot || blinkOn != slotColumn.blinkOn)
+    {
+        shownPendingSlot = pendingSlot;
+        slotColumn.blinkOn = blinkOn;
+        slotColumn.repaint();
+    }
     const int length = (int) processor.apvts.getRawParameterValue ("seqLength")->load();
     const int root = (int) processor.apvts.getRawParameterValue ("seqRoot")->load();
     if (length != shownSeqLength || root != shownSeqRoot)
@@ -542,6 +565,8 @@ void MainView::showSettingsMenu()
                       std::abs (getScale() - scale) < 0.01f, [this, scale] { chooseScale (scale); });
     menu.addSeparator();
     menu.addItem ("Show tooltips", true, tooltipWindow != nullptr, [this] { showTooltips (tooltipWindow == nullptr); });
+    menu.addItem ("MIDI C-2 to G-2 choose pattern", true, processor.slotNotesEnabled(),
+                  [this] { processor.setSlotNotesEnabled (! processor.slotNotesEnabled()); });
 
     const int entry = sound().current();
     const bool onUserPreset = sound().isUser (entry);
@@ -576,6 +601,12 @@ void MainView::showPatternMenu()
     menu.setLookAndFeel (&lookAndFeel);
     menu.addSectionHeader ("Pattern");
     menu.addItem ("Clear pattern", [this] { patterns().clear(); });
+    juce::PopupMenu copyMenu;
+    const int activeSlot = processor.getPatternBank().active();
+    for (int i = 0; i < subforge::kNumPatternSlots; ++i)
+        copyMenu.addItem (juce::String::charToString ((juce::juce_wchar) ('A' + i)) + "   " + patterns().slotName (i),
+                          i != activeSlot, false, [this, i] { patterns().copyToSlot (i); });
+    menu.addSubMenu ("Copy pattern to slot", copyMenu);
     menu.addItem ("Copy pattern as text", [this] { juce::SystemClipboard::copyTextToClipboard (patterns().asText()); });
     menu.addItem ("Paste pattern", [this]
     {
@@ -760,4 +791,41 @@ void MainView::SettingsButton::paintButton (juce::Graphics& g, bool isHighlighte
     g.setColour (colour);
     g.strokePath (gear, juce::PathStrokeType (1.4f, juce::PathStrokeType::mitered));
     g.drawEllipse (juce::Rectangle<float> (2.0f * hole, 2.0f * hole).withCentre (centre), 1.4f);
+}
+
+//==============================================================================
+juce::Rectangle<float> MainView::SlotColumn::cell (int slot) const
+{
+    constexpr float gap = 3.0f;
+    const float h = ((float) getHeight() - gap * (float) (subforge::kNumPatternSlots - 1)) / (float) subforge::kNumPatternSlots;
+    return { 0.0f, (float) slot * (h + gap), (float) getWidth(), h };
+}
+
+void MainView::SlotColumn::paint (juce::Graphics& g)
+{
+    auto* look = subforge::ui::lookOf (*this);
+    if (look == nullptr)
+        return;
+    const auto accent = look->getAccent();
+    const auto& bank = processor.getPatternBank();
+    g.setFont (look->titleFont (10.5f));
+
+    for (int i = 0; i < subforge::kNumPatternSlots; ++i)
+    {
+        const auto r = cell (i).reduced (0.5f);
+        const bool active = i == bank.active(), pending = i == bank.pending();
+        g.setColour (active ? accent : pending && blinkOn ? accent.withAlpha (0.3f) : P::field.darker (0.15f));
+        g.fillRoundedRectangle (r, 4.0f);
+        g.setColour (active || pending ? accent : P::panelEdge);
+        g.drawRoundedRectangle (r, 4.0f, 1.0f);
+        g.setColour (active ? P::background : pending ? P::text : P::dimText);
+        g.drawText (juce::String::charToString ((juce::juce_wchar) ('A' + i)), r, juce::Justification::centred);
+    }
+}
+
+void MainView::SlotColumn::mouseDown (const juce::MouseEvent& e)
+{
+    for (int i = 0; i < subforge::kNumPatternSlots; ++i)
+        if (cell (i).contains (e.position))
+            processor.choosePatternSlot (i);
 }

@@ -74,6 +74,20 @@ target_sources(SubForge PRIVATE
     Source/SoundPresets.cpp
     Source/PatternPresets.cpp)
 
+# SUBFORGE_VERSION_STRING in SubForgeVersion.h: "git describe --tags --dirty", refreshed at
+# every build so it always names the exact commit; project VERSION when git is unavailable.
+find_package(Git QUIET)
+set(SUBFORGE_VERSION_HEADER "${CMAKE_CURRENT_BINARY_DIR}/generated/SubForgeVersion.h")
+set(SUBFORGE_VERSION_COMMAND ${CMAKE_COMMAND} -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR} -DOUTPUT=${SUBFORGE_VERSION_HEADER}
+    -DFALLBACK=${PROJECT_VERSION} -DGIT_EXECUTABLE=${GIT_EXECUTABLE} -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GitVersion.cmake)
+execute_process(COMMAND ${SUBFORGE_VERSION_COMMAND}) # so the header exists before the first build
+file(STRINGS ${SUBFORGE_VERSION_HEADER} SUBFORGE_VERSION REGEX "SUBFORGE_VERSION_STRING")
+string(REGEX REPLACE ".*\"(.*)\".*" "\\1" SUBFORGE_VERSION "${SUBFORGE_VERSION}") # as of configuring, for the package name
+add_custom_target(SubForgeVersion COMMAND ${SUBFORGE_VERSION_COMMAND} BYPRODUCTS ${SUBFORGE_VERSION_HEADER}
+    COMMENT "Checking the SubForge version")
+add_dependencies(SubForge SubForgeVersion)
+target_include_directories(SubForge PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/generated)
+
 juce_add_binary_data(SubForgeAssets SOURCES
     Resources/Fonts/ChakraPetch/ChakraPetch-SemiBold.ttf
     Resources/Fonts/ChakraPetch/ChakraPetch-Bold.ttf
@@ -118,17 +132,18 @@ endif()
 # Release archive with the CLAP and VST3 plug-ins, the licence, the changelog,
 # the third-party notices and install notes: dist/SubForge-linux-x86_64.tar.gz on Linux,
 # dist/SubForge-windows-x64.zip on Windows. The file names carry no version so the README can
-# link to the latest release; the folder inside the archive does.
+# link to the latest release; the folder inside the archive does, from "git describe" when
+# configuring (CI configures from scratch; reconfigure a local build before packaging).
 if (WIN32)
     set(SUBFORGE_PACKAGE_TARGET package-windows)
-    set(SUBFORGE_PACKAGE_NAME "SubForge-${PROJECT_VERSION}-windows-x64")
+    set(SUBFORGE_PACKAGE_NAME "SubForge-${SUBFORGE_VERSION}-windows-x64")
     set(SUBFORGE_PACKAGE_FILE "SubForge-windows-x64.zip")
     set(SUBFORGE_TAR_FLAGS cf)
     set(SUBFORGE_PACKAGE_FORMAT --format=zip)
     set(SUBFORGE_INSTALL_NOTES "${CMAKE_SOURCE_DIR}/packaging/INSTALL-windows.txt")
 else()
     set(SUBFORGE_PACKAGE_TARGET package-linux)
-    set(SUBFORGE_PACKAGE_NAME "SubForge-${PROJECT_VERSION}-linux-x86_64")
+    set(SUBFORGE_PACKAGE_NAME "SubForge-${SUBFORGE_VERSION}-linux-x86_64")
     set(SUBFORGE_PACKAGE_FILE "SubForge-linux-x86_64.tar.gz")
     set(SUBFORGE_TAR_FLAGS cfz)
     set(SUBFORGE_PACKAGE_FORMAT --format=gnutar)

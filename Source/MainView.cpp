@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 #include "MainView.h"
+#include "SubForgeVersion.h"
 
 namespace
 {
@@ -563,6 +564,7 @@ void MainView::showSettingsMenu()
                   });
     menu.addSeparator();
     menu.addItem ("About SubForge...", [this] { showAbout(); });
+    menu.addItem ("Version " SUBFORGE_VERSION_STRING, false, false, {}); // exact build, e.g. 1.0.1-2-g945938c-dirty
 
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&settingsButton).withMinimumWidth (200)
                             .withDeletionCheck (*this));

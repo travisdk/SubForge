@@ -35,6 +35,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # history and tags, so the version comes from "git describe"
 
       - uses: actions/setup-python@v7
         with:

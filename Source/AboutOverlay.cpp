@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 #include "AboutOverlay.h"
+#include "SubForgeVersion.h"
 #include "BinaryData.h"
 
 namespace
@@ -55,7 +56,7 @@ void AboutOverlay::paint (juce::Graphics& g)
 
     g.setColour (P::text);
     g.setFont (lnf.labelFont (13.0f));
-    g.drawText (juce::String::fromUTF8 ("Mono bass synth  \xc2\xb7  version ") + JucePlugin_VersionString,
+    g.drawText (juce::String::fromUTF8 ("Mono bass synth  \xc2\xb7  version ") + SUBFORGE_VERSION_STRING,
                 header.removeFromTop (20), juce::Justification::centredLeft);
     g.setColour (P::dimText);
     g.drawText (juce::String::fromUTF8 ("\xc2\xa9 2026 Henrik Juhl  \xc2\xb7  Free software under the GNU AGPLv3, with no warranty"),

@@ -117,6 +117,9 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
     sequencerVisible = processor.getSettings().getBoolValue ("showSequencer", true);
     showSequencerDetails (sequencerVisible);
 
+    setTooltips();
+    showTooltips (processor.getSettings().getBoolValue ("showTooltips", true));
+
     processor.addChangeListener (this);
     sound().rescan(); // pick up files added since the plugin was loaded
     patterns().rescan();
@@ -130,6 +133,97 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
 juce::Rectangle<int> MainView::sequencerPanel() const
 {
     return sequencerVisible ? kSeqPanel : kSeqPanel.withHeight (42);
+}
+
+void MainView::setTooltips()
+{
+    // header
+    presetPrev.setTooltip ("Previous sound preset.");
+    presetNext.setTooltip ("Next sound preset.");
+    presetBox.setTooltip ("Choose a sound preset. A sound never changes the pattern or sequencer settings.");
+    saveButton.setTooltip ("Save the current sound as a user preset.");
+    randomButton.setTooltip ("Create a new random sound. The pattern is left alone.");
+    mutateButton.setTooltip ("Nudge the current sound slightly. Click a few times to explore variations.");
+
+    // filter
+    filterMode.setTooltip ("Filter type: 24 or 12 dB lowpass, 12 dB bandpass, or diode ladder for a classic acid squelch.");
+    filterCurve.setTooltip ("Live view of the filter response. Follows Cutoff, Resonance and mode.");
+    envAmount.setTooltip ("How far the envelope opens the filter on each note.");
+    filterDecay.setTooltip ("How fast the filter closes after each note. Short values give a plucky bass.");
+    drive.setTooltip ("Overdrives the filter input for a thicker, grittier tone.");
+    keyTrack.setTooltip ("Lets the cutoff follow the note, so high notes stay as bright as low ones.");
+    cutoff.setTooltip ("Filter frequency. The main tone control; automate it for sweeps.");
+    resonance.setTooltip ("Emphasis at the cutoff. High values give the squelchy acid sound.");
+
+    // osc
+    wave.setTooltip ("Oscillator waveform: saw, square, pulse, sine or triangle.");
+    octave.setTooltip ("Shifts the oscillator up or down in octaves.");
+    detune.setTooltip ("Detunes a second oscillator for a wider, chorused sound. Keep it low for tight bass.");
+    sub.setTooltip ("Level of the sub oscillator one octave below. Adds weight on big speakers.");
+    subWave.setTooltip ("Sub oscillator shape: sine for clean weight, square for more presence.");
+
+    // drive
+    distType.setTooltip ("Distortion type after the filter. Off bypasses it.");
+    distGain.setTooltip ("Amount of distortion. The level is compensated automatically.");
+    distTone.setTooltip ("Darker to the left, brighter to the right.");
+    distMix.setTooltip ("Blend of dry and distorted signal. Lower it to keep the low end clean.");
+
+    // amp env, pitch
+    attack.setTooltip ("Attack: how fast the sound fades in.");
+    decay.setTooltip ("Decay: time from peak down to the sustain level.");
+    sustain.setTooltip ("Sustain: level held while the note is down.");
+    release.setTooltip ("Release: how long the sound rings after the note ends.");
+    pitchEnv.setTooltip ("Pitch sweep at the start of each note, in semitones. Negative values drop into the note.");
+    pitchDecay.setTooltip ("How fast the pitch sweep returns to the note.");
+    click.setTooltip ("Adds a short click at the note start to help the bass cut through.");
+
+    // lfo, mod, play
+    lfoSync.setTooltip ("LFO speed locked to the host tempo. Set to FREE to use Rate instead.");
+    lfoRate.setTooltip ("LFO speed in Hz when Sync is FREE.");
+    lfoDepth.setTooltip ("How much the LFO moves the cutoff.");
+    lfoShape.setTooltip ("LFO waveform. S&H gives random steps.");
+    lfoRetrig.setTooltip ("Restart the LFO on each new note instead of following the song position.");
+    wheelAmount.setTooltip ("How much the mod wheel affects its destination. Negative values invert it.");
+    aftertouchAmount.setTooltip ("How much aftertouch affects its destination. Negative values invert it.");
+    wheelDest.setTooltip ("What the mod wheel controls.");
+    aftertouchDest.setTooltip ("What aftertouch controls.");
+    glide.setTooltip ("Time to slide between overlapping notes and sequencer slides.");
+    velocity.setTooltip ("How much velocity affects the volume.");
+    accent.setTooltip ("Strength of accents (high velocities or accented steps): louder and brighter.");
+    accentSweep.setTooltip ("Accents close together build up and open the filter further, like a classic acid line.");
+    volume.setTooltip ("Output volume.");
+
+    // sequencer
+    sequencerToggle.setTooltip ("Show or hide the step sequencer.");
+    seqOn.setTooltip ("Play the pattern while the host is playing. Hold keys to transpose it.");
+    seqRate.setTooltip ("Length of each step.");
+    seqSteps.setTooltip ("Pattern length. Odd lengths make the pattern drift against the bar.");
+    seqGate.setTooltip ("Note length within each step.");
+    seqSwing.setTooltip ("Delays every second step for a shuffled groove.");
+    seqRoot.setTooltip ("Base note of the pattern. Drag or scroll to change it.");
+    patternPrev.setTooltip ("Previous pattern.");
+    patternNext.setTooltip ("Next pattern.");
+    patternBox.setTooltip ("Choose a pattern. Patterns keep the sound unchanged.");
+    patternSave.setTooltip ("Save the current pattern as a user pattern.");
+    generateButton.setTooltip ("Create a new random pattern.");
+    patternMenuButton.setTooltip ("Pattern options: clear, copy and paste as text, folder.");
+    stepGrid.setTooltips ("Drag or scroll to change the note, click to turn the step on or off, double-click to reset it to the root.",
+                          "Accent or slide on this step. Drag across steps to paint.");
+}
+
+// Tooltips can be turned off in the settings menu; the choice is remembered globally.
+void MainView::showTooltips (bool shown)
+{
+    if (shown && tooltipWindow == nullptr)
+    {
+        tooltipWindow = std::make_unique<TooltipWindow> (this, 700);
+        tooltipWindow->setOpaque (false); // rounded corners show the view behind
+    }
+    else if (! shown)
+        tooltipWindow.reset();
+
+    processor.getSettings().setValue ("showTooltips", shown);
+    processor.getSettings().saveIfNeeded();
 }
 
 // Collapsing the sequencer leaves only its title and on/off switch, so a running
@@ -445,6 +539,8 @@ void MainView::showSettingsMenu()
     for (float scale : { 0.75f, 1.0f, 1.25f, 1.5f, 2.0f })
         menu.addItem (juce::String (juce::roundToInt (scale * 100.0f)) + " %", true,
                       std::abs (getScale() - scale) < 0.01f, [this, scale] { chooseScale (scale); });
+    menu.addSeparator();
+    menu.addItem ("Show tooltips", true, tooltipWindow != nullptr, [this] { showTooltips (tooltipWindow == nullptr); });
 
     const int entry = sound().current();
     const bool onUserPreset = sound().isUser (entry);

@@ -78,11 +78,18 @@ public:
     // labels keep the font they were given (value boxes use JetBrains Mono at their own size)
     juce::Font getLabelFont (juce::Label& label) override { return label.getFont(); }
 
+    // tooltips: a narrow raised box with an orange edge, text wrapped to balanced lines
+    juce::Rectangle<int> getTooltipBounds (const juce::String& tipText, juce::Point<int> screenPos,
+                                           juce::Rectangle<int> parentArea) override;
+    void drawTooltip (juce::Graphics&, const juce::String& text, int width, int height) override;
+
     juce::Font getAlertWindowTitleFont() override { return titleFont (16.0f); }
     juce::Font getAlertWindowMessageFont() override { return labelFont (14.0f); }
     juce::Font getAlertWindowFont() override { return labelFont (14.0f); }
 
 private:
+    juce::TextLayout tooltipLayout (const juce::String& text) const;
+
     juce::Typeface::Ptr labelFace, titleFace, valueFace;
     juce::Colour accent;
 };

@@ -30,6 +30,7 @@ public:
 
     // Replaces the parameter's value text, e.g. short names for choices.
     void setValueText (std::function<juce::String (double)> toText);
+    void setTooltip (const juce::String& text) { slider.setTooltip (text); }
 
     void paint (juce::Graphics&) override;
     void resized() override;
@@ -53,6 +54,7 @@ class SegmentedChoice : public juce::Component
 public:
     SegmentedChoice (juce::RangedAudioParameter&, const juce::StringArray& labels);
     void resized() override;
+    void setTooltip (const juce::String& text) { for (auto* b : buttons) b->setTooltip (text); }
 
 private:
     void showIndex (int index);
@@ -78,7 +80,7 @@ private:
 
 // "LABEL value" chip. Drag vertically or use the wheel to change the value;
 // choice parameters also step forward on click.
-class ValueChip : public juce::Component
+class ValueChip : public juce::Component, public juce::SettableTooltipClient
 {
 public:
     ValueChip (juce::RangedAudioParameter&, const juce::String& label);
@@ -103,7 +105,7 @@ private:
 
 // Live magnitude response of the filter, recomputed on the message thread
 // (at most 30 fps, only when cutoff, resonance or mode changed).
-class FilterCurve : public juce::Component, private juce::Timer
+class FilterCurve : public juce::Component, public juce::SettableTooltipClient, private juce::Timer
 {
 public:
     explicit FilterCurve (juce::AudioProcessorValueTreeState&);

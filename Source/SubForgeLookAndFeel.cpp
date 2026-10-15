@@ -296,3 +296,65 @@ void SubForgeLookAndFeel::drawSlideSwitch (juce::Graphics& g, juce::ToggleButton
     g.setFont (titleFont (9.5f).withExtraKerningFactor (0.06f));
     g.drawText (on ? "ON" : "OFF", label, juce::Justification::centred);
 }
+
+//==============================================================================
+namespace
+{
+constexpr float kTooltipMaxWidth = 220.0f, kTooltipPadX = 10.0f, kTooltipPadY = 7.0f;
+const juce::Colour kTooltipBackground { 0xff2c3330 }; // clearly lighter than the panels
+}
+
+juce::TextLayout SubForgeLookAndFeel::tooltipLayout (const juce::String& text) const
+{
+    juce::AttributedString s;
+    s.setJustification (juce::Justification::centredLeft);
+    s.append (text, labelFont (13.5f), Palette::text);
+    juce::TextLayout layout;
+    layout.createLayoutWithBalancedLineLengths (s, kTooltipMaxWidth);
+    return layout;
+}
+
+// Where a tooltip goes, in the coordinates of the component holding the TooltipWindow:
+// under the control (above when there is no room), extending right from its left
+// edge in the left half of the view and left from its right edge in the right half.
+// Large areas like the step grid anchor at the mouse instead.
+juce::Rectangle<int> SubForgeLookAndFeel::getTooltipBounds (const juce::String& tipText, juce::Point<int> screenPos,
+                                                            juce::Rectangle<int> parentArea)
+{
+    const auto layout = tooltipLayout (tipText);
+    const int w = (int) std::ceil (layout.getWidth() + 2.0f * kTooltipPadX);
+    const int h = (int) std::ceil (layout.getHeight() + 2.0f * kTooltipPadY);
+
+    auto anchor = juce::Rectangle<int> (screenPos, screenPos).expanded (10); // around the mouse
+    if (auto* hovered = juce::Desktop::getInstance().getMainMouseSource().getComponentUnderMouse())
+    {
+        // the control is the hovered component's ancestor directly inside the view holding the tooltip window
+        for (auto* control = hovered; auto* view = control->getParentComponent(); control = view)
+        {
+            const bool holdsTooltips = std::any_of (view->getChildren().begin(), view->getChildren().end(),
+                                                    [] (auto* c) { return dynamic_cast<juce::TooltipWindow*> (c) != nullptr; });
+            if (! holdsTooltips)
+                continue;
+            const auto area = view->getLocalArea (control, control->getLocalBounds());
+            if (area.getWidth() <= 320 && area.getHeight() <= 200)
+                anchor = area;
+            break;
+        }
+    }
+
+    constexpr int gap = 4;
+    const int x = anchor.getCentreX() < parentArea.getCentreX() ? anchor.getX() : anchor.getRight() - w;
+    const int y = anchor.getBottom() + gap + h <= parentArea.getBottom() ? anchor.getBottom() + gap : anchor.getY() - gap - h;
+    return juce::Rectangle<int> (x, y, w, h).constrainedWithin (parentArea);
+}
+
+void SubForgeLookAndFeel::drawTooltip (juce::Graphics& g, const juce::String& text, int width, int height)
+{
+    const auto bounds = juce::Rectangle<float> ((float) width, (float) height);
+    g.setColour (kTooltipBackground);
+    g.fillRoundedRectangle (bounds, 5.0f);
+    g.setColour (Palette::secondary);
+    g.drawRoundedRectangle (bounds.reduced (1.0f), 5.0f, 2.0f);
+
+    tooltipLayout (text).draw (g, bounds.reduced (kTooltipPadX, kTooltipPadY));
+}

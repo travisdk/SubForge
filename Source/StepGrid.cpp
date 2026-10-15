@@ -14,6 +14,22 @@ constexpr int kPixelsPerSemitone = 5;
 
 StepGrid::StepGrid (SubForgeProcessor& p, SubForgeLookAndFeel& lf) : processor (p), lnf (lf) {}
 
+void StepGrid::setTooltips (const juce::String& noteTip, const juce::String& flagTip)
+{
+    noteTooltip = noteTip;
+    flagTooltip = flagTip;
+}
+
+juce::String StepGrid::getTooltip()
+{
+    switch (rowAt (getMouseXYRelative().y))
+    {
+        case Row::Accent: case Row::Slide: return flagTooltip;
+        case Row::None: return {};
+        default: return noteTooltip;
+    }
+}
+
 void StepGrid::setPlayhead (int step)
 {
     if (step != playhead)

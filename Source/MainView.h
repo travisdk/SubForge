@@ -53,6 +53,22 @@ private:
         void paintButton (juce::Graphics&, bool isHighlighted, bool isDown) override;
     };
 
+    // JUCE only shows tips while the plug-in's window has keyboard focus on Linux, and
+    // hosts can take the focus away (e.g. after loading a pattern), which stopped all
+    // tips. The window lives inside the view, so the mouse being over it is enough.
+    struct TooltipWindow : juce::TooltipWindow
+    {
+        using juce::TooltipWindow::TooltipWindow;
+        juce::String getTipFor (juce::Component& c) override
+        {
+            if (auto* client = dynamic_cast<juce::TooltipClient*> (&c);
+                client != nullptr && ! juce::ModifierKeys::getCurrentModifiers().isAnyMouseButtonDown()
+                && ! c.isCurrentlyBlockedByAnotherModalComponent())
+                return client->getTooltip();
+            return {};
+        }
+    };
+
     juce::RangedAudioParameter& param (const char* id) { return *processor.apvts.getParameter (id); }
     SoundPresets& sound() { return processor.getSoundPresets(); }
     PatternPresets& patterns() { return processor.getPatternPresets(); }
@@ -66,6 +82,8 @@ private:
     void refreshPatternBox();
     void stepPattern (int delta);
     void showSettingsMenu();
+    void setTooltips();
+    void showTooltips (bool shown);
     void showPatternMenu();
     void applyAccent (juce::Colour accent);
     void showNameDialog (const juce::String& title, const juce::File& folder, const juce::String& suggestion,
@@ -98,7 +116,7 @@ private:
     juce::TextButton presetPrev { "<" }, presetNext { ">" }, saveButton { "SAVE" };
     juce::TextButton randomButton { "RANDOMIZE" }, mutateButton { "MUTATE" };
     SettingsButton settingsButton;
-    juce::TooltipWindow tooltipWindow { this, 600 }; // child of the view, so tooltips scale with it
+    std::unique_ptr<TooltipWindow> tooltipWindow; // child of the view, so tooltips scale with it; null when off
 
     // filter
     subforge::ui::SegmentedChoice filterMode { param ("filterMode"), { "LP24", "LP12", "BP12", "DIODE" } };

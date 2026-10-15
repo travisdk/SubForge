@@ -12,12 +12,16 @@
 //             on/off (a rest shows "..."), double-click to reset the note to the root
 //   ACC/SLD:  click to toggle, drag across steps to paint
 // Steps beyond the pattern length are dimmed.
-class StepGrid : public juce::Component
+class StepGrid : public juce::Component, public juce::TooltipClient
 {
 public:
     StepGrid (SubForgeProcessor& processor, SubForgeLookAndFeel& lf);
 
     void setPlayhead (int step);
+
+    // tooltip for the note bars (and LED and note name) and for the ACC / SLD rows
+    void setTooltips (const juce::String& noteTip, const juce::String& flagTip);
+    juce::String getTooltip() override;
 
     void paint (juce::Graphics&) override;
     void mouseDown (const juce::MouseEvent&) override;
@@ -39,6 +43,7 @@ private:
     SubForgeProcessor& processor;
     SubForgeLookAndFeel& lnf;
     int playhead = -1;
+    juce::String noteTooltip, flagTooltip;
 
     Row dragRow = Row::None;
     bool paintValue = false, dragged = false;

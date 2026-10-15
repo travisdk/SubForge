@@ -12,6 +12,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <vector>
 
 // Acid-style step sequencer: a 16-step pattern (gate, note, accent, slide)
 // played against the host timeline. JUCE-free so it can be tested on its own.
@@ -196,6 +197,14 @@ struct SequencerSettings
     int rootNote = 36;
 };
 
+// Start of step k in beats from the timeline's zero; swing delays every second step.
+inline double stepStartBeats (int64_t k, const SequencerSettings& settings)
+{
+    const double beats = settings.stepBeats;
+    const auto pairStart = (double) (k - (k & 1)) * beats;
+    return (k & 1) ? pairStart + 2.0 * beats * settings.swing : pairStart;
+}
+
 // Turns the pattern into note on/off events for one audio block. Steps are
 // locked to the host timeline (step k starts at beat k * stepBeats), so loops
 // and jumps land on the right step.
@@ -279,12 +288,7 @@ public:
     }
 
 private:
-    static double stepStart (int64_t k, const SequencerSettings& settings)
-    {
-        const double beats = settings.stepBeats;
-        const auto pairStart = (double) (k - (k & 1)) * beats;
-        return (k & 1) ? pairStart + 2.0 * beats * settings.swing : pairStart;
-    }
+    static double stepStart (int64_t k, const SequencerSettings& settings) { return stepStartBeats (k, settings); }
 
     template <typename Emit>
     void triggerStep (int64_t k, double start, int sample, const SequencerSettings& settings, PatternBank& bank, Emit& emit)
@@ -336,5 +340,65 @@ private:
     double lastPpqEnd = -1.0;
     std::atomic<int> currentStep { -1 };
 };
+
+//==============================================================================
+// One pass of a pattern as notes for a MIDI clip, played as the sequencer plays it:
+// the same velocities, gate and swing, and a slide holds the note into the next
+// step. A slide to a different note overlaps it slightly, so a mono synth glides;
+// a slide to the same note becomes one long note.
+struct ClipNote
+{
+    double start, end; // beats from the start of the clip
+    int note;
+    int velocity;      // 1..127
+};
+
+struct PatternClip
+{
+    std::vector<ClipNote> notes;
+    double lengthBeats = 0.0;
+};
+
+constexpr double kSlideOverlapBeats = 1.0 / 64.0;
+
+inline int midiVelocity (float velocity) { return std::clamp ((int) std::lround (velocity * 127.0f), 1, 127); }
+
+inline PatternClip patternToClip (const Pattern& pattern, const SequencerSettings& settings)
+{
+    PatternClip clip;
+    const int length = std::clamp (settings.length, 1, kMaxSteps);
+    clip.lengthBeats = length * settings.stepBeats;
+
+    bool tied = false; // the last note slides into the next step
+    for (int i = 0; i < length; ++i)
+    {
+        const auto step = pattern.get (i);
+        const double start = stepStartBeats (i, settings);
+        const double duration = stepStartBeats (i + 1, settings) - start;
+        const double end = step.slide ? start + duration
+                                      : start + duration * std::clamp ((double) settings.gate, 0.05, 1.0);
+
+        if (! step.gate)
+        {
+            tied = false; // a rest ends a slide at its start, where the held note already ends
+            continue;
+        }
+
+        const int note = std::clamp (settings.rootNote + step.note, 0, 127);
+        if (tied && clip.notes.back().note == note)
+            clip.notes.back().end = end;
+        else
+        {
+            if (tied)
+                clip.notes.back().end = start + std::min (kSlideOverlapBeats, duration * 0.5);
+            clip.notes.push_back ({ start, end, note, midiVelocity (step.accent ? kSeqAccentVelocity : kSeqVelocity) });
+        }
+        tied = step.slide;
+    }
+
+    for (auto& n : clip.notes)
+        n.end = std::min (n.end, clip.lengthBeats);
+    return clip;
+}
 
 } // namespace subforge

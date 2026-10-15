@@ -3,7 +3,8 @@
 
 // Sequencer engine: timing independent of the host block size, swing,
 // no stuck notes after slides, loops or stopping, and pattern slots that
-// switch when the pattern starts over.
+// switch when the pattern starts over, and MIDI clips that play like the
+// sequencer.
 #include "Sequencer.h"
 #include "TestUtils.h"
 
@@ -187,6 +188,65 @@ int main()
         bank.request (5);
         bank.select (2);
         CHECK (bank.active() == 2 && bank.pending() == -1);
+    }
+
+    // a clip starts each note where the sequencer does, with its note and velocity
+    for (const float swing : { 0.5f, 0.62f })
+    {
+        SequencerSettings clipSettings;
+        clipSettings.enabled = true;
+        clipSettings.swing = swing;
+        Pattern line; // default line: accents, slides to other notes, a rest
+        const auto clip = patternToClip (line, clipSettings);
+        CHECK (std::abs (clip.lengthBeats - 4.0) < 1e-9);
+
+        SequencerEngine engine;
+        PatternBank bank;
+        bank.slot (0).copyFrom (line);
+        struct On { long sample; int note; int velocity; };
+        std::vector<On> played;
+        for (long t = 0; t < 96000; t += 480) // one pass: 4 beats at 120 bpm
+            engine.process (true, t / 24000.0, 120.0, 48000.0, 480, clipSettings, bank,
+                            [&] (int s, bool on, int note, float velocity)
+                            {
+                                if (on && t + s < 96000)
+                                    played.push_back ({ t + s, note, midiVelocity (velocity) });
+                            });
+        CHECK (played.size() == clip.notes.size());
+        for (size_t i = 0; i < played.size() && i < clip.notes.size(); ++i)
+        {
+            CHECK (std::abs (played[i].sample - clip.notes[i].start * 24000.0) <= 1.0);
+            CHECK (played[i].note == clip.notes[i].note);
+            CHECK (played[i].velocity == clip.notes[i].velocity);
+        }
+    }
+
+    // gate, slides and rests
+    {
+        SequencerSettings clipSettings; // 1/16, gate 0.5, root C2 (36)
+        Pattern p;
+        p.clear();
+        p.set (0, { true, 0, true, false });   // accent, gate 0.5
+        p.set (1, { true, 0, false, true });   // slide to another note: overlaps it
+        p.set (2, { true, 7, false, true });   // slide to the same note: one long note
+        p.set (3, { true, 7, false, false });
+        p.set (4, { true, 3, false, true });   // slide into a rest: ends where the rest starts
+        p.set (5, { false, 0, false, false });
+        p.set (15, { true, 12, false, true }); // a slide on the last step ends with the clip
+        const auto clip = patternToClip (p, clipSettings);
+        CHECK (clip.notes.size() >= 4);
+        if (clip.notes.size() >= 4)
+        {
+            const auto& n = clip.notes;
+            CHECK (n[0].start == 0.0 && std::abs (n[0].end - 0.125) < 1e-9 && n[0].velocity == 127);
+            CHECK (n[1].start == 0.25 && std::abs (n[1].end - (0.5 + kSlideOverlapBeats)) < 1e-9 && n[1].velocity == 89);
+            CHECK (n[2].start == 0.5 && n[2].note == 43 && std::abs (n[2].end - 0.875) < 1e-9);
+            CHECK (n[3].start == 1.0 && n[3].note == 39 && std::abs (n[3].end - 1.25) < 1e-9);
+            CHECK (n.back().note == 48 && std::abs (n.back().end - 4.0) < 1e-9);
+        }
+        clipSettings.length = 7;
+        clipSettings.stepBeats = 0.5;
+        CHECK (std::abs (patternToClip (p, clipSettings).lengthBeats - 3.5) < 1e-9);
     }
 
     return finish ("sequencer");

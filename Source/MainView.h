@@ -54,16 +54,31 @@ private:
     };
 
     // Pattern slots A-H beside the steps. The playing slot is filled; a slot that waits
-    // for the pattern to start over blinks. Click to choose.
+    // for the pattern to start over blinks. Click to choose, right-click for the slot's
+    // menu. On Windows a slot can also be dragged into the host as a MIDI clip; Linux
+    // hosts don't reliably take a file dragged from a plug-in (JUCE's XDND source).
     struct SlotColumn : juce::Component, juce::SettableTooltipClient
     {
+       #if JUCE_WINDOWS
+        static constexpr bool canDrag = true;
+       #else
+        static constexpr bool canDrag = false;
+       #endif
+
         explicit SlotColumn (SubForgeProcessor& p) : processor (p) { setMouseCursor (juce::MouseCursor::PointingHandCursor); }
         void paint (juce::Graphics&) override;
         void mouseDown (const juce::MouseEvent&) override;
+        void mouseDrag (const juce::MouseEvent&) override;
+        void mouseUp (const juce::MouseEvent&) override;
         juce::Rectangle<float> cell (int slot) const;
+        int slotAt (juce::Point<float>) const;
 
         SubForgeProcessor& processor;
+        std::function<void (int)> onMenu;
+        std::function<juce::File (int)> onExport;
         bool blinkOn = false;
+        int pressedSlot = -1;
+        bool dragStarted = false;
     };
 
     // JUCE only shows tips while the plug-in's window has keyboard focus on Linux, and
@@ -98,13 +113,16 @@ private:
     void setTooltips();
     void showTooltips (bool shown);
     void showPatternMenu();
+    void showSlotMenu (int slot);
+    void exportSlots (std::initializer_list<int> slots);
+    void openMidiFolder();
     void applyAccent (juce::Colour accent);
     void showNameDialog (const juce::String& title, const juce::File& folder, const juce::String& suggestion,
                          std::function<void (const juce::String&)> onName);
     void savePreset (const juce::String& name);
     void savePattern (const juce::String& name);
     void confirm (const juce::String& title, const juce::String& message, const juce::String& okText,
-                  std::function<void()> onOk);
+                  std::function<void()> onOk, const juce::String& cancelText = "Cancel");
     void choosePresetFolder();
     void changePresetFolder (const juce::File& folder);
     void showAbout();

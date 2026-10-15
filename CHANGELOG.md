@@ -21,6 +21,11 @@ tag the commit (`vX.Y.Z`).
   **Copy pattern to slot** in the pattern menu copies it to another slot.
   Projects from 1.0.x open with their pattern in slot A and copies of it in
   B-H, and play as before.
+- **Export patterns as MIDI clips.** Right-click a slot for **Export MIDI**,
+  or use **Export MIDI**, **Export all slots as MIDI** and **Open MIDI
+  folder** in the pattern menu. A clip is one pass of the pattern and plays
+  as the sequencer does: accents, slides (as overlapping notes), gate and
+  swing. On Windows a slot can also be dragged straight into the DAW.
 - Tooltips on all controls. Each one explains in a few words what the
   control does. **Settings > Show tooltips** turns them off; the choice is
   saved for all projects.

@@ -164,13 +164,56 @@ void PatternPresets::markEdited()
     }
 }
 
-void PatternPresets::copyToSlot (int target)
+void PatternPresets::copySlot (int from, int to)
 {
-    if (! juce::isPositiveAndBelow (target, kNumPatternSlots) || target == bank.active())
+    if (! juce::isPositiveAndBelow (from, kNumPatternSlots) || ! juce::isPositiveAndBelow (to, kNumPatternSlots) || from == to)
         return;
-    bank.slot (target).copyFrom (pattern());
-    slots[(size_t) target] = slot();
+    bank.slot (to).copyFrom (bank.slot (from));
+    slots[(size_t) to] = slots[(size_t) from];
     changed();
+}
+
+juce::File PatternPresets::exportMidi (int slotIndex)
+{
+    if (! juce::isPositiveAndBelow (slotIndex, kNumPatternSlots))
+        return {};
+
+    constexpr int ticksPerQuarter = 960;
+    auto get = [this] (const char* id) { return state.getRawParameterValue (id)->load(); };
+    SequencerSettings settings;
+    settings.stepBeats = kSeqRateBeats[juce::jlimit (0, kNumSeqRates - 1, (int) get ("seqRate"))];
+    settings.length = (int) get ("seqLength");
+    settings.gate = get ("seqGate");
+    settings.swing = get ("seqSwing");
+    settings.rootNote = (int) get ("seqRoot");
+    const auto clip = patternToClip (bank.slot (slotIndex), settings);
+
+    const auto name = "SubForge " + juce::String::charToString ((juce::juce_wchar) ('A' + slotIndex)) + " - "
+                      + slots[(size_t) slotIndex].name.trimCharactersAtEnd (" *");
+    juce::MidiMessageSequence sequence;
+    sequence.addEvent (juce::MidiMessage::textMetaEvent (3, name)); // track name
+    for (const auto& n : clip.notes)
+    {
+        sequence.addEvent (juce::MidiMessage::noteOn (1, n.note, (juce::uint8) n.velocity).withTimeStamp (n.start * ticksPerQuarter));
+        sequence.addEvent (juce::MidiMessage::noteOff (1, n.note).withTimeStamp (n.end * ticksPerQuarter));
+    }
+    sequence.updateMatchedPairs();
+    // the track ends with the pattern, so the clip is as long as one pass
+    sequence.addEvent (juce::MidiMessage::endOfTrack().withTimeStamp (clip.lengthBeats * ticksPerQuarter));
+
+    juce::MidiFile midiFile;
+    midiFile.setTicksPerQuarterNote (ticksPerQuarter);
+    midiFile.addTrack (sequence);
+
+    const auto file = files::fileFor (midiFolder(), name, ".mid");
+    if (! midiFolder().createDirectory())
+        return {};
+    juce::FileOutputStream stream (file);
+    if (! stream.openedOk())
+        return {};
+    stream.setPosition (0);
+    stream.truncate();
+    return midiFile.writeTo (stream) ? file : juce::File();
 }
 
 juce::String PatternPresets::asText() const

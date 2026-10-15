@@ -208,9 +208,13 @@ void MainView::setTooltips()
     patternBox.setTooltip ("Choose a pattern. Patterns keep the sound unchanged.");
     patternSave.setTooltip ("Save the current pattern as a user pattern.");
     generateButton.setTooltip ("Create a new random pattern.");
-    patternMenuButton.setTooltip ("Pattern options: clear, copy to another slot, copy and paste as text, folder.");
-    slotColumn.setTooltip ("Pattern slots. Click to choose which one plays; it switches when the pattern starts over. "
-                           "Automate Sequencer Pattern, or play C-2 to G-2 while the sequencer runs.");
+    patternMenuButton.setTooltip ("Pattern options: clear, copy to another slot, export as MIDI, copy and paste as text, folder.");
+    slotColumn.setTooltip (juce::String ("Pattern slots. Click to choose which one plays; it switches when the pattern starts over. "
+                                         "Automate Sequencer Pattern, or play C-2 to G-2 while the sequencer runs. ")
+                           + (SlotColumn::canDrag ? "Drag a slot into your DAW, or right-click to export it as MIDI."
+                                                  : "Right-click a slot to export it as MIDI."));
+    slotColumn.onMenu = [this] (int slot) { showSlotMenu (slot); };
+    slotColumn.onExport = [this] (int slot) { return patterns().exportMidi (slot); };
     stepGrid.setTooltips ("Drag or scroll to change the note, click to turn the step on or off, double-click to reset it to the root.",
                           "Accent or slide on this step. Drag across steps to paint.");
 }
@@ -605,8 +609,13 @@ void MainView::showPatternMenu()
     const int activeSlot = processor.getPatternBank().active();
     for (int i = 0; i < subforge::kNumPatternSlots; ++i)
         copyMenu.addItem (juce::String::charToString ((juce::juce_wchar) ('A' + i)) + "   " + patterns().slotName (i),
-                          i != activeSlot, false, [this, i] { patterns().copyToSlot (i); });
+                          i != activeSlot, false, [this, activeSlot, i] { patterns().copySlot (activeSlot, i); });
     menu.addSubMenu ("Copy pattern to slot", copyMenu);
+    menu.addSeparator();
+    menu.addItem ("Export MIDI", [this, activeSlot] { exportSlots ({ activeSlot }); });
+    menu.addItem ("Export all slots as MIDI", [this] { exportSlots ({ 0, 1, 2, 3, 4, 5, 6, 7 }); });
+    menu.addItem ("Open MIDI folder", [this] { openMidiFolder(); });
+    menu.addSeparator();
     menu.addItem ("Copy pattern as text", [this] { juce::SystemClipboard::copyTextToClipboard (patterns().asText()); });
     menu.addItem ("Paste pattern", [this]
     {
@@ -634,6 +643,47 @@ void MainView::showPatternMenu()
                   });
 
     menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&patternMenuButton).withDeletionCheck (*this));
+}
+
+void MainView::showSlotMenu (int slot)
+{
+    const auto letter = juce::String::charToString ((juce::juce_wchar) ('A' + slot));
+    juce::PopupMenu menu;
+    menu.setLookAndFeel (&lookAndFeel);
+    menu.addSectionHeader (letter + " - " + patterns().slotName (slot));
+    menu.addItem ("Export MIDI", [this, slot] { exportSlots ({ slot }); });
+    juce::PopupMenu copyMenu;
+    for (int i = 0; i < subforge::kNumPatternSlots; ++i)
+        copyMenu.addItem (juce::String::charToString ((juce::juce_wchar) ('A' + i)) + "   " + patterns().slotName (i),
+                          i != slot, false, [this, slot, i] { patterns().copySlot (slot, i); });
+    menu.addSubMenu ("Copy to slot", copyMenu);
+    menu.showMenuAsync (juce::PopupMenu::Options().withTargetComponent (&slotColumn).withDeletionCheck (*this));
+}
+
+// Exports to the MIDI folder and says where, with a button that opens it.
+void MainView::exportSlots (std::initializer_list<int> slots)
+{
+    juce::StringArray written;
+    for (int slot : slots)
+    {
+        const auto file = patterns().exportMidi (slot);
+        if (file == juce::File())
+        {
+            confirm ("Could not export", "Writing to " + patterns().midiFolder().getFullPathName() + " failed.", "OK", {});
+            return;
+        }
+        written.add (file.getFileName());
+    }
+    const auto what = written.size() == 1 ? written[0] : juce::String (written.size()) + " MIDI files";
+    confirm ("MIDI exported", "Saved " + what + " in " + patterns().midiFolder().getFullPathName() + ".",
+             "Open folder", [this] { openMidiFolder(); }, "OK");
+}
+
+void MainView::openMidiFolder()
+{
+    auto folder = patterns().midiFolder();
+    folder.createDirectory();
+    folder.startAsProcess();
 }
 
 void MainView::applyAccent (juce::Colour newAccent)
@@ -704,13 +754,13 @@ void MainView::savePattern (const juce::String& name)
 
 // Two-button (or one, without onOk) message shown inside the view.
 void MainView::confirm (const juce::String& title, const juce::String& message, const juce::String& okText,
-                        std::function<void()> onOk)
+                        std::function<void()> onOk, const juce::String& cancelText)
 {
     auto* window = new juce::AlertWindow (title, message, juce::MessageBoxIconType::NoIcon);
     window->setLookAndFeel (&lookAndFeel);
     window->addButton (okText, 1, juce::KeyPress (juce::KeyPress::returnKey));
     if (onOk)
-        window->addButton ("Cancel", 0, juce::KeyPress (juce::KeyPress::escapeKey));
+        window->addButton (cancelText, 0, juce::KeyPress (juce::KeyPress::escapeKey));
 
     addAndMakeVisible (window);
     window->setCentrePosition (getLocalBounds().getCentre());
@@ -823,9 +873,43 @@ void MainView::SlotColumn::paint (juce::Graphics& g)
     }
 }
 
-void MainView::SlotColumn::mouseDown (const juce::MouseEvent& e)
+int MainView::SlotColumn::slotAt (juce::Point<float> position) const
 {
     for (int i = 0; i < subforge::kNumPatternSlots; ++i)
-        if (cell (i).contains (e.position))
-            processor.choosePatternSlot (i);
+        if (cell (i).contains (position))
+            return i;
+    return -1;
+}
+
+void MainView::SlotColumn::mouseDown (const juce::MouseEvent& e)
+{
+    pressedSlot = slotAt (e.position);
+    dragStarted = false;
+    if (pressedSlot >= 0 && e.mods.isPopupMenu())
+    {
+        onMenu (pressedSlot);
+        pressedSlot = -1;
+    }
+    else if (! canDrag && pressedSlot >= 0) // nothing to wait for: choose at once
+    {
+        processor.choosePatternSlot (pressedSlot);
+        pressedSlot = -1;
+    }
+}
+
+// The drag is the operating system's: the host takes the file as it takes one from Explorer.
+void MainView::SlotColumn::mouseDrag (const juce::MouseEvent& e)
+{
+    if (! canDrag || pressedSlot < 0 || dragStarted || e.getDistanceFromDragStart() <= 4)
+        return;
+    dragStarted = true;
+    if (const auto file = onExport (pressedSlot); file.existsAsFile())
+        juce::DragAndDropContainer::performExternalDragDropOfFiles ({ file.getFullPathName() }, false, this);
+}
+
+void MainView::SlotColumn::mouseUp (const juce::MouseEvent& e)
+{
+    if (pressedSlot >= 0 && ! dragStarted && slotAt (e.position) == pressedSlot)
+        processor.choosePatternSlot (pressedSlot);
+    pressedSlot = -1;
 }

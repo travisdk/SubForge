@@ -161,6 +161,12 @@ Et ønsket slot venter, til mønstret starter forfra (step 0), så skiftet lande
 
 Et MIDI-valg flytter ikke parameteret, fordi lydtråden ikke pålideligt kan skrive til host-parametre. GUI'en viser derfor det slot, der faktisk spiller.
 
+### 4.5 MIDI-eksport
+
+`patternToClip()` (`Sequencer.h`, JUCE-fri) laver ét gennemløb af et slot om til noder med samme timing (`stepStartBeats`, som sequenceren også bruger), samme velocities (89 og 127 for accent) og samme gate. Et slide til en anden tone overlapper den næste node med 1/64 beat, så en mono-synth glider. Et slide til samme tone bliver én lang node. `tests/test_sequencer.cpp` kræver, at clippets noder starter præcis, hvor sequencerens gør. `PatternPresets::exportMidi()` skriver filen (960 ticks pr. kvartnode, sporets navn, end-of-track ved mønstrets slutning) i mappen `MIDI` ved siden af mønstermappen.
+
+Kun Windows-buildet kan trække et slot direkte ind i hosten (`SlotColumn::canDrag`). På Linux sender JUCE kun `text/uri-list` over XDND, og Bitwig tager ikke imod det (erfaring fra seqVerse). Derfor har Linux kun eksport og "Open MIDI folder", og teksterne nævner ikke træk dér.
+
 ---
 
 ## 5. Parametre og tilstand

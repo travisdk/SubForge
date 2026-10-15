@@ -63,6 +63,18 @@ Either way, the new slot starts when the playing pattern starts over, so
 put the switch on or just before the bar line. If you use both ways, the
 latest change wins.
 
+## Exporting patterns as MIDI
+
+Right-click a slot and choose **Export MIDI** to save it as a MIDI clip, or
+use **Export all slots as MIDI** in the pattern menu (**...**). The files go
+to the `MIDI` folder next to your pattern folder; **Open MIDI folder** shows
+it, and you drag the files from there into your DAW. On Windows you can also
+drag a slot straight into your DAW.
+
+A clip is one pass of the pattern, with its accents, slides, gate and swing.
+Play it with SubForge's sequencer off, or with another instrument: while the
+sequencer runs, incoming notes transpose the pattern instead of playing.
+
 ## Download and install
 
 Download the ready-built plug-ins for your system (always the latest

@@ -32,7 +32,13 @@ public:
     void randomize();
     void clear();
     void markEdited(); // a step was changed in the grid
-    void copyToSlot (int target);
+    void copySlot (int from, int to);
+
+    // A slot as a one-pass MIDI clip, "SubForge B - Chicago Jack.mid" in the MIDI
+    // folder (next to the pattern folder), replacing an earlier export of the same
+    // name. Returns the file, or a default File if it could not be written.
+    juce::File exportMidi (int slotIndex);
+    juce::File midiFolder() const { return getFolder().getParentDirectory().getChildFile ("MIDI"); }
 
     void rescan();
     bool exists (const juce::String& patternName) const;

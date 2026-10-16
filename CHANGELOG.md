@@ -10,6 +10,8 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+## [1.2.0] – 2026-10-16
+
 ### Added
 - **20 acid presets.** "Acid - …" sound presets, from dark and bubbling
   to sharp and screaming, each with a sequencer pattern of the same name
@@ -26,7 +28,8 @@ tag the commit (`vX.Y.Z`).
   **Export all slots as MIDI** gives each clip its own length. Projects
   from 1.1.0 give every slot the settings they had and play as before,
   unless they automate one of the four and switch slots: that automation
-  now changes only the slot that plays.
+  now changes only the slot that plays. The root note is still shared by
+  all slots, and its tooltip now says so.
 
 ## [1.1.0] – 2026-10-15
 
@@ -138,7 +141,8 @@ First public release, as free software under the GNU AGPLv3.
 
 VST is a registered trademark of Steinberg Media Technologies GmbH.
 
-[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/travisdk/SubForge/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/travisdk/SubForge/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/travisdk/SubForge/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/travisdk/SubForge/releases/tag/v1.0.0

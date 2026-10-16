@@ -115,7 +115,6 @@ Ingen GPL- eller LGPL-biblioteker indgår i Windows-udgaverne.
 | Mønstergenerator (Random) | `Source/Sequencer.h` `randomize()` | **Selv genereret**, regelbaseret | – | Genererer nye mønstre |
 | Chakra Petch- og JetBrains Mono-fonte | `Resources/Fonts/ChakraPetch/*.ttf`, `Resources/Fonts/JetBrainsMono/*.ttf` | Officielle repos (se §1a) | **SIL OFL 1.1**: må indlejres og distribueres kommercielt sammen med software. Må ikke sælges alene. Licensteksten skal følge med | – |
 | OFL-licenstekster | `Resources/Fonts/ChakraPetch/OFL.txt`, `Resources/Fonts/JetBrainsMono/OFL.txt` | Fra de samme repos som fontene | – | – |
-| GUI-designreference | `docs/design/syre.png` | Leveret af ejeren | – | Kun til udvikling. Distribueres ikke med pluginnet |
 | Demo-WAV'er | `build/`, `build-juce8/` | **Selv genereret** | – | Udeladt via `.gitignore`. Distribueres ikke |
 
 ---
@@ -240,7 +239,7 @@ Du skal selv have ret til at bruge den compiler, der bygger. **Visual Studio Com
 1. ✅ `LICENSE` (AGPLv3) i repoet og som `LICENSE.txt` i begge pakker, med licensnote i README, `INSTALL.txt`, `THIRD-PARTY-NOTICES.txt` og "About SubForge".
 2. ✅ Kildekoden er tilgængelig i det offentlige repo med et tag pr. release, og SDK-versionerne står i README og CI (se forbeholdet i §5.1).
 3. ✅ `THIRD-PARTY-NOTICES.txt` følger med og kontrolleres af CI.
-4. ✅ VST-varemærket: "VST®" ved første omtale, Steinbergs "VST Compatible"-logo i README og ændringslog, og varemærkesætningen i dokumentationen og "About SubForge" (via `THIRD-PARTY-NOTICES.txt`). Se `docs/RELEASE-CHECKLIST.md`.
+4. ✅ VST-varemærket: "VST®" ved første omtale, Steinbergs "VST Compatible"-logo i README og ændringslog, og varemærkesætningen i dokumentationen og "About SubForge" (via `THIRD-PARTY-NOTICES.txt`).
 
 **Historik – salg med lukket kildekode (fravalgt). Kan SubForge sælges med lukket kildekode og de medfølgende mønstre? Ja, når to ting er på plads:**
 

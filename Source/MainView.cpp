@@ -8,7 +8,7 @@ namespace
 {
 using P = SubForgeLookAndFeel::Palette;
 
-// Panel layout at the design size, following docs/design/syre.png.
+// Panel layout at the design size.
 const juce::Rectangle<int> kFilterPanel { 16, 64, 520, 254 };
 const juce::Rectangle<int> kOscPanel { 546, 64, 358, 122 };
 const juce::Rectangle<int> kDrivePanel { 546, 196, 358, 122 };

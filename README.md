@@ -86,6 +86,12 @@ A clip is one pass of the pattern, with its accents, slides, gate and swing.
 Play it with SubForge's sequencer off, or with another instrument: while the
 sequencer runs, incoming notes transpose the pattern instead of playing.
 
+The file is exactly as long as the pattern: Steps × Rate, so 9 steps of
+1/16 last nine sixteenths. DAWs such as Bitwig and Ableton Live still round
+an imported clip up to a whole bar, so a 9-step clip arrives one bar long
+with 7 silent steps at the end. To keep the polyrhythm, set the clip's loop
+length (or its end) to the pattern's length before you loop or duplicate it.
+
 How the steps become notes:
 
 - **Slides** hold the note 1/64 beat into the next one, so the notes

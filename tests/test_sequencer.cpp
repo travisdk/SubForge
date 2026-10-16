@@ -249,5 +249,28 @@ int main()
         CHECK (std::abs (patternToClip (p, clipSettings).lengthBeats - 3.5) < 1e-9);
     }
 
+    // a clip is steps x rate long, whole bars or not
+    {
+        struct Case { int steps; int rate; double beats; };
+        const Case cases[] = {
+            { 16, 1, 4.0 }, // one bar
+            { 9, 1, 2.25 }, // nine 1/16
+            { 12, 1, 3.0 },
+            { 4, 1, 1.0 },  // one beat
+            { 8, 0, 4.0 },  // one bar of 1/8
+            { 9, 4, 1.5 },  // nine 1/16T
+        };
+        for (const auto& c : cases)
+        {
+            SequencerSettings clipSettings;
+            clipSettings.length = c.steps;
+            clipSettings.stepBeats = kSeqRateBeats[c.rate];
+            const auto clip = patternToClip (Pattern(), clipSettings);
+            CHECK (std::abs (clip.lengthBeats - c.beats) < 1e-6);
+            for (const auto& n : clip.notes)
+                CHECK (n.end <= clip.lengthBeats);
+        }
+    }
+
     return finish ("sequencer");
 }

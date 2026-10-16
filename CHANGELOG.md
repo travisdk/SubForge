@@ -10,6 +10,13 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+### Added
+- **20 acid presets.** "Acid - …" sound presets, from dark and bubbling
+  to sharp and screaming, each with a sequencer pattern of the same name
+  (mostly 16 steps, a few with 12 or 7). They come after the existing
+  presets and patterns, so projects saved with earlier versions load the
+  same presets as before.
+
 ## [1.1.0] – 2026-10-15
 
 ### Added

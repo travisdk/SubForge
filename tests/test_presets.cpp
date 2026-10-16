@@ -13,7 +13,7 @@ using namespace subforge;
 
 int main()
 {
-    CHECK (kNumPresets == 89);
+    CHECK (kNumPresets == 109);
 
     std::set<std::string> names;
     for (const auto& preset : kPresets)

@@ -28,8 +28,8 @@ Dette dokument forklarer, hvordan SubForge er bygget op, og hvorfor de vigtigste
 | Lag | Filer | Ansvar | Afhænger af JUCE? |
 |---|---|---|---|
 | DSP | `BassSynth.h` | Oscillatorer, filtre, envelopes, LFO, distortion, stemmen | **Nej**. Ren C++17 |
-| Sequencer | `Sequencer.h`, `PatternLibrary.h` | Mønster, timing, swing, slide, 42 fabriksmønstre | **Nej** |
-| Lyddata | `Patches.h`, `FilterResponse.h` | 89 presets, random-patch, niveaunormalisering, filterkurve til GUI | **Nej** |
+| Sequencer | `Sequencer.h`, `PatternLibrary.h` | Mønster, timing, swing, slide, 62 fabriksmønstre | **Nej** |
+| Lyddata | `Patches.h`, `FilterResponse.h` | 109 presets, random-patch, niveaunormalisering, filterkurve til GUI | **Nej** |
 | Plugin | `PluginProcessor.*` | Parametre, MIDI, transport, oversampling, tilstand | Ja |
 | Presets | `SoundPresets.*`, `PatternPresets.*`, `PresetFiles.h` | Indlæs og gem lyde og mønstre, brugerfiler | Ja |
 | GUI | `PluginEditor.*`, `MainView.*`, `Widgets.*`, `StepGrid.*`, `SubForgeLookAndFeel.*`, `AboutOverlay.*` | Alt, hvad brugeren ser | Ja |
@@ -147,7 +147,7 @@ Undtagelsen er MIDI-node 0–7 (C-2 til G-2): de vælger mønster-slot A–H (af
 ### 4.3 Mønstre
 
 - Et step er gate, tone (-12…+24 halvtoner fra grundtonen), accent og slide.
-- **Fabriksmønstre:** De 42 fabriksmønstre ligger i kompakt tekstform i `PatternLibrary.h`.
+- **Fabriksmønstre:** De 62 fabriksmønstre ligger i kompakt tekstform i `PatternLibrary.h`.
 - **Generator:** Generatoren (`Pattern::randomize`, linje 101) laver nye linjer efter regler: skala, oktavspring, accent- og slide-sandsynlighed.
 
 ### 4.4 Mønster-slots
@@ -205,7 +205,7 @@ Lyd og mønstre er **to uafhængige systemer**. Et lydpreset rører aldrig seque
 
 | | Lydpresets (`SoundPresets.*`) | Mønstre (`PatternPresets.*`) |
 |---|---|---|
-| Fabriksindhold | 89 presets i `Patches.h` | 42 mønstre i `PatternLibrary.h` |
+| Fabriksindhold | 109 presets i `Patches.h` | 62 mønstre i `PatternLibrary.h` |
 | Brugerfiler | `.sfpreset` (XML) | `.sfpattern` (XML) |
 | Standardmappe | `Dokumenter/SubForge/Presets` | `Dokumenter/SubForge/Patterns` (søstermappe til presetmappen) |
 | Indhold | Alle lydparametre som rene værdier | Steps, længde, swing, rate og gate. *Ikke* grundtonen, så mønstret følger tonearten |
@@ -258,8 +258,8 @@ Lyd og mønstre er **to uafhængige systemer**. Et lydpreset rører aldrig seque
 
 | Test | Kontrollerer |
 |---|---|
-| `test_presets` | 89 unikke navne, fornuftigt niveau, og at Randomize sjældent rammer grænserne |
-| `test_patterns` | 42 mønstre, tekstformat frem og tilbage, afvisning af ugyldigt input |
+| `test_presets` | 109 unikke navne, fornuftigt niveau, og at Randomize sjældent rammer grænserne |
+| `test_patterns` | 62 mønstre, tekstformat frem og tilbage, afvisning af ugyldigt input |
 | `test_sequencer` | Identisk timing ved tre blokstørrelser, ingen hængende toner, swing, loop-spring |
 | `test_filter_curve` | GUI-kurven stemmer med filteret (±0,5 dB) |
 | `test_oscillator` | Anti-aliasing virker (målt mod naive bølgeformer) |

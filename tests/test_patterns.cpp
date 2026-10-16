@@ -19,7 +19,7 @@ static bool samePattern (const Pattern& a, const Pattern& b)
 
 int main()
 {
-    CHECK (kNumFactoryPatterns == 42);
+    CHECK (kNumFactoryPatterns == 62);
 
     for (const auto& factory : kFactoryPatterns)
     {

@@ -132,6 +132,28 @@ inline const FactoryPattern kFactoryPatterns[] = {
     // Odd lengths for polymetric loops against the 4/4 grid
     { "Twelve Step Tresillo", "0a - - 0 - - 0a - - 0 12s 10 - - - -",             12, 0.5f },
     { "Seven Wonder",        "0a 12 0 3s 5 0 7 - - - - - - - - -",                7,  0.5f },
+
+    // Acid line: one pattern for each "Acid - " sound preset of the same name
+    { "Acid - Dark Bubble",         "0a - 0 12 0 0s 3 0 - 0 12a 0 0s 7 0 -",             16, 0.5f },
+    { "Acid - Deep Gurgle",         "0a 0 12s 0 - 0 0 12 0a - 0 3s 5 0 12 -",            16, 0.52f },
+    { "Acid - Rubber Square",       "0 12a 0 0s 3 - 0 12 0 0 12s 10 0a - 7 0",           16, 0.5f },
+    { "Acid - Squelch Classic",     "0a 0 12 0 0s 12 10 0 0a 0 12 - 3s 0 12 7",          16, 0.5f },
+    { "Acid - Tight Plink",         "0a 12 0 - 0 12s 0 3 0 12a - 0 12 0s 10 0",          16, 0.54f },
+    { "Acid - Long Sweep",          "0a 0 0s 12 - 0 7 0 12a 0 - 0s 3 0 12 0",            16, 0.5f },
+    { "Acid - Overdriven Squelch",  "0a 0 12 0s 0 3 - 0 0a 12 0 0s 7 - 0 12",            16, 0.5f },
+    { "Acid - Screaming Lead",      "12a 0 12 24s 12 - 0 12 12a 0 24 12s 10 - 12a 0",    16, 0.5f },
+    { "Acid - Diode Acid",          "0a 0 12 0 0s 12 10 0 0 - 12a 0 3s 0 12 -",          16, 0.5f },
+    { "Acid - Hollow Square Drive", "0a 12 - 0 12s 0 0 12 0a - 0 7s 0 12 3 0",           16, 0.52f },
+    { "Acid - Acid Snap",           "0a 0 12 0 0 12s 3 0a 0 12 - 0 0s 12 0a -",          16, 0.5f },
+    { "Acid - Mud Pump",            "0a 0 0 12s 0 - 0 0 0a 12 0 0s 3 0 - 12",            16, 0.56f },
+    { "Acid - Shriek Drive",        "0a 12 0 12s 24 12 - 0 12a 0 0s 12 - 24a 12 0",      16, 0.5f },
+    { "Acid - Warm Overdrive",      "0a 0 12 0 0s 10 12 - 0 0a 12 0s 7 0 3 -",           16, 0.5f },
+    { "Acid - Twelve Bounce",       "0a 0 12 0s 3 0 - 12a 0 0s 12 0 - - - -",            12, 0.5f },
+    { "Acid - Twelve Square Roll",  "0a 12 0 - 0s 12 0a 0 12s 10 0 12 - - - -",          12, 0.5f },
+    { "Acid - Twelve Driven",       "0a 0 12s 12 0 - 0 3 0a 12 0s 7 - - - -",            12, 0.5f },
+    { "Acid - Seven Wobble",        "0a 12 0s 0 - 12a 3 - - - - - - - - -",              7,  0.5f },
+    { "Acid - Seven Square Stab",   "0a 0 12s 0 0a - 12 - - - - - - - - -",              7,  0.5f },
+    { "Acid - Acid Shrieker",       "12a 0 24 12s 0 12 - 24a 12 0s 12 0 - 12a 24 12",    16, 0.5f },
 };
 
 inline constexpr int kNumFactoryPatterns = (int) (sizeof (kFactoryPatterns) / sizeof (kFactoryPatterns[0]));

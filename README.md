@@ -38,7 +38,7 @@ https://github.com/user-attachments/assets/3b5655d9-1d9e-4a71-944f-db04779f6a4d
 - 16-step sequencer with pitch, accent and slide per step, synced to the
   host's tempo, and eight pattern slots you switch with automation or MIDI
   notes.
-- 89 sound presets and 42 patterns, plus your own presets and patterns.
+- 109 sound presets and 62 patterns, plus your own presets and patterns.
 - Vector interface that scales from 75 % to 200 %.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full list.

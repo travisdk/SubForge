@@ -202,7 +202,7 @@ void MainView::setTooltips()
     seqSteps.setTooltip ("Pattern length. Odd lengths make the pattern drift against the bar.");
     seqGate.setTooltip ("Note length within each step.");
     seqSwing.setTooltip ("Delays every second step for a shuffled groove.");
-    seqRoot.setTooltip ("Base note of the pattern. Drag or scroll to change it.");
+    seqRoot.setTooltip ("Base note of the pattern. Root note is shared by all slots. Drag or scroll to change it.");
     patternPrev.setTooltip ("Previous pattern.");
     patternNext.setTooltip ("Next pattern.");
     patternBox.setTooltip ("Choose a pattern. Patterns keep the sound unchanged.");

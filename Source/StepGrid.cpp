@@ -80,7 +80,7 @@ StepGrid::Row StepGrid::rowAt (int y) const
 void StepGrid::paint (juce::Graphics& g)
 {
     const auto accent = lnf.getAccent();
-    const int length = (int) processor.apvts.getRawParameterValue ("seqLength")->load();
+    const int length = processor.getPattern().groove().length;
     const int root = (int) processor.apvts.getRawParameterValue ("seqRoot")->load();
     auto& pattern = processor.getPattern();
     constexpr float noteSpan = (float) (subforge::kMaxStepNote - subforge::kMinStepNote);

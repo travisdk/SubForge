@@ -17,6 +17,17 @@ tag the commit (`vX.Y.Z`).
   presets and patterns, so projects saved with earlier versions load the
   same presets as before.
 
+### Changed
+- **Each pattern slot has its own Steps, Rate, Swing and Gate.** Before,
+  the four were shared by all slots, so loading a 7-step pattern into B
+  made A play only 7 steps too. Now a slot holds everything a pattern file
+  holds. The controls, and automation of them, change the slot that plays.
+  A new slot starts on its first step with its own length and rate, and
+  **Export all slots as MIDI** gives each clip its own length. Projects
+  from 1.1.0 give every slot the settings they had and play as before,
+  unless they automate one of the four and switch slots: that automation
+  now changes only the slot that plays.
+
 ## [1.1.0] – 2026-10-15
 
 ### Added

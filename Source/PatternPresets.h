@@ -10,8 +10,8 @@
 // files. A pattern covers the steps plus the groove settings (length, swing,
 // rate, gate) and nothing of the sound; the root note is left alone so a
 // pattern follows the key being played. Everything works on the slot that
-// plays, and each slot keeps the name of what was loaded into it. The groove
-// settings are shared by all slots. Runs on the message thread.
+// plays, and each slot keeps the name of what was loaded into it and its own
+// groove settings. Runs on the message thread.
 class PatternPresets
 {
 public:
@@ -51,14 +51,16 @@ public:
     juce::String asText() const;
     bool fromText (const juce::String& text);
 
-    // the steps and names of all slots, stored with the project. Slot A uses the
-    // properties of 1.0.x, so older versions load it; slots missing from older
-    // projects start as copies of A.
+    // the steps, grooves and names of all slots, stored with the project. Slot A
+    // uses the properties of 1.0.x, so older versions load it; slots missing from
+    // older projects start as copies of A. Projects from before 1.2.0 have no
+    // groove per slot, so every slot gets the one in their sequencer parameters.
     void writeState (juce::ValueTree&) const;
     void readState (const juce::ValueTree&);
 
 private:
-    struct Groove
+    // groove settings read from a file or text; missing ones leave the slot's value
+    struct LoadedGroove
     {
         int length = subforge::kMaxSteps;
         float swing = 0.5f;
@@ -77,7 +79,7 @@ private:
     subforge::Pattern& pattern() { return bank.activePattern(); }
     const subforge::Pattern& pattern() const { return bank.activePattern(); }
     int entryNamed (const juce::String& wanted) const;
-    void applyGroove (const Groove&);
+    void applyGroove (const LoadedGroove&);
     static int rateIndexFor (const juce::String& rateName);
     void changed() { onChange(); }
 

@@ -497,7 +497,7 @@ void MainView::timerCallback()
         slotColumn.blinkOn = blinkOn;
         slotColumn.repaint();
     }
-    const int length = (int) processor.apvts.getRawParameterValue ("seqLength")->load();
+    const int length = processor.getPattern().groove().length;
     const int root = (int) processor.apvts.getRawParameterValue ("seqRoot")->load();
     if (length != shownSeqLength || root != shownSeqRoot)
     {

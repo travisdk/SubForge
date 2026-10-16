@@ -40,6 +40,9 @@ std::unique_ptr<juce::AudioParameterFloat> floatParam (const char* id, const cha
                                                             .withStringFromValueFunction (toText)
                                                             .withValueFromStringFunction (fromText));
 }
+// The sequencer parameters that edit the groove of the slot that plays.
+constexpr const char* kGrooveParams[] = { "seqLength", "seqRate", "seqSwing", "seqGate" };
+
 // Global (not per-project) preferences: ~/.config/SubForge/SubForge.settings on Linux.
 juce::PropertiesFile::Options settingsOptions()
 {
@@ -66,6 +69,53 @@ SubForgeProcessor::SubForgeProcessor()
                       [this] { sendChangeMessage(); })
 {
     slotNotes = settings.getBoolValue ("slotNotes", true);
+    for (auto* id : kGrooveParams)
+        apvts.addParameterListener (id, this);
+    startTimerHz (20);
+}
+
+SubForgeProcessor::~SubForgeProcessor()
+{
+    stopTimer();
+    for (auto* id : kGrooveParams)
+        apvts.removeParameterListener (id, this);
+}
+
+void SubForgeProcessor::parameterChanged (const juce::String& parameterID, float newValue)
+{
+    // a value the timer shows, or one a loaded project sets, is not an edit
+    if (restoringState.load() || (showingGroove && juce::MessageManager::existsAndIsCurrentThread()))
+        return;
+
+    auto& pattern = patternBank.activePattern();
+    if (parameterID == "seqLength")
+        pattern.setLength (juce::roundToInt (newValue));
+    else if (parameterID == "seqRate")
+        pattern.setRate (juce::roundToInt (newValue));
+    else if (parameterID == "seqSwing")
+        pattern.setSwing (newValue);
+    else if (parameterID == "seqGate")
+        pattern.setGate (newValue);
+}
+
+void SubForgeProcessor::timerCallback()
+{
+    // No change gesture: this is not the user turning a control, so a host in latch or
+    // touch mode doesn't record it as automation.
+    const auto groove = patternBank.activePattern().groove();
+    const juce::ScopedValueSetter<bool> showing (showingGroove, true);
+    auto show = [this] (const char* id, float value)
+    {
+        if (std::abs (apvts.getRawParameterValue (id)->load() - value) > 1.0e-6f)
+        {
+            auto* param = apvts.getParameter (id);
+            param->setValueNotifyingHost (param->convertTo0to1 (value));
+        }
+    };
+    show ("seqLength", (float) groove.length);
+    show ("seqRate", (float) groove.rate);
+    show ("seqSwing", groove.swing);
+    show ("seqGate", groove.gate);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createParameterLayout()
@@ -310,10 +360,6 @@ void SubForgeProcessor::buildVoiceMidi (const juce::MidiBuffer& midi, int numSam
 
     subforge::SequencerSettings seqSettings;
     seqSettings.enabled = get ("seqOn") >= 0.5f;
-    seqSettings.stepBeats = subforge::kSeqRateBeats[juce::jlimit (0, subforge::kNumSeqRates - 1, (int) get ("seqRate"))];
-    seqSettings.length = (int) get ("seqLength");
-    seqSettings.gate = get ("seqGate");
-    seqSettings.swing = get ("seqSwing");
     seqSettings.rootNote = numTransposeKeys > 0 ? transposeKeys[(size_t) numTransposeKeys - 1] : (int) get ("seqRoot");
 
     sequencer.process (playing, ppq, bpm, getSampleRate(), numSamples, seqSettings, patternBank,
@@ -350,8 +396,10 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
             const int version = state.getProperty ("stateVersion", 1);
             juce::ignoreUnused (version); // migrations from older versions go here
             soundPresets.readState (state);
+            restoringState = true;
             patternPresets.readState (state);
             apvts.replaceState (state);
+            restoringState = false;
 
             // the project starts in the slot its Pattern parameter was saved on
             const int slot = (int) apvts.getRawParameterValue ("seqPattern")->load();

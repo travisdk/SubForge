@@ -12,10 +12,13 @@
 #include "PatternPresets.h"
 
 class SubForgeProcessor : public juce::AudioProcessor,
-                          public juce::ChangeBroadcaster
+                          public juce::ChangeBroadcaster,
+                          private juce::AudioProcessorValueTreeState::Listener,
+                          private juce::Timer
 {
 public:
     SubForgeProcessor();
+    ~SubForgeProcessor() override;
 
     void prepareToPlay (double sampleRate, int samplesPerBlock) override;
     void releaseResources() override {}
@@ -74,6 +77,12 @@ private:
     void buildVoiceMidi (const juce::MidiBuffer& midi, int numSamples, double bpm, double ppq, bool playing);
     subforge::BassParams readParams() const;
 
+    // Each slot has its own groove. A change of a groove parameter (from the GUI or
+    // automation) goes into the slot that plays, and the timer sets the parameters to
+    // the groove of the slot that plays, which the audio thread can't do itself.
+    void parameterChanged (const juce::String& parameterID, float newValue) override;
+    void timerCallback() override;
+
     static constexpr int kOversampling = 4;
 
     // Saved with the plug-in state so later versions can migrate older projects.
@@ -88,6 +97,8 @@ private:
     std::atomic<int> lastPatternParam { 0 }; // a change of the Pattern parameter asks for its slot
     std::atomic<bool> sequencerRunning { false };
     std::atomic<bool> slotNotes { true };
+    bool showingGroove = false;                 // the timer is setting the groove parameters
+    std::atomic<bool> restoringState { false }; // a loaded project sets the parameters
     juce::MidiBuffer voiceMidi;              // incoming MIDI merged with sequencer notes
     std::array<int, 16> transposeKeys {};    // keys held while the sequencer runs
     int numTransposeKeys = 0;

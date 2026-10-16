@@ -74,6 +74,11 @@ Either way, the new slot starts when the playing pattern starts over, so
 put the switch on or just before the bar line. If you use both ways, the
 latest change wins.
 
+Each slot keeps its own Steps, Rate, Swing and Gate, just as a pattern
+file does, so a 7-step pattern in B leaves the 16 steps in A alone. The
+controls show and change the slot that plays, and so does automation of
+them. A new slot starts on its first step, whatever its length and rate.
+
 ## Exporting patterns as MIDI
 
 Right-click a slot and choose **Export MIDI** to save it as a MIDI clip, or

@@ -34,14 +34,16 @@ int PatternPresets::rateIndexFor (const juce::String& rateName)
     return -1;
 }
 
-void PatternPresets::applyGroove (const Groove& groove)
+// Into the slot that plays; the processor shows it in the sequencer parameters.
+void PatternPresets::applyGroove (const LoadedGroove& loaded)
 {
-    files::setParameterValue (*state.getParameter ("seqLength"), (float) juce::jlimit (1, kMaxSteps, groove.length));
-    files::setParameterValue (*state.getParameter ("seqSwing"), juce::jlimit (0.5f, 0.75f, groove.swing));
-    if (groove.rateIndex >= 0)
-        files::setParameterValue (*state.getParameter ("seqRate"), (float) juce::jlimit (0, kNumSeqRates - 1, groove.rateIndex));
-    if (groove.gate >= 0.0f)
-        files::setParameterValue (*state.getParameter ("seqGate"), juce::jlimit (0.05f, 1.0f, groove.gate));
+    auto& target = pattern();
+    target.setLength (loaded.length);
+    target.setSwing (loaded.swing);
+    if (loaded.rateIndex >= 0)
+        target.setRate (loaded.rateIndex);
+    if (loaded.gate >= 0.0f)
+        target.setGate (loaded.gate);
 }
 
 bool PatternPresets::exists (const juce::String& patternName) const
@@ -114,10 +116,11 @@ bool PatternPresets::save (const juce::String& patternName)
     juce::XmlElement xml ("SubForgePattern");
     xml.setAttribute ("version", 2);
     xml.setAttribute ("name", patternName.trim());
-    xml.setAttribute ("length", (int) state.getRawParameterValue ("seqLength")->load());
-    xml.setAttribute ("swing", state.getRawParameterValue ("seqSwing")->load());
-    xml.setAttribute ("rate", kSeqRateNames[juce::jlimit (0, kNumSeqRates - 1, (int) state.getRawParameterValue ("seqRate")->load())]);
-    xml.setAttribute ("gate", state.getRawParameterValue ("seqGate")->load());
+    const auto groove = pattern().groove();
+    xml.setAttribute ("length", groove.length);
+    xml.setAttribute ("swing", groove.swing);
+    xml.setAttribute ("rate", kSeqRateNames[groove.rate]);
+    xml.setAttribute ("gate", groove.gate);
     xml.setAttribute ("steps", juce::String (toCompactPattern (pattern())));
     if (! xml.writeTo (file))
         return false;
@@ -179,14 +182,7 @@ juce::File PatternPresets::exportMidi (int slotIndex)
         return {};
 
     constexpr int ticksPerQuarter = 960;
-    auto get = [this] (const char* id) { return state.getRawParameterValue (id)->load(); };
-    SequencerSettings settings;
-    settings.stepBeats = kSeqRateBeats[juce::jlimit (0, kNumSeqRates - 1, (int) get ("seqRate"))];
-    settings.length = (int) get ("seqLength");
-    settings.gate = get ("seqGate");
-    settings.swing = get ("seqSwing");
-    settings.rootNote = (int) get ("seqRoot");
-    const auto clip = patternToClip (bank.slot (slotIndex), settings);
+    const auto clip = patternToClip (bank.slot (slotIndex), (int) state.getRawParameterValue ("seqRoot")->load());
 
     const auto name = "SubForge " + juce::String::charToString ((juce::juce_wchar) ('A' + slotIndex)) + " - "
                       + slots[(size_t) slotIndex].name.trimCharactersAtEnd (" *");
@@ -218,11 +214,11 @@ juce::File PatternPresets::exportMidi (int slotIndex)
 
 juce::String PatternPresets::asText() const
 {
-    const int rate = juce::jlimit (0, kNumSeqRates - 1, (int) state.getRawParameterValue ("seqRate")->load());
-    return "SubForge pattern | length " + juce::String ((int) state.getRawParameterValue ("seqLength")->load())
-           + " | swing " + juce::String (state.getRawParameterValue ("seqSwing")->load(), 2)
-           + " | rate " + kSeqRateNames[rate]
-           + " | gate " + juce::String (state.getRawParameterValue ("seqGate")->load(), 2)
+    const auto groove = pattern().groove();
+    return "SubForge pattern | length " + juce::String (groove.length)
+           + " | swing " + juce::String (groove.swing, 2)
+           + " | rate " + kSeqRateNames[groove.rate]
+           + " | gate " + juce::String (groove.gate, 2)
            + " | " + juce::String (toCompactPattern (pattern()));
 }
 
@@ -234,7 +230,7 @@ bool PatternPresets::fromText (const juce::String& text)
     if (parts.isEmpty() || ! parseCompactPattern (parts[parts.size() - 1].toRawUTF8(), pattern()))
         return false;
 
-    Groove groove;
+    LoadedGroove groove;
     for (const auto& part : parts)
     {
         const auto value = part.fromFirstOccurrenceOf (" ", false, false).trim();
@@ -265,6 +261,7 @@ void PatternPresets::writeState (juce::ValueTree& tree) const
     {
         tree.setProperty ("pattern" + slotSuffix (i), juce::String (bank.slot (i).toString()), nullptr);
         tree.setProperty ("patternName" + slotSuffix (i), slots[(size_t) i].name, nullptr);
+        tree.setProperty ("patternGroove" + slotSuffix (i), juce::String (bank.slot (i).groove().toString()), nullptr);
     }
 }
 
@@ -285,5 +282,18 @@ void PatternPresets::readState (const juce::ValueTree& tree)
         const auto slotName = tree.getProperty (name, "Default").toString();
         slots[(size_t) i] = { slotName, entryNamed (slotName) };
     }
+
+    // the shared groove of a project from before 1.2.0, as its parameters held it
+    auto saved = [&] (const char* id)
+    {
+        const auto param = tree.getChildWithProperty ("id", id);
+        return param.isValid() ? (float) param.getProperty ("value") : state.getRawParameterValue (id)->load();
+    };
+    const Groove shared { juce::roundToInt (saved ("seqLength")), juce::roundToInt (saved ("seqRate")), saved ("seqSwing"),
+                          saved ("seqGate") };
+    std::array<std::string, kNumPatternSlots> grooves;
+    for (int i = 0; i < kNumPatternSlots; ++i)
+        grooves[(size_t) i] = tree.getProperty ("patternGroove" + slotSuffix (i)).toString().toStdString();
+    restoreGrooves (bank, grooves, shared);
     changed();
 }

@@ -9,6 +9,8 @@
 #include <cmath>
 #include <cstdint>
 #include <iterator>
+#include <limits>
+#include <locale>
 #include <random>
 #include <sstream>
 #include <string>
@@ -49,7 +51,64 @@ struct Step
     }
 };
 
-// Steps packed into atomics so the editor can change them while the audio thread plays.
+// How a pattern plays: its length, the length of each step, swing and gate. Each
+// slot has its own, as a pattern file does.
+struct Groove
+{
+    int length = kMaxSteps;
+    int rate = 1;        // index into kSeqRateBeats, 1/16
+    float swing = 0.5f;  // 0.5 straight .. 0.75 heavy shuffle; delays every second step
+    float gate = 0.5f;   // fraction of the step a non-sliding note is held
+
+    double stepBeats() const { return kSeqRateBeats[std::clamp (rate, 0, kNumSeqRates - 1)]; }
+
+    // "length 16 rate 1/16 swing 0.5 gate 0.5", stored with the project. Numbers keep
+    // full float precision and always use a decimal point, whatever the host's locale.
+    std::string toString() const
+    {
+        std::ostringstream out;
+        out.imbue (std::locale::classic());
+        out.precision (9);
+        out << "length " << length << " rate " << kSeqRateNames[std::clamp (rate, 0, kNumSeqRates - 1)]
+            << " swing " << swing << " gate " << gate;
+        return out.str();
+    }
+
+    bool fromString (const std::string& text)
+    {
+        std::istringstream in (text);
+        in.imbue (std::locale::classic());
+        Groove parsed;
+        int found = 0;
+        for (std::string key, value; in >> key >> value;)
+        {
+            std::istringstream number (value);
+            number.imbue (std::locale::classic());
+            if (key == "length" && number >> parsed.length)
+                found |= 1;
+            else if (key == "rate")
+            {
+                for (int i = 0; i < kNumSeqRates; ++i)
+                    if (value == kSeqRateNames[i])
+                    {
+                        parsed.rate = i;
+                        found |= 2;
+                    }
+            }
+            else if (key == "swing" && number >> parsed.swing)
+                found |= 4;
+            else if (key == "gate" && number >> parsed.gate)
+                found |= 8;
+        }
+        if (found != 15)
+            return false;
+        *this = parsed;
+        return true;
+    }
+};
+
+// Steps packed into atomics so the editor can change them while the audio thread
+// plays. The groove fields are atomics of their own for the same reason.
 class Pattern
 {
 public:
@@ -57,6 +116,19 @@ public:
 
     Step get (int index) const { return unpack (steps[(size_t) index].load (std::memory_order_relaxed)); }
     void set (int index, const Step& step) { steps[(size_t) index].store (pack (step), std::memory_order_relaxed); }
+
+    Groove groove() const { return { grooveLength.load(), grooveRate.load(), grooveSwing.load(), grooveGate.load() }; }
+    void setGroove (const Groove& g)
+    {
+        setLength (g.length);
+        setRate (g.rate);
+        setSwing (g.swing);
+        setGate (g.gate);
+    }
+    void setLength (int value) { grooveLength = std::clamp (value, 1, kMaxSteps); }
+    void setRate (int value) { grooveRate = std::clamp (value, 0, kNumSeqRates - 1); }
+    void setSwing (float value) { grooveSwing = std::clamp (value, 0.5f, 0.75f); }
+    void setGate (float value) { grooveGate = std::clamp (value, 0.05f, 1.0f); }
 
     // A short acid line so the sequencer does something sensible straight away.
     void setDefault()
@@ -81,6 +153,7 @@ public:
     {
         for (int i = 0; i < kMaxSteps; ++i)
             set (i, other.get (i));
+        setGroove (other.groove());
     }
 
     // "gate:note:accent:slide" per step, separated by spaces, e.g. "1:0:1:0 1:12:0:1 ..."
@@ -152,6 +225,8 @@ private:
     }
 
     std::array<std::atomic<uint32_t>, kMaxSteps> steps;
+    std::atomic<int> grooveLength { kMaxSteps }, grooveRate { 1 };
+    std::atomic<float> grooveSwing { 0.5f }, grooveGate { 0.5f };
 };
 
 // The pattern slots and which one plays. A request for another slot (from the
@@ -171,10 +246,10 @@ public:
     int pending() const { return pendingSlot.load(); } // -1: none
 
     void request (int index) { pendingSlot.store (std::clamp (index, 0, kNumPatternSlots - 1)); }
-    void applyPending()
+    bool applyPending() // true if another slot plays now
     {
-        if (const int next = pendingSlot.exchange (-1); next >= 0)
-            activeSlot.store (next);
+        const int next = pendingSlot.exchange (-1);
+        return next >= 0 && activeSlot.exchange (next) != next;
     }
     void select (int index) // at once, e.g. when a project is loaded
     {
@@ -187,27 +262,39 @@ private:
     std::atomic<int> activeSlot { 0 }, pendingSlot { -1 };
 };
 
+// The grooves of a loaded project. Until 1.2.0 all slots shared one groove, kept
+// only in the sequencer parameters, so a slot without a saved groove (empty text)
+// gets that one and an old project plays as it did.
+inline void restoreGrooves (PatternBank& bank, const std::array<std::string, kNumPatternSlots>& saved, const Groove& shared)
+{
+    for (int i = 0; i < kNumPatternSlots; ++i)
+    {
+        Groove groove = shared;
+        if (! saved[(size_t) i].empty() && ! groove.fromString (saved[(size_t) i]))
+            groove = shared;
+        bank.slot (i).setGroove (groove);
+    }
+}
+
 struct SequencerSettings
 {
     bool enabled = false;
-    float stepBeats = 0.25f;
-    int length = 16;
-    float gate = 0.5f;   // fraction of the step a non-sliding note is held
-    float swing = 0.5f;  // 0.5 straight .. 0.75 heavy shuffle; delays every second step
     int rootNote = 36;
 };
 
 // Start of step k in beats from the timeline's zero; swing delays every second step.
-inline double stepStartBeats (int64_t k, const SequencerSettings& settings)
+inline double stepStartBeats (int64_t k, const Groove& groove)
 {
-    const double beats = settings.stepBeats;
+    const double beats = groove.stepBeats();
     const auto pairStart = (double) (k - (k & 1)) * beats;
-    return (k & 1) ? pairStart + 2.0 * beats * settings.swing : pairStart;
+    return (k & 1) ? pairStart + 2.0 * beats * groove.swing : pairStart;
 }
 
-// Turns the pattern into note on/off events for one audio block. Steps are
-// locked to the host timeline (step k starts at beat k * stepBeats), so loops
-// and jumps land on the right step.
+// Turns the playing slot into note on/off events for one audio block, with the
+// groove of that slot. Steps are counted from an anchor on the host timeline:
+// beat 0 after a start or a jump, so loops and jumps land on the right step, and
+// the start of the new pattern after a switch, so it begins on its first step
+// whatever its length and rate. Swing follows the step grid of the timeline.
 class SequencerEngine
 {
 public:
@@ -216,6 +303,7 @@ public:
         soundingNote = -1;
         pendingOffPpq = -1.0;
         lastPpqEnd = -1.0;
+        anchorToTimeline();
         currentStep.store (-1);
     }
 
@@ -248,6 +336,7 @@ public:
                 emit (0, false, soundingNote, 0.0f);
             soundingNote = -1;
             pendingOffPpq = -1.0;
+            anchorToTimeline();
             bank.applyPending();
         }
         lastPpqEnd = ppqEnd;
@@ -269,37 +358,75 @@ public:
             }
         };
 
-        const double beats = settings.stepBeats;
-        const auto first = (int64_t) std::floor (ppqStart / beats) - 1;
-        const auto last = (int64_t) std::ceil (ppqEnd / beats) + 1;
-
-        for (int64_t k = first; k <= last; ++k)
+        // A switch in this block starts the new pattern from where the old one was;
+        // its later steps can't come before that.
+        int64_t firstSample = 0;
+        for (bool switched = true; switched;)
         {
-            const double start = stepStart (k, settings);
-            const auto sample = sampleFor (start);
-            if (sample < 0 || sample >= numSamples)
-                continue;
+            switched = false;
+            const auto groove = bank.activePattern().groove();
+            const double beats = groove.stepBeats();
+            const int length = std::clamp (groove.length, 1, kMaxSteps);
+            const auto first = std::max (firstStep, (int64_t) std::floor ((ppqStart - anchorPpq) / beats) - 1);
+            const auto last = (int64_t) std::ceil ((ppqEnd - anchorPpq) / beats) + 1;
 
-            flushNoteOffUpTo (sample);
-            triggerStep (k, start, (int) sample, settings, bank, emit);
+            for (int64_t j = first; j <= last; ++j)
+            {
+                const double start = stepStart (j, groove);
+                const auto sample = sampleFor (start);
+                if (sample < firstSample || sample >= numSamples)
+                    continue;
+
+                flushNoteOffUpTo (sample);
+                const int index = (int) (((j % length) + length) % length);
+                if (index == 0 && bank.applyPending())
+                {
+                    // the new pattern starts here on its first step, on the old one's grid
+                    const auto next = bank.activePattern().groove();
+                    anchorAt (anchorPpq + (double) j * beats, next);
+                    triggerStep (0, start, std::max (start, stepStart (1, next)), (int) sample, next, settings,
+                                 bank.activePattern(), emit);
+                    firstStep = 1;
+                    firstSample = sample;
+                    switched = true;
+                    break;
+                }
+                triggerStep (index, start, stepStart (j + 1, groove), (int) sample, groove, settings, bank.activePattern(), emit);
+            }
         }
 
         flushNoteOffUpTo (numSamples - 1);
     }
 
 private:
-    static double stepStart (int64_t k, const SequencerSettings& settings) { return stepStartBeats (k, settings); }
+    // Step j of the playing pattern. With anchorPhase 1 its step 0 sits on an odd
+    // step of the timeline's grid, so swing delays the even steps.
+    double stepStart (int64_t j, const Groove& groove) const
+    {
+        return anchorPpq + stepStartBeats (j + anchorPhase, groove) - anchorPhase * groove.stepBeats();
+    }
+
+    void anchorToTimeline()
+    {
+        anchorPpq = 0.0;
+        anchorPhase = 0;
+        firstStep = std::numeric_limits<int64_t>::min();
+    }
+
+    void anchorAt (double ppq, const Groove& groove)
+    {
+        anchorPpq = ppq;
+        const double gridSteps = ppq / groove.stepBeats();
+        const auto nearest = std::llround (gridSteps);
+        anchorPhase = std::abs (gridSteps - (double) nearest) < 1.0e-6 ? (int) (nearest & 1) : 0;
+    }
 
     template <typename Emit>
-    void triggerStep (int64_t k, double start, int sample, const SequencerSettings& settings, PatternBank& bank, Emit& emit)
+    void triggerStep (int index, double start, double nextStart, int sample, const Groove& groove,
+                      const SequencerSettings& settings, const Pattern& pattern, Emit& emit)
     {
-        const int length = std::clamp (settings.length, 1, kMaxSteps);
-        const int index = (int) (((k % length) + length) % length);
         currentStep.store (index);
-        if (index == 0)
-            bank.applyPending();
-
-        const auto step = bank.activePattern().get (index);
+        const auto step = pattern.get (index);
         const bool tiedIn = soundingNote >= 0 && pendingOffPpq < 0.0; // previous step slid into this one
 
         if (! step.gate)
@@ -331,13 +458,16 @@ private:
         }
 
         soundingNote = note;
-        const double duration = stepStart (k + 1, settings) - start;
-        pendingOffPpq = step.slide ? -1.0 : start + duration * std::clamp ((double) settings.gate, 0.05, 1.0);
+        const double duration = nextStart - start;
+        pendingOffPpq = step.slide ? -1.0 : start + duration * std::clamp ((double) groove.gate, 0.05, 1.0);
     }
 
     int soundingNote = -1;
     double pendingOffPpq = -1.0;
     double lastPpqEnd = -1.0;
+    double anchorPpq = 0.0;  // where step 0 of the playing pattern falls
+    int anchorPhase = 0;     // 1: step 0 falls on an odd step of the timeline's grid
+    int64_t firstStep = std::numeric_limits<int64_t>::min(); // 1 after a switch: step 0 has played
     std::atomic<int> currentStep { -1 };
 };
 
@@ -363,20 +493,21 @@ constexpr double kSlideOverlapBeats = 1.0 / 64.0;
 
 inline int midiVelocity (float velocity) { return std::clamp ((int) std::lround (velocity * 127.0f), 1, 127); }
 
-inline PatternClip patternToClip (const Pattern& pattern, const SequencerSettings& settings)
+inline PatternClip patternToClip (const Pattern& pattern, int rootNote)
 {
     PatternClip clip;
-    const int length = std::clamp (settings.length, 1, kMaxSteps);
-    clip.lengthBeats = length * settings.stepBeats;
+    const auto groove = pattern.groove();
+    const int length = std::clamp (groove.length, 1, kMaxSteps);
+    clip.lengthBeats = length * groove.stepBeats();
 
     bool tied = false; // the last note slides into the next step
     for (int i = 0; i < length; ++i)
     {
         const auto step = pattern.get (i);
-        const double start = stepStartBeats (i, settings);
-        const double duration = stepStartBeats (i + 1, settings) - start;
+        const double start = stepStartBeats (i, groove);
+        const double duration = stepStartBeats (i + 1, groove) - start;
         const double end = step.slide ? start + duration
-                                      : start + duration * std::clamp ((double) settings.gate, 0.05, 1.0);
+                                      : start + duration * std::clamp ((double) groove.gate, 0.05, 1.0);
 
         if (! step.gate)
         {
@@ -384,7 +515,7 @@ inline PatternClip patternToClip (const Pattern& pattern, const SequencerSetting
             continue;
         }
 
-        const int note = std::clamp (settings.rootNote + step.note, 0, 127);
+        const int note = std::clamp (rootNote + step.note, 0, 127);
         if (tied && clip.notes.back().note == note)
             clip.notes.back().end = end;
         else

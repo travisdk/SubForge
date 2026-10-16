@@ -132,7 +132,7 @@ Når et fabrikspreset indlæses, renderer `normalizedVolumeDb()` en kort tone of
 
 `SequencerEngine::process()` (linje 169) kører i starten af hver blok og udsender note on/off med sample-præcise positioner.
 
-- **Låst til hostens tidslinje:** Positionen beregnes ud fra hostens PPQ (antal kvartnoder fra projektets start), ikke ud fra en intern tæller. Sequenceren står derfor altid rigtigt efter loop, spol eller tempoændringer.
+- **Låst til hostens tidslinje:** Positionen beregnes ud fra hostens PPQ (antal kvartnoder fra projektets start), ikke ud fra en intern tæller. Sequenceren står derfor altid rigtigt efter loop, spol eller tempoændringer. Steps tælles fra et anker: beat 0 efter start eller et spring, og stedet, hvor et nyt slot begyndte, efter et skift (afsnit 4.4).
 - **Uafhængig af blokstørrelse:** En hændelse ligger på den første sample på eller efter sin beat-position (`sampleFor`, linje 195). Derfor rammer en step-start præcis samme sample, uanset om hosten bruger blokke på 64, 441 eller 1024 samples. `tests/test_sequencer.cpp` renderer de tre blokstørrelser og kræver identiske hændelser.
 - **Swing** (`stepStart`, linje 229) forsinker hvert andet step inden for et par.
 - **Slide:** Et step med slide får ingen note-off. Næste tone sendes *før* den forrige slippes, så stemmen glider legato i stedet for at starte forfra (linje 260).
@@ -157,7 +157,11 @@ Undtagelsen er MIDI-node 0–7 (C-2 til G-2): de vælger mønster-slot A–H (af
 - parameteret `seqPattern` (automation eller et klik på A–H i GUI'en). Det tæller kun, når værdien **ændrer sig**, så en flad automationslinje ikke overskriver valg fra MIDI.
 - MIDI-node 0–7, mens sequenceren kører.
 
-Et ønsket slot venter, til mønstret starter forfra (step 0), så skiftet lander på loopet. Når sequenceren står stille, eller hosten har sprunget i tidslinjen, skiftes der med det samme. Groove-indstillingerne (længde, rate, swing, gate) er fælles for alle slots. Et `.sfpattern` er stadig ét mønster og indlæses i det slot, der spiller.
+Et ønsket slot venter, til mønstret starter forfra (step 0), så skiftet lander på loopet. Når sequenceren står stille, eller hosten har sprunget i tidslinjen, skiftes der med det samme. Et `.sfpattern` er stadig ét mønster og indlæses i det slot, der spiller.
+
+**Groove pr. slot (fra 1.2.0).** Hvert slot har sin egen `Groove` (længde, rate, swing, gate) i `Pattern`, så et slot svarer til en mønsterfil. Parametrene `seqLength`, `seqRate`, `seqSwing` og `seqGate` er stadig der, men de redigerer det slot, der spiller: en ændring fra GUI'en eller automation skrives ind i slottet (`SubForgeProcessor::parameterChanged`). En timer på message-tråden sætter parametrene til grooven i det slot, der spiller, når der er skiftet slot eller indlæst et mønster. Lydtråden kan ikke selv gøre det. Det, timeren sætter, tæller ikke som en redigering, og det gør værdierne fra et indlæst projekt heller ikke.
+
+Ved et skift starter det nye slot på sit step 1 der, hvor det gamle mønster startede forfra. Sequenceren flytter sit anker dertil (`SequencerEngine::anchorAt`) og tæller det nye slots steps med dets egen rate derfra. Swing følger tidslinjens step-gitter: lander skiftet på et ulige step i gitteret, er det nye slots step 1 forsinket af swing. Har alle slots samme groove, som i et projekt fra før 1.2.0, giver det præcis samme toner som 1.1.0. `tests/test_sequencer.cpp` sammenligner med en genopbygning af den gamle sequencer.
 
 Et MIDI-valg flytter ikke parameteret, fordi lydtråden ikke pålideligt kan skrive til host-parametre. GUI'en viser derfor det slot, der faktisk spiller.
 
@@ -188,6 +192,7 @@ Hostprojektet gemmer én XML-blok med:
 - alle parameterværdier (fra `AudioProcessorValueTreeState`)
 - lydpresetets navn og indeks (`SoundPresets::writeState`)
 - alle slots' steps som tekst og deres navne (`PatternPresets::writeState`). Slot A bruger de samme egenskaber som 1.0.x (`pattern`, `patternName`), B–H får nye (`patternB`, `patternNameB` …). Et projekt fra 1.0.x indlæses i slot A, og B–H starter som kopier af A. En ældre SubForge ignorerer de nye egenskaber og spiller slot A.
+- hvert slots groove som tekst (`patternGroove`, `patternGrooveB` …, fx `length 7 rate 1/16 swing 0.5 gate 0.5`), fra 1.2.0. Det er nye egenskaber, så der er ingen migration og intet nyt `stateVersion`. Mangler de (et projekt fra før 1.2.0), får alle slots den fælles groove, som projektets sequencerparametre havde (`restoreGrooves`), og projektet spiller som før. En ældre SubForge læser parametrene, som altid viser grooven i det slot, der spiller.
 
 ### 5.3 Plugin-identitet (`CMakeLists.txt`)
 

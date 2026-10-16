@@ -86,6 +86,18 @@ A clip is one pass of the pattern, with its accents, slides, gate and swing.
 Play it with SubForge's sequencer off, or with another instrument: while the
 sequencer runs, incoming notes transpose the pattern instead of playing.
 
+How the steps become notes:
+
+- **Slides** hold the note 1/64 beat into the next one, so the notes
+  overlap. There is no pitch bend, CC or portamento data. A slide to the
+  same note becomes one long note.
+- **Slide steps** ignore the gate setting and last the whole step.
+- **Velocity** is 89 for normal steps and 127 for accents. SubForge plays
+  velocities of 100 and up as accents.
+
+To hear the glide, the receiving synth must be mono with legato or
+portamento on. A poly synth plays the overlapping notes as a short chord.
+
 ## Download and install
 
 Download the ready-built plug-ins for your system (always the latest

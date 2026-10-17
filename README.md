@@ -65,10 +65,11 @@ switch slots in two ways:
   click A-H while the song plays. (In touch mode a click is too short to
   stick.) If the parameter is missing from your DAW's list, rescan plug-ins
   or insert SubForge again.
-- **MIDI notes:** while the sequencer runs, notes C-2 to G-2 choose slots
-  A-H. Put them in the same MIDI clip as the notes that transpose the
-  pattern. Turn this off under **Settings > MIDI C-2 to G-2 choose pattern**
-  if you need those notes to transpose.
+- **MIDI notes:** while the sequencer runs, MIDI note numbers 0-7 choose
+  slots A-H. DAWs name these notes differently: C-2 to G-2 in Bitwig and
+  Ableton Live, C0 to G0 in FL Studio. Put them in the same MIDI clip as the
+  notes that transpose the pattern. Turn this off under **Settings > MIDI
+  notes 0-7 choose pattern** if you need those notes to transpose.
 
 Either way, the new slot starts when the playing pattern starts over, so
 put the switch on or just before the bar line. If you use both ways, the

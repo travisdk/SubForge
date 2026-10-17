@@ -24,7 +24,7 @@ namespace subforge
 constexpr int kMaxSteps = 16;
 constexpr int kMinStepNote = -12, kMaxStepNote = 24; // semitones from the root
 
-// Pattern slots A-H. While the sequencer runs, MIDI notes 0-7 (C-2 to G-2) choose a
+// Pattern slots A-H. While the sequencer runs, MIDI notes 0-7 (C-2 to G-2 in Bitwig, C0 to G0 in FL Studio) choose a
 // slot instead of transposing; a root note that low would sit below 13 Hz.
 constexpr int kNumPatternSlots = 8;
 constexpr int kFirstSlotNote = 0;

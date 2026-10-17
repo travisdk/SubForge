@@ -210,7 +210,7 @@ void MainView::setTooltips()
     generateButton.setTooltip ("Create a new random pattern.");
     patternMenuButton.setTooltip ("Pattern options: clear, copy to another slot, export as MIDI, copy and paste as text, folder.");
     slotColumn.setTooltip (juce::String ("Pattern slots. Click to choose which one plays; it switches when the pattern starts over. "
-                                         "Automate Sequencer Pattern, or play C-2 to G-2 while the sequencer runs. ")
+                                         "Automate Sequencer Pattern, or play MIDI notes 0-7 (C-2 to G-2 in Bitwig and Live, C0 to G0 in FL Studio) while the sequencer runs. ")
                            + (SlotColumn::canDrag ? "Drag a slot into your DAW, or right-click to export it as MIDI."
                                                   : "Right-click a slot to export it as MIDI."));
     slotColumn.onMenu = [this] (int slot) { showSlotMenu (slot); };
@@ -583,7 +583,7 @@ void MainView::showSettingsMenu()
                       std::abs (getScale() - scale) < 0.01f, [this, scale] { chooseScale (scale); });
     menu.addSeparator();
     menu.addItem ("Show tooltips", true, tooltipWindow != nullptr, [this] { showTooltips (tooltipWindow == nullptr); });
-    menu.addItem ("MIDI C-2 to G-2 choose pattern", true, processor.slotNotesEnabled(),
+    menu.addItem ("MIDI notes 0-7 choose pattern", true, processor.slotNotesEnabled(),
                   [this] { processor.setSlotNotesEnabled (! processor.slotNotesEnabled()); });
 
     const int entry = sound().current();

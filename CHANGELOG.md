@@ -13,6 +13,10 @@ tag the commit (`vX.Y.Z`).
 ### Changed
 - The README now lists a known limitation: switching slots while the DAW
   records automation also records Steps, Rate, Swing and Gate.
+- Pattern-slot notes are now given as MIDI note numbers 0-7 in the README,
+  the slot tooltip and the Settings menu (**MIDI notes 0-7 choose pattern**),
+  with examples of what DAWs call them: C-2 to G-2 in Bitwig and Ableton
+  Live, C0 to G0 in FL Studio. The name C-2 only fits some DAWs.
 
 ### Fixed
 - **No gliding notes during a pre-roll.** With a count-in before bar 1

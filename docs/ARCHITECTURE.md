@@ -142,7 +142,7 @@ Når et fabrikspreset indlæses, renderer `normalizedVolumeDb()` en kort tone of
 
 Når sequenceren kører, spiller de taster, man holder nede, ikke selv. I stedet flytter de mønstrets grundtone (`buildVoiceMidi`, `PluginProcessor.cpp:264`). Det er den klassiske acid-arbejdsgang. Den senest trykkede tast vinder, og slippes alle, bruges *Root*-parameteren igen.
 
-Undtagelsen er MIDI-node 0–7 (C-2 til G-2): de vælger mønster-slot A–H (afsnit 4.4) i stedet for at transponere. En grundtone så dybt ville ligge under 13 Hz, så intet spilbart går tabt. Det kan slås fra i indstillingerne.
+Undtagelsen er MIDI-node 0–7 (C-2 til G-2 i Bitwig og Ableton, C0 til G0 i FL Studio): de vælger mønster-slot A–H (afsnit 4.4) i stedet for at transponere. En grundtone så dybt ville ligge under 13 Hz, så intet spilbart går tabt. Det kan slås fra i indstillingerne.
 
 ### 4.3 Mønstre
 

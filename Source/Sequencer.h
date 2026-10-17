@@ -314,7 +314,11 @@ public:
     void process (bool playing, double ppqStart, double bpm, double sampleRate, int numSamples,
                   const SequencerSettings& settings, PatternBank& bank, Emit&& emit)
     {
-        if (! settings.enabled || ! playing || bpm <= 0.0 || numSamples <= 0)
+        // Silent before beat 0 (a host's pre-roll), so the pattern starts on its first
+        // step at bar 1, and note times are never negative (-1 marks a slide).
+        const double ppqPerSample = bpm / 60.0 / sampleRate;
+        const double ppqEnd = ppqStart + numSamples * ppqPerSample;
+        if (! settings.enabled || ! playing || bpm <= 0.0 || numSamples <= 0 || ppqEnd <= 0.0)
         {
             if (soundingNote >= 0)
                 emit (0, false, soundingNote, 0.0f);
@@ -322,9 +326,6 @@ public:
             bank.applyPending();
             return;
         }
-
-        const double ppqPerSample = bpm / 60.0 / sampleRate;
-        const double ppqEnd = ppqStart + numSamples * ppqPerSample;
 
         // the host jumped or looped: stop what is sounding and pick up from here,
         // in the slot asked for at the new position
@@ -374,7 +375,7 @@ public:
             {
                 const double start = stepStart (j, groove);
                 const auto sample = sampleFor (start);
-                if (sample < firstSample || sample >= numSamples)
+                if (start < 0.0 || sample < firstSample || sample >= numSamples)
                     continue;
 
                 flushNoteOffUpTo (sample);

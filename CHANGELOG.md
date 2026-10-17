@@ -14,6 +14,12 @@ tag the commit (`vX.Y.Z`).
 - The README now lists a known limitation: switching slots while the DAW
   records automation also records Steps, Rate, Swing and Gate.
 
+### Fixed
+- **No gliding notes during a pre-roll.** With a count-in before bar 1
+  (Bitwig's pre-roll, for example), the sequencer played every note as a
+  slide into the next. It now stays silent before bar 1 and starts there
+  on its first step, as without a pre-roll.
+
 ## [1.2.0] – 2026-10-16
 
 ### Added

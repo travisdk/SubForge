@@ -24,14 +24,14 @@ struct Event
 };
 
 static std::vector<Event> run (int blockSize, SequencerSettings settings, const Pattern& pattern, double seconds,
-                               double loopAtBeat = -1.0)
+                               double loopAtBeat = -1.0, double startBeat = 0.0)
 {
     constexpr double sampleRate = 48000.0, bpm = 120.0;
     SequencerEngine engine;
     PatternBank bank;
     bank.slot (0).copyFrom (pattern);
     std::vector<Event> events;
-    double ppq = 0.0;
+    double ppq = startBeat;
     long t = 0;
     while (t < seconds * sampleRate)
     {
@@ -487,6 +487,35 @@ int main()
         for (int slot = 0; slot < kNumPatternSlots; ++slot)
             if (slot != 1)
                 CHECK (std::abs (patternToClip (bank.slot (slot), 36).lengthBeats - clips[(size_t) slot].lengthBeats) < 1e-12);
+    }
+
+    // a host's pre-roll (negative positions) is silent and the pattern starts on its
+    // first step at beat 0, as without pre-roll: no glides or stuck notes before it
+    {
+        const long preRoll = 96000; // 4 beats at 120 bpm
+        for (int blockSize : { 64, 333, 512 })
+        {
+            const auto fromZero = run (blockSize, settings, pattern, 4.0);
+            const auto withPreRoll = run (blockSize, settings, pattern, 6.0, -1.0, -4.0);
+            std::vector<Event> shifted;
+            for (const auto& e : withPreRoll)
+            {
+                CHECK (e.sample >= preRoll);
+                if (e.sample - preRoll < 4 * 48000)
+                    shifted.push_back ({ e.sample - preRoll, e.on, e.note });
+            }
+            CHECK (! shifted.empty() && shifted.front().sample == 0 && shifted.front().on
+                   && shifted.front().note == settings.rootNote + pattern.get (0).note);
+            std::vector<Event> expected;
+            for (const auto& e : fromZero)
+                if (e.sample < 4 * 48000)
+                    expected.push_back (e);
+            CHECK (shifted.size() == expected.size());
+            for (size_t i = 0; i < shifted.size() && i < expected.size(); ++i)
+                CHECK (shifted[i].sample == expected[i].sample && shifted[i].on == expected[i].on
+                       && shifted[i].note == expected[i].note);
+            CHECK (openNotes (withPreRoll) == 0);
+        }
     }
 
     return finish ("sequencer");

@@ -79,6 +79,11 @@ file does, so a 7-step pattern in B leaves the 16 steps in A alone. The
 controls show and change the slot that plays, and so does automation of
 them. A new slot starts on its first step, whatever its length and rate.
 
+Known limitation: Steps, Rate, Swing and Gate follow the active pattern
+slot. If you switch slots while your DAW is recording automation, those
+four parameters get recorded too. Just delete those lanes afterwards if
+you only want the pattern changes.
+
 ## Exporting patterns as MIDI
 
 Right-click a slot and choose **Export MIDI** to save it as a MIDI clip, or

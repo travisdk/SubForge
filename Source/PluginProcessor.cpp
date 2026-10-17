@@ -100,8 +100,9 @@ void SubForgeProcessor::parameterChanged (const juce::String& parameterID, float
 
 void SubForgeProcessor::timerCallback()
 {
-    // No change gesture: this is not the user turning a control, so a host in latch or
-    // touch mode doesn't record it as automation.
+    // Hosts record these changes as automation while they record, change gesture or
+    // not (CLAP and VST3 have no way for JUCE to say "don't record"). See the known
+    // limitation in the README.
     const auto groove = patternBank.activePattern().groove();
     const juce::ScopedValueSetter<bool> showing (showingGroove, true);
     auto show = [this] (const char* id, float value)

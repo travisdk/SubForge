@@ -10,6 +10,10 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+### Changed
+- The README now lists a known limitation: switching slots while the DAW
+  records automation also records Steps, Rate, Swing and Gate.
+
 ## [1.2.0] – 2026-10-16
 
 ### Added

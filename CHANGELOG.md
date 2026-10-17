@@ -10,6 +10,8 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+## [1.2.1] – 2026-10-17
+
 ### Changed
 - The README now lists a known limitation: switching slots while the DAW
   records automation also records Steps, Rate, Swing and Gate.
@@ -155,7 +157,8 @@ First public release, as free software under the GNU AGPLv3.
 
 VST is a registered trademark of Steinberg Media Technologies GmbH.
 
-[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/travisdk/SubForge/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/travisdk/SubForge/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/travisdk/SubForge/compare/v1.0.1...v1.1.0
 [1.0.1]: https://github.com/travisdk/SubForge/compare/v1.0.0...v1.0.1

@@ -25,9 +25,10 @@ juce::String StepGrid::getTooltip()
     switch (rowAt (getMouseXYRelative().y))
     {
         case Row::Accent: case Row::Slide: return flagTooltip;
+        case Row::Led: case Row::Bar: case Row::Note: return noteTooltip;
         case Row::None: return {};
-        default: return noteTooltip;
     }
+    return {};
 }
 
 void StepGrid::setPlayhead (int step)

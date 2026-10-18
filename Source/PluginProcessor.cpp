@@ -14,6 +14,24 @@ juce::NormalisableRange<float> skewedRange (float lo, float hi, float centre)
     return range;
 }
 
+// A note name as the Root shows it ("C#2", "Bb1", middle C is C3) back to its MIDI number, so the
+// text a host shows reads back the same; a plain number is taken as the MIDI number.
+int noteFromText (const juce::String& text)
+{
+    const auto t = text.trim().toUpperCase();
+    const int letter = juce::String ("C D EF G A B").indexOfChar (t[0]);
+    if (letter < 0 || t[0] == ' ')
+        return t.getIntValue();
+
+    int note = letter;
+    int i = 1;
+    if (t[i] == '#')
+        ++note, ++i;
+    else if (t[i] == 'B')
+        --note, ++i;
+    return note + (t.substring (i).getIntValue() + 2) * 12;
+}
+
 // Parameters without a unit are 0..1 amounts and display as percent.
 std::unique_ptr<juce::AudioParameterFloat> floatParam (const char* id, const char* name,
                                                        juce::NormalisableRange<float> range,
@@ -26,7 +44,9 @@ std::unique_ptr<juce::AudioParameterFloat> floatParam (const char* id, const cha
     {
         if (isPercent)
             return juce::String (juce::roundToInt (value * 100.0f)) + " %";
-        const auto number = std::abs (value) < 10.0f ? juce::String (value, 1) : juce::String (juce::roundToInt (value));
+        // decided on the rounded value, so 9.97 shows as "10" like 10 does and the text reads back the same
+        const float tenths = std::round (value * 10.0f) / 10.0f;
+        const auto number = std::abs (tenths) < 10.0f ? juce::String (tenths, 1) : juce::String (juce::roundToInt (value));
         return number + " " + unitText;
     };
     auto fromText = [isPercent] (const juce::String& text)
@@ -193,7 +213,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
         ParameterID { "seqRoot", 1 }, "Sequencer Root", 24, 60, 36,
         AudioParameterIntAttributes()
             .withStringFromValueFunction ([] (int note, int) { return MidiMessage::getMidiNoteName (note, true, true, 3); })
-            .withValueFromStringFunction ([] (const String& text) { return text.getIntValue(); })));
+            .withValueFromStringFunction ([] (const String& text) { return noteFromText (text); })));
     params.push_back (floatParam ("volume", "Volume", { -36.0f, 6.0f }, -6.0f, "dB"));
 
     // Added in 1.1.0, so last in the list and version 2. The number of slots must never
@@ -399,7 +419,15 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
             soundPresets.readState (state);
             restoringState = true;
             patternPresets.readState (state);
+            // Only the parameters (child nodes) stay in the tree: getStateInformation adds the
+            // rest again, so a reloaded state saves byte for byte the same.
+            state.removeAllProperties (nullptr);
             apvts.replaceState (state);
+            // A bool keeps the raw value a host sent (say 0.26) while the APVTS holds it as 0, so
+            // replaceState sees nothing to change and the 0.26 would stay: snap bools to 0 or 1.
+            for (auto* p : getParameters())
+                if (auto* b = dynamic_cast<juce::AudioParameterBool*> (p))
+                    b->setValueNotifyingHost (b->get() ? 1.0f : 0.0f);
             restoringState = false;
 
             // the project starts in the slot its Pattern parameter was saved on
@@ -407,6 +435,9 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
             lastPatternParam = slot;
             patternBank.select (slot);
             sendChangeMessage();
+            // Tells the host every parameter may have changed, so it reads them all again
+            // (CLAP: params rescan of the values, which the wrapper sends for a program change).
+            updateHostDisplay (ChangeDetails().withProgramChanged (true));
         }
     }
 }

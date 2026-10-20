@@ -73,8 +73,7 @@ struct BassParams
     float gain = 0.5f;
 };
 
-// Band-limited step (PolyBLEP), derived from the specification in
-// docs/LICENSE-REVIEW.md section 5.2:
+// Band-limited step (PolyBLEP), derived from first principles:
 //
 // The ideal unit step H(x) is replaced by B(x), the integral of a triangular
 // kernel k(s) = 1 - |s| reaching one sample to each side (x in samples, the

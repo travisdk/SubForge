@@ -203,6 +203,20 @@ int main()
         CHECK (patterns.name() != "Deep");
     }
 
+    // a name of only characters a file name can't hold is not saved as a hidden, nameless file
+    {
+        SubForgeProcessor processor;
+        SoundPresets presets (processor.apvts, prefs, [] {});
+        presets.setFolder (root.getChildFile ("Presets"));
+        CHECK (! presets.save ("///"));
+        CHECK (! root.getChildFile ("Presets").getChildFile (SoundPresets::kExtension).exists());
+
+        PatternPresets patterns (processor.apvts, processor.getPatternBank(), [root] { return root.getChildFile ("Patterns"); },
+                                 [] {});
+        CHECK (! patterns.save ("???"));
+        CHECK (! root.getChildFile ("Patterns").getChildFile (PatternPresets::kExtension).exists());
+    }
+
     // a root note typed in the host with an absurd octave lands on the nearest end of the range
     {
         SubForgeProcessor processor;

@@ -110,6 +110,8 @@ void PatternPresets::load (int index)
 bool PatternPresets::save (const juce::String& patternName)
 {
     const auto file = files::fileFor (getFolder(), patternName, kExtension);
+    if (file.getFileName() == kExtension) // nothing of the name is legal in a file name
+        return false;
     if (! file.getParentDirectory().createDirectory())
         return false;
 

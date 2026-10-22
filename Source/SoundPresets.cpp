@@ -62,6 +62,8 @@ void SoundPresets::rescan()
 bool SoundPresets::save (const juce::String& presetName)
 {
     const auto file = files::fileFor (folder(), presetName, kExtension);
+    if (file.getFileName() == kExtension) // nothing of the name is legal in a file name
+        return false;
     if (! file.getParentDirectory().createDirectory())
         return false;
 

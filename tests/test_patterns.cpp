@@ -5,6 +5,7 @@
 #include "PatternLibrary.h"
 #include "TestUtils.h"
 
+#include <cmath>
 #include <sstream>
 
 using namespace subforge;
@@ -51,6 +52,11 @@ int main()
     CHECK (! p.fromString ("1:0:0:0 1:2"));
     CHECK (! parseCompactPattern ("hello world", p));
     CHECK (! parseCompactPattern ("0 0 0", p));
+
+    // swing and gate that are not numbers (a damaged file) give the defaults
+    p.setSwing (std::nanf (""));
+    p.setGate (std::nanf (""));
+    CHECK (p.groove().swing == Groove {}.swing && p.groove().gate == Groove {}.gate);
 
     return finish ("patterns");
 }

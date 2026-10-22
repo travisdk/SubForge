@@ -87,8 +87,9 @@ bool SoundPresets::save (const juce::String& presetName)
     return true;
 }
 
-// Sound parameters missing from older files fall back to their defaults.
-// Sequencer values and patterns that version-1 files contain are ignored.
+// Sound parameters missing from older files, or not numbers in a damaged one, fall
+// back to their defaults. Sequencer values and patterns that version-1 files contain
+// are ignored.
 bool SoundPresets::loadFile (const juce::File& file)
 {
     const auto xml = juce::parseXML (file);
@@ -100,7 +101,8 @@ bool SoundPresets::loadFile (const juce::File& file)
         {
             float value = param->convertFrom0to1 (param->getDefaultValue());
             if (auto* element = xml->getChildByAttribute ("id", param->paramID))
-                value = (float) element->getDoubleAttribute ("value", value);
+                if (const auto loaded = (float) element->getDoubleAttribute ("value", value); ! std::isnan (loaded))
+                    value = loaded;
             files::setParameterValue (*param, value);
         }
     return true;

@@ -127,8 +127,9 @@ public:
     }
     void setLength (int value) { grooveLength = std::clamp (value, 1, kMaxSteps); }
     void setRate (int value) { grooveRate = std::clamp (value, 0, kNumSeqRates - 1); }
-    void setSwing (float value) { grooveSwing = std::clamp (value, 0.5f, 0.75f); }
-    void setGate (float value) { grooveGate = std::clamp (value, 0.05f, 1.0f); }
+    // a value that is not a number (from a damaged file) gives the default, as clamp would keep it
+    void setSwing (float value) { grooveSwing = std::isnan (value) ? Groove {}.swing : std::clamp (value, 0.5f, 0.75f); }
+    void setGate (float value) { grooveGate = std::isnan (value) ? Groove {}.gate : std::clamp (value, 0.05f, 1.0f); }
 
     // A short acid line so the sequencer does something sensible straight away.
     void setDefault()

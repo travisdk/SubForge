@@ -416,6 +416,12 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
             auto state = juce::ValueTree::fromXml (*xml);
             const int version = state.getProperty ("stateVersion", 1);
             juce::ignoreUnused (version); // migrations from older versions go here
+            // A parameter that is not a number (a damaged project) loads as its default;
+            // the parameters would keep it, as their range only clamps numbers.
+            for (auto child : state)
+                if (auto* param = apvts.getParameter (child.getProperty ("id").toString());
+                    param != nullptr && std::isnan ((double) child.getProperty ("value")))
+                    child.setProperty ("value", param->convertFrom0to1 (param->getDefaultValue()), nullptr);
             soundPresets.readState (state);
             restoringState = true;
             patternPresets.readState (state);

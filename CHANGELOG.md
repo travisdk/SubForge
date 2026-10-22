@@ -10,6 +10,28 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+## [1.2.2] – 2026-10-22
+
+### Changed
+- CI pins JUCE and the GitHub actions to exact commits.
+- Third-party components are listed in a new `THIRD-PARTY-NOTICES.md`.
+
+### Fixed
+- **Sturdier loading.** Damaged or hostile projects, sound presets,
+  pattern files and pasted pattern text are handled safely: values that are
+  not numbers load as defaults, and states or files that are far too large
+  or deeply nested to be real are refused instead of stalling or crashing
+  the host.
+- On Linux, opening the preset, pattern or MIDI folder no longer passes the
+  folder path through a shell.
+- A root note typed in the host with a huge octave is limited to MIDI's
+  range instead of overflowing.
+- A preset or pattern name with no legal characters (such as "///") is no
+  longer saved as a hidden file.
+- After a project loads, the host is told to re-read all parameter values
+  (CLAP), and a reloaded state saves exactly as it was loaded. Passes
+  clap-validator and pluginval state checks.
+
 ## [1.2.1] – 2026-10-17
 
 ### Changed
@@ -157,7 +179,8 @@ First public release, as free software under the GNU AGPLv3.
 
 VST is a registered trademark of Steinberg Media Technologies GmbH.
 
-[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.2.2...HEAD
+[1.2.2]: https://github.com/travisdk/SubForge/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/travisdk/SubForge/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/travisdk/SubForge/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/travisdk/SubForge/compare/v1.0.1...v1.1.0

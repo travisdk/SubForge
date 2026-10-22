@@ -4,6 +4,7 @@
 // Damaged or hostile projects, preset and pattern files, loaded through the real
 // processor (this test links JUCE). Files go to a temporary folder, never the user's.
 #include "PluginProcessor.h"
+#include "PresetFiles.h"
 #include "TestUtils.h"
 
 #include <cmath>
@@ -159,6 +160,31 @@ int main()
         CHECK (std::isfinite (processor.getPattern().groove().gate));
         CHECK (rendersFinite (processor));
     }
+
+   #if JUCE_LINUX
+    // a folder name with "$(...)" is opened, not run as a command. A stand-in xdg-open
+    // records the folder it was given; PATH holds only it, so no real program can start.
+    {
+        const auto bin = root.getChildFile ("bin");
+        const auto opened = root.getChildFile ("opened"), injected = root.getChildFile ("injected");
+        CHECK (bin.createDirectory());
+        const auto opener = bin.getChildFile ("xdg-open");
+        CHECK (opener.replaceWithText ("#!/bin/sh\nprintf '%s' \"$1\" > \"" + opened.getFullPathName() + ".tmp\" && /bin/mv \""
+                                           + opened.getFullPathName() + ".tmp\" \"" + opened.getFullPathName() + "\"\n",
+                                       false, false, "\n"));
+        CHECK (opener.setExecutePermission (true));
+        setenv ("PATH", bin.getFullPathName().toRawUTF8(), 1);
+        root.setAsCurrentWorkingDirectory();
+
+        const auto folder = root.getChildFile ("Acid Pack $(: >injected)");
+        CHECK (folder.createDirectory());
+        CHECK (subforge::files::openFolder (folder));
+        for (int waited = 0; waited < 5000 && ! opened.existsAsFile(); waited += 10)
+            juce::Thread::sleep (10);
+        CHECK (opened.loadFileAsString() == folder.getFullPathName());
+        CHECK (! injected.exists());
+    }
+   #endif
 
     root.deleteRecursively();
     return finish ("loading");

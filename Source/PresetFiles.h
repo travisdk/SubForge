@@ -31,6 +31,18 @@ inline void setParameterValue (juce::RangedAudioParameter& param, float value)
     param.endChangeGesture();
 }
 
+// Shows a folder in the file manager. On Linux, JUCE's File::startAsProcess() hands the
+// path to a shell, which runs "$(...)" in a folder name; here xdg-open gets it as an argument.
+inline bool openFolder (const juce::File& folder)
+{
+   #if JUCE_LINUX
+    juce::ChildProcess opener; // xdg-open keeps running after this goes
+    return folder.isDirectory() && opener.start (juce::StringArray { "xdg-open", folder.getFullPathName() }, 0);
+   #else
+    return folder.startAsProcess();
+   #endif
+}
+
 // JUCE's Linux File::moveToTrash() skips the .trashinfo file, so file managers
 // can't show or restore the file. This follows the freedesktop.org trash spec.
 inline bool moveToTrash (const juce::File& file)

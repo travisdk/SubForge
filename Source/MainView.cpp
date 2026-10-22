@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 #include "MainView.h"
+#include "PresetFiles.h"
 #include "SubForgeVersion.h"
 
 namespace
@@ -594,7 +595,7 @@ void MainView::showSettingsMenu()
     {
         auto folder = sound().folder();
         folder.createDirectory();
-        folder.startAsProcess();
+        subforge::files::openFolder (folder);
     });
     menu.addItem ("Change preset folder...", [this] { choosePresetFolder(); });
     menu.addItem ("Use default folder", customFolder, false, [this] { changePresetFolder ({}); });
@@ -643,7 +644,7 @@ void MainView::showPatternMenu()
     {
         auto folder = patterns().folder();
         folder.createDirectory();
-        folder.startAsProcess();
+        subforge::files::openFolder (folder);
     });
     menu.addItem ("Rescan patterns", [this] { patterns().rescan(); });
 
@@ -699,7 +700,7 @@ void MainView::openMidiFolder()
 {
     auto folder = patterns().midiFolder();
     folder.createDirectory();
-    folder.startAsProcess();
+    subforge::files::openFolder (folder);
 }
 
 void MainView::applyAccent (juce::Colour newAccent)

@@ -12,8 +12,14 @@ on:
   pull_request:
   workflow_dispatch:
 
+# The build only reads the repository; the archives go up as workflow artifacts.
+permissions:
+  contents: read
+
+# Dependencies are pinned to exact commits: a tag can be moved to other code later.
 env:
   JUCE_VERSION: "8.0.15"
+  JUCE_COMMIT: 91ad83ae34a81e0833b1a2b0866f54846370ae53   # the commit of tag 8.0.15
   CLAP_JUCE_EXTENSIONS_COMMIT: 7adee3a1bd4684d4caa5601100e364abccff4b4d
 
 jobs:
@@ -34,11 +40,11 @@ jobs:
             package: package-windows
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0   # history and tags, so the version comes from "git describe"
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
 
@@ -53,6 +59,7 @@ jobs:
         shell: bash
         run: |
           git clone --depth 1 --branch "$JUCE_VERSION" https://github.com/juce-framework/JUCE.git _sdks/JUCE
+          test "$(git -C _sdks/JUCE rev-parse HEAD)" = "$JUCE_COMMIT" || { echo "JUCE tag $JUCE_VERSION has moved"; exit 1; }
           git clone https://github.com/free-audio/clap-juce-extensions.git _sdks/clap-juce-extensions
           git -C _sdks/clap-juce-extensions checkout "$CLAP_JUCE_EXTENSIONS_COMMIT"
           git -C _sdks/clap-juce-extensions submodule update --init --recursive
@@ -81,7 +88,7 @@ jobs:
       - name: Package
         run: cmake --build build --config Release --target ${{ matrix.package }}
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: SubForge-${{ matrix.name }}
           path: dist/*

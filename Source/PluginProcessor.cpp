@@ -29,7 +29,9 @@ int noteFromText (const juce::String& text)
         ++note, ++i;
     else if (t[i] == 'B')
         --note, ++i;
-    return note + (t.substring (i).getIntValue() + 2) * 12;
+    // MIDI octaves run from -2 to 8; limited first, so an absurd octave can't overflow
+    const auto octave = (int) juce::jlimit<juce::int64> (-2, 8, t.substring (i).getLargeIntValue());
+    return note + (octave + 2) * 12;
 }
 
 // Parameters without a unit are 0..1 amounts and display as percent.

@@ -203,6 +203,15 @@ int main()
         CHECK (patterns.name() != "Deep");
     }
 
+    // a root note typed in the host with an absurd octave lands on the nearest end of the range
+    {
+        SubForgeProcessor processor;
+        auto* rootNote = processor.apvts.getParameter ("seqRoot");
+        CHECK (juce::approximatelyEqual (rootNote->getValueForText ("C9999999999"), 1.0f));
+        CHECK (juce::approximatelyEqual (rootNote->getValueForText ("C-9999999999"), 0.0f));
+        CHECK (juce::approximatelyEqual (rootNote->getValueForText ("C3"), rootNote->convertTo0to1 (60.0f)));
+    }
+
    #if JUCE_LINUX
     // a folder name with "$(...)" is opened, not run as a command. A stand-in xdg-open
     // records the folder it was given; PATH holds only it, so no real program can start.

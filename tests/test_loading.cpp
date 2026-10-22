@@ -161,6 +161,48 @@ int main()
         CHECK (rendersFinite (processor));
     }
 
+    // Elements nested far deeper than any real file would overflow the stack in JUCE's
+    // parser, and a huge file would stall the host: both are refused and change nothing.
+    {
+        constexpr int deep = 100000;
+        const auto nested = juce::String::repeatedString ("<a>", deep) + juce::String::repeatedString ("</a>", deep);
+
+        SubForgeProcessor processor;
+        auto xml = savedState (processor);
+        juce::MemoryOutputStream deepState;
+        deepState.writeInt (0x21324356); // copyXmlToBinary's format: magic, size, text
+        const auto text = "<PARAMS>" + nested + "</PARAMS>";
+        deepState.writeInt ((int) text.getNumBytesAsUTF8() + 1);
+        deepState.write (text.toRawUTF8(), text.getNumBytesAsUTF8() + 1);
+        processor.setStateInformation (deepState.getData(), (int) deepState.getDataSize());
+
+        xml->setAttribute ("patternName", juce::String::repeatedString ("x", 2 << 20));
+        setState (processor, *xml);
+        CHECK (processor.getPatternPresets().name() == "Default");
+
+        SoundPresets presets (processor.apvts, prefs, [] {});
+        presets.setFolder (root.getChildFile ("Presets"));
+        CHECK (root.getChildFile ("Presets/Deep.sfpreset").replaceWithText ("<SubForgePreset>" + nested + "</SubForgePreset>"));
+        CHECK (root.getChildFile ("Presets/Huge.sfpreset")
+                   .replaceWithText ("<SubForgePreset name=\"" + juce::String::repeatedString ("x", 2 << 20) + "\"/>"));
+        presets.rescan();
+        for (int i = subforge::kNumPresets; i < presets.numEntries(); ++i)
+            if (presets.entryName (i) != "Broken")
+            {
+                presets.load (i);
+                CHECK (presets.current() != i);
+            }
+
+        PatternPresets patterns (processor.apvts, processor.getPatternBank(), [root] { return root.getChildFile ("Patterns"); },
+                                 [] {});
+        CHECK (root.getChildFile ("Patterns/Deep.sfpattern").replaceWithText ("<SubForgePattern>" + nested + "</SubForgePattern>"));
+        patterns.rescan();
+        for (int i = subforge::kNumFactoryPatterns; i < patterns.numEntries(); ++i)
+            if (patterns.entryName (i) == "Deep")
+                patterns.load (i);
+        CHECK (patterns.name() != "Deep");
+    }
+
    #if JUCE_LINUX
     // a folder name with "$(...)" is opened, not run as a command. A stand-in xdg-open
     // records the folder it was given; PATH holds only it, so no real program can start.

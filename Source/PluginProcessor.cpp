@@ -409,6 +409,9 @@ void SubForgeProcessor::getStateInformation (juce::MemoryBlock& destData)
 
 void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
+    if (! subforge::files::isPlausibleXml (data, (size_t) juce::jmax (0, sizeInBytes)))
+        return;
+
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
     {
         if (xml->hasTagName (apvts.state.getType()))

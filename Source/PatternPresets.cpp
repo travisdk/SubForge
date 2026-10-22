@@ -84,7 +84,7 @@ void PatternPresets::load (int index)
 {
     if (isUser (index))
     {
-        const auto xml = juce::parseXML (userFiles[index - kNumFactoryPatterns]);
+        const auto xml = files::parseXmlFile (userFiles[index - kNumFactoryPatterns]);
         if (xml == nullptr || ! xml->hasTagName ("SubForgePattern")
             || ! parseCompactPattern (xml->getStringAttribute ("steps").toRawUTF8(), pattern()))
             return;

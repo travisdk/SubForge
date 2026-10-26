@@ -66,6 +66,8 @@ struct Preset
     const char* name;
     std::array<float, kNumCoreParams> core;
     std::array<float, kNumListedExtraParams> extra = listedDefaults();
+    // squareWidth squarePwm squareSag; presets that leave them out keep the defaults (50 %, 0 %, 0 %)
+    std::array<float, kNumPatchParams - pSquareWidth> shape = shapeDefaults();
 
     static constexpr std::array<float, kNumListedExtraParams> listedDefaults()
     {
@@ -75,12 +77,21 @@ struct Preset
         return d;
     }
 
+    static constexpr std::array<float, kNumPatchParams - pSquareWidth> shapeDefaults()
+    {
+        std::array<float, kNumPatchParams - pSquareWidth> d {};
+        for (int i = 0; i < kNumPatchParams - pSquareWidth; ++i)
+            d[(size_t) i] = kExtraDefaults[(size_t) (pSquareWidth - kNumCoreParams + i)];
+        return d;
+    }
+
     PatchValues values() const
     {
         PatchValues v {};
         std::copy (core.begin(), core.end(), v.begin());
         std::copy (kExtraDefaults.begin(), kExtraDefaults.end(), v.begin() + kNumCoreParams);
         std::copy (extra.begin(), extra.end(), v.begin() + kNumCoreParams);
+        std::copy (shape.begin(), shape.end(), v.begin() + pSquareWidth);
         return v;
     }
 };
@@ -268,6 +279,33 @@ inline const Preset kPresets[] = {
                                     { 0, 0.20f, 0.60f, 0, 60, 0, 0, 7, 2, 0, 0, 0, 0.50f, 0.50f, 1, 0.50f } },
     { "Acid - Acid Shrieker",       { 0, 0, 0, 0, 0, 500, 0.85f, 0.80f, 320, 0.25f, 1, 1500, 0.90f, 15, 60, 0.60f },
                                     { 3, 0.20f, 0.85f, 0, 60, 0, 0, 7, 2, 0, 0, 1, 0.40f, 0.65f, 0.40f, 0.80f } },
+
+    // Square shaping, added in 1.3.0: the last three values are Width, PWM and Sag.
+    // lfoSync 2 = 1/1, 10 = 1/16, 0 = free running (lfoRate in Hz).
+    { "PWM Slow Sweep",    { 1,  0,  6, 0.40f, 0,  1400, 0.20f, 0.15f, 400, 0.15f,   8,  900, 0.80f, 150,   20, 0.5f },
+                           { 0, 0.30f, 0.0f,    0,  60, 0.00f,   1,  2, 0.5f, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.0f },
+                           { 0.50f, 0.75f, 0.0f } },
+    { "PWM Wobble",        { 1,  0,  0, 0.50f, 0,   900, 0.25f, 0.20f, 300, 0.20f,   2,  700, 0.85f, 100,   20, 0.5f },
+                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.0f },
+                           { 0.50f, 0.60f, 0.0f } },
+    { "PWM Free Chorus",   { 1,  0, 12, 0.30f, 0,  1100, 0.20f, 0.10f, 350, 0.20f,   6, 1000, 0.85f, 200,   30, 0.4f },
+                           { 0, 0.20f, 0.0f,    0,  60, 0.00f,   1,  0, 0.35f, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.0f },
+                           { 0.50f, 0.50f, 0.0f } },
+    { "PWM Acid Roll",     { 1,  0,  0, 0.00f, 0,   380, 0.80f, 0.68f, 200, 0.25f,   1,  500, 0.60f,  40,   60, 0.6f },
+                           { 3, 0.20f, 0.60f,   0,  60, 0.00f,   1, 10, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.5f },
+                           { 0.45f, 0.30f, 0.30f } },
+    { "Sag Square Bass",   { 1,  0,  0, 0.50f, 0,   700, 0.30f, 0.40f, 250, 0.25f,   1,  600, 0.75f,  60,   40, 0.6f },
+                           { 0, 0.20f, 0.30f,   0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.0f },
+                           { 0.46f, 0.0f, 0.50f } },
+    { "Sag Acid Diode",    { 1,  0,  0, 0.00f, 0,   320, 0.78f, 0.70f, 240, 0.25f,   1, 1500, 0.90f,  15,   60, 0.6f },
+                           { 3, 0.20f, 0.60f,   0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.5f },
+                           { 0.46f, 0.0f, 0.60f } },
+    { "Off-Centre Acid",   { 1,  0,  0, 0.00f, 0,   220, 0.76f, 0.68f, 300, 0.25f,   1,  450, 0.60f,  40,   60, 0.6f },
+                           { 0, 0.20f, 0.60f,   0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.5f },
+                           { 0.43f, 0.0f, 0.35f } },
+    { "Sag Heavy Pulse",   { 1, -1,  8, 0.50f, 1,   500, 0.20f, 0.30f, 200, 0.30f,   1,  500, 0.80f,  80,   10, 0.5f },
+                           { 0, 0.0f, 0.0f,     0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   1, 0.30f, 0.50f, 0.80f, 0.0f },
+                           { 0.50f, 0.0f, 0.80f } },
 };
 
 inline constexpr int kNumPresets = (int) (sizeof (kPresets) / sizeof (kPresets[0]));

@@ -13,7 +13,8 @@ using namespace subforge;
 
 int main()
 {
-    CHECK (kNumPresets == 109);
+    constexpr int kNumEarlierPresets = 109; // before the square shaping presets, which come last
+    CHECK (kNumPresets == 117);
 
     std::set<std::string> names;
     for (const auto& preset : kPresets)
@@ -30,11 +31,28 @@ int main()
     CHECK (std::string (kPatchParamIds[kNumPatchParams - 2]) == "squarePwm");
     CHECK (std::string (kPatchParamIds[kNumPatchParams - 1]) == "squareSag");
     CHECK (pSquareSag == kNumPatchParams - 1);
-    for (const auto& preset : kPresets)
+    for (int i = 0; i < kNumEarlierPresets; ++i)
     {
-        CHECK (preset.values()[pSquareWidth] == 0.5f);
-        CHECK (preset.values()[pSquarePwm] == 0.0f);
-        CHECK (preset.values()[pSquareSag] == 0.0f);
+        const auto v = kPresets[i].values();
+        CHECK (v[pSquareWidth] == 0.5f);
+        CHECK (v[pSquarePwm] == 0.0f);
+        CHECK (v[pSquareSag] == 0.0f);
+    }
+
+    // the new ones are squares that use PWM or Sag, within the ranges of the knobs
+    for (int i = kNumEarlierPresets; i < kNumPresets; ++i)
+    {
+        const auto v = kPresets[i].values();
+        CHECK (v[pWave] == 1.0f);
+        CHECK (v[pSquarePwm] > 0.0f || v[pSquareSag] > 0.0f);
+        CHECK (v[pSquareWidth] >= 0.1f && v[pSquareWidth] <= 0.9f);
+        CHECK (v[pSquarePwm] >= 0.0f && v[pSquarePwm] <= 1.0f);
+        CHECK (v[pSquareSag] >= 0.0f && v[pSquareSag] <= 1.0f);
+        // and they play at the same level as the others, without clipping
+        const auto [rms, peak] = measureLevel (v);
+        const float gain = std::pow (10.0f, normalizedVolumeDb (v) / 20.0f);
+        CHECK (peak * gain <= 0.9f);
+        CHECK (std::abs (rms * gain - 0.2f) < 0.05f || peak * gain > 0.85f);
     }
 
     std::mt19937 rng (1);

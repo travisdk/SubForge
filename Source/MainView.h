@@ -101,6 +101,7 @@ private:
     SoundPresets& sound() { return processor.getSoundPresets(); }
     PatternPresets& patterns() { return processor.getPatternPresets(); }
     Knob::Options small (bool secondary = false) const { return { 34, secondary, 14.0f, 12.5f }; }
+    Knob::Options tight() const { return { 34, false, 11.0f, 9.5f }; } // five knobs in one panel
 
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
     void timerCallback() override;
@@ -183,10 +184,11 @@ private:
     Knob click { processor.apvts, "click", "Click", small() };
 
     // lfo, mod, play
-    Knob lfoSync { processor.apvts, "lfoSync", "Sync", small() };
-    Knob lfoRate { processor.apvts, "lfoRate", "Rate", small() };
-    Knob lfoDepth { processor.apvts, "lfoDepth", "Depth", small() };
-    Knob lfoShape { processor.apvts, "lfoShape", "Shape", small() };
+    Knob lfoSync { processor.apvts, "lfoSync", "Sync", tight() };
+    Knob lfoRate { processor.apvts, "lfoRate", "Rate", tight() };
+    Knob lfoDepth { processor.apvts, "lfoDepth", "Depth", tight() };
+    Knob lfoShape { processor.apvts, "lfoShape", "Shape", tight() };
+    Knob squarePwm { processor.apvts, "squarePwm", "PWM", tight() };
     juce::ToggleButton lfoRetrig;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> lfoRetrigAttachment;
     Knob wheelAmount { processor.apvts, "wheelAmount", "Wheel", small() };

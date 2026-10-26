@@ -17,6 +17,11 @@ tag the commit (`vX.Y.Z`).
   projects and presets sound exactly as before. The knob is greyed out unless
   the wave is SQR. Randomize now sometimes picks another width for a square
   wave, and Mutate nudges it.
+- **Square PWM.** A new PWM knob in the LFO panel lets the LFO sweep the square
+  width around the Width setting (100 % is about +-40 %), the classic
+  pulse-width-modulation sound. It uses the LFO's sync, rate, shape and retrigger,
+  and Depth still moves only the filter. At 0 % nothing changes. The knob is
+  greyed out unless the wave is SQR.
 
 ## [1.2.2] – 2026-10-22
 

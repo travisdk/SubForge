@@ -32,7 +32,7 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
 
     panels = {
         { "FILTER", kFilterPanel },  { "OSC", kOscPanel },   { "DRIVE", kDrivePanel },
-        { "AMP ENV", kAmpPanel },    { "PITCH", kPitchPanel }, { "LFO > CUT", kLfoPanel },
+        { "AMP ENV", kAmpPanel },    { "PITCH", kPitchPanel }, { "LFO", kLfoPanel },
         { "MOD", kModPanel },        { "PLAY", kPlayPanel },   { "SEQUENCER", kSeqPanel, true },
     };
 
@@ -85,7 +85,7 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
              &wave, &octave, &detune, &sub, &squareWidth, &subWave,
              &distType, &distGain, &distTone, &distMix,
              &attack, &decay, &sustain, &release, &pitchEnv, &pitchDecay, &click,
-             &lfoSync, &lfoRate, &lfoDepth, &lfoShape, &lfoRetrig,
+             &lfoSync, &lfoRate, &lfoDepth, &lfoShape, &squarePwm, &lfoRetrig,
              &wheelAmount, &aftertouchAmount, &wheelDest, &aftertouchDest,
              &glide, &velocity, &accent, &accentSweep, &volume })
         addAndMakeVisible (c);
@@ -186,6 +186,7 @@ void MainView::setTooltips()
     lfoRate.setTooltip ("LFO speed in Hz when Sync is FREE.");
     lfoDepth.setTooltip ("How much the LFO moves the cutoff.");
     lfoShape.setTooltip ("LFO waveform. S&H gives random steps.");
+    squarePwm.setTooltip ("How much the LFO moves the width of the SQR wave around the Width setting. Classic PWM sound.");
     lfoRetrig.setTooltip ("Restart the LFO on each new note instead of following the song position.");
     wheelAmount.setTooltip ("How much the mod wheel affects its destination. Negative values invert it.");
     aftertouchAmount.setTooltip ("How much aftertouch affects its destination. Negative values invert it.");
@@ -421,7 +422,7 @@ void MainView::resized()
     auto knobArea = [] (juce::Rectangle<int> panel) { return panel.withTrimmedTop (kPanelTitle).reduced (8, 0).withTrimmedBottom (6); };
     layoutKnobRow (knobArea (kAmpPanel), { &attack, &decay, &sustain, &release });
     layoutKnobRow (knobArea (kPitchPanel), { &pitchEnv, &pitchDecay, &click });
-    layoutKnobRow (knobArea (kLfoPanel), { &lfoSync, &lfoRate, &lfoDepth, &lfoShape });
+    layoutKnobRow (knobArea (kLfoPanel).reduced (-3, 0), { &lfoSync, &lfoRate, &lfoDepth, &lfoShape, &squarePwm });
     lfoRetrig.setBounds (kLfoPanel.getRight() - 24, kLfoPanel.getY() + 9, 18, 18);
     auto mod = knobArea (kModPanel);
     auto modChips = mod.removeFromBottom (20);
@@ -480,10 +481,13 @@ void MainView::timerCallback()
     lfoRate.setEnabled (freeRunning);
     lfoRate.setAlpha (freeRunning ? 1.0f : 0.35f);
 
-    // Width only shapes the square wave
+    // Width and PWM only shape the square wave
     const bool isSquare = (int) processor.apvts.getRawParameterValue ("wave")->load() == 1;
-    squareWidth.setEnabled (isSquare);
-    squareWidth.setAlpha (isSquare ? 1.0f : 0.35f);
+    for (auto* knob : { &squareWidth, &squarePwm })
+    {
+        knob->setEnabled (isSquare);
+        knob->setAlpha (isSquare ? 1.0f : 0.35f);
+    }
 
     stepGrid.setPlayhead (processor.getSequencerStep());
 

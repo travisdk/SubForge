@@ -54,9 +54,12 @@ using PatchValues = std::array<float, kNumPatchParams>;
 //          | distType distDrive distTone distMix | accentSweep | squareWidth
 inline constexpr std::array<float, kNumExtraParams> kExtraDefaults { 0, 0, 0, 0, 60, 0, 0, 7, 2, 0, 0, 0, 0.5f, 0.5f, 1, 0, 0.5f };
 
-// Factory presets list their extras up to accentSweep. Parameters added later are not
-// listed: every factory preset gets the default (squareWidth 50 %).
-constexpr int kNumListedExtraParams = kNumExtraParams - 1;
+// Factory presets list their extras up to accentSweep. Parameters from pSquareWidth on are
+// not listed: every factory preset gets their default. Keep this pointing at the first
+// unlisted parameter; later parameters follow it and need no change here.
+constexpr int kNumListedExtraParams = pSquareWidth - kNumCoreParams;
+static_assert (kNumListedExtraParams > 0 && kNumListedExtraParams <= kNumExtraParams,
+               "kNumListedExtraParams must count the extras the factory presets list");
 
 struct Preset
 {

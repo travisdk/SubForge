@@ -28,6 +28,9 @@ tag the commit (`vX.Y.Z`).
   of the square sag towards the centre, like a classic acid square. At 0 % the
   square is clean and nothing changes. The knob is greyed out unless the wave is
   SQR. Randomize gives a square some sag, and Mutate nudges it.
+- **Eight new sound presets** that show off Width, PWM and Sag (PWM Slow Sweep,
+  PWM Wobble, PWM Free Chorus, PWM Acid Roll, Sag Square Bass, Sag Acid Diode,
+  Off-Centre Acid and Sag Heavy Pulse), added last in the list.
 - **Fine adjustment.** Hold Shift while dragging any knob to change it in tiny
   steps (Ctrl/Alt-drag and the mouse wheel work as before). Width shows one
   decimal, so 47.5 % and 48 % can be told apart.

@@ -29,7 +29,7 @@ Dette dokument forklarer, hvordan SubForge er bygget op, og hvorfor de vigtigste
 |---|---|---|---|
 | DSP | `BassSynth.h` | Oscillatorer, filtre, envelopes, LFO, distortion, stemmen | **Nej**. Ren C++17 |
 | Sequencer | `Sequencer.h`, `PatternLibrary.h` | Mønster, timing, swing, slide, 62 fabriksmønstre | **Nej** |
-| Lyddata | `Patches.h`, `FilterResponse.h` | 109 presets, random-patch, niveaunormalisering, filterkurve til GUI | **Nej** |
+| Lyddata | `Patches.h`, `FilterResponse.h` | 117 presets, random-patch, niveaunormalisering, filterkurve til GUI | **Nej** |
 | Plugin | `PluginProcessor.*` | Parametre, MIDI, transport, oversampling, tilstand | Ja |
 | Presets | `SoundPresets.*`, `PatternPresets.*`, `PresetFiles.h` | Indlæs og gem lyde og mønstre, brugerfiler | Ja |
 | GUI | `PluginEditor.*`, `MainView.*`, `Widgets.*`, `StepGrid.*`, `SubForgeLookAndFeel.*`, `AboutOverlay.*` | Alt, hvad brugeren ser | Ja |
@@ -210,7 +210,7 @@ Lyd og mønstre er **to uafhængige systemer**. Et lydpreset rører aldrig seque
 
 | | Lydpresets (`SoundPresets.*`) | Mønstre (`PatternPresets.*`) |
 |---|---|---|
-| Fabriksindhold | 109 presets i `Patches.h` | 62 mønstre i `PatternLibrary.h` |
+| Fabriksindhold | 117 presets i `Patches.h` | 62 mønstre i `PatternLibrary.h` |
 | Brugerfiler | `.sfpreset` (XML) | `.sfpattern` (XML) |
 | Standardmappe | `Dokumenter/SubForge/Presets` | `Dokumenter/SubForge/Patterns` (søstermappe til presetmappen) |
 | Indhold | Alle lydparametre som rene værdier | Steps, længde, swing, rate og gate. *Ikke* grundtonen, så mønstret følger tonearten |
@@ -263,7 +263,7 @@ Lyd og mønstre er **to uafhængige systemer**. Et lydpreset rører aldrig seque
 
 | Test | Kontrollerer |
 |---|---|
-| `test_presets` | 109 unikke navne, fornuftigt niveau, og at Randomize sjældent rammer grænserne |
+| `test_presets` | 117 unikke navne, fornuftigt niveau, og at Randomize sjældent rammer grænserne |
 | `test_patterns` | 62 mønstre, tekstformat frem og tilbage, afvisning af ugyldigt input |
 | `test_sequencer` | Identisk timing ved tre blokstørrelser, ingen hængende toner, swing, loop-spring |
 | `test_filter_curve` | GUI-kurven stemmer med filteret (±0,5 dB) |

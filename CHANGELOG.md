@@ -10,6 +10,13 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+### Added
+- **Square Width.** A new Width knob in the OSC panel sets how long the square
+  wave stays high, from 10 % to 90 %. 50 % is the plain square, so existing
+  projects and presets sound exactly as before. The knob is greyed out unless
+  the wave is SQR. Randomize now sometimes picks another width for a square
+  wave, and Mutate nudges it.
+
 ## [1.2.2] – 2026-10-22
 
 ### Changed

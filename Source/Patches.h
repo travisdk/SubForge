@@ -426,10 +426,16 @@ inline PatchValues randomPatch (std::mt19937& rng)
     v[pDistMix] = 0.6f + 0.4f * r();
     v[pAccentSweep] = v[pAccent] > 0.0f ? 0.8f * r() : 0.0f;
 
-    // only a square wave has a width; mostly it stays at 50 %
+    // only a square wave has a width: 70 % exactly 50, 20 % slightly off-centre, 10 % further out
     v[pSquareWidth] = 0.5f;
-    if (v[pWave] == 1.0f && chance (0.3f))
-        v[pSquareWidth] = 0.2f + 0.6f * r();
+    if (v[pWave] == 1.0f)
+    {
+        const float d = r();
+        if (d >= 0.9f)
+            v[pSquareWidth] = 0.25f + 0.5f * r();
+        else if (d >= 0.7f)
+            v[pSquareWidth] = 0.42f + 0.16f * r();
+    }
     return v;
 }
 

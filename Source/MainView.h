@@ -164,6 +164,7 @@ private:
     Knob octave { processor.apvts, "octave", "Octave", small() };
     Knob detune { processor.apvts, "detune", "Detune", small() };
     Knob sub { processor.apvts, "sub", "Sub", small() };
+    Knob squareWidth { processor.apvts, "squareWidth", "Width", small() };
     subforge::ui::ChoiceChip subWave { param ("subWave"), { "Sine", "Square" } };
 
     // drive

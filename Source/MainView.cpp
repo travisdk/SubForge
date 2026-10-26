@@ -82,7 +82,7 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
 
     for (auto* c : std::initializer_list<juce::Component*> {
              &filterMode, &filterCurve, &envAmount, &filterDecay, &drive, &keyTrack, &cutoff, &resonance,
-             &wave, &octave, &detune, &sub, &subWave,
+             &wave, &octave, &detune, &sub, &squareWidth, &subWave,
              &distType, &distGain, &distTone, &distMix,
              &attack, &decay, &sustain, &release, &pitchEnv, &pitchDecay, &click,
              &lfoSync, &lfoRate, &lfoDepth, &lfoShape, &lfoRetrig,
@@ -163,6 +163,7 @@ void MainView::setTooltips()
     octave.setTooltip ("Shifts the oscillator up or down in octaves.");
     detune.setTooltip ("Detunes a second oscillator for a wider, chorused sound. Keep it low for tight bass.");
     sub.setTooltip ("Level of the sub oscillator one octave below. Adds weight on big speakers.");
+    squareWidth.setTooltip ("Pulse width of the square wave: 50 % is a plain square, lower or higher sounds thinner and more nasal. Only the SQR wave uses it.");
     subWave.setTooltip ("Sub oscillator shape: sine for clean weight, square for more presence.");
 
     // drive
@@ -409,7 +410,7 @@ void MainView::resized()
 
     // osc
     wave.setBounds (kOscPanel.getRight() - 14 - 200, kOscPanel.getY() + 10, 200, 24);
-    layoutKnobRow ({ 560, 98, 240, 82 }, { &octave, &detune, &sub });
+    layoutKnobRow ({ 560, 98, 240, 82 }, { &octave, &detune, &sub, &squareWidth });
     subWave.setBounds (812, 126, 78, 26);
 
     // drive
@@ -478,6 +479,11 @@ void MainView::timerCallback()
     const bool freeRunning = processor.apvts.getRawParameterValue ("lfoSync")->load() < 0.5f;
     lfoRate.setEnabled (freeRunning);
     lfoRate.setAlpha (freeRunning ? 1.0f : 0.35f);
+
+    // Width only shapes the square wave
+    const bool isSquare = (int) processor.apvts.getRawParameterValue ("wave")->load() == 1;
+    squareWidth.setEnabled (isSquare);
+    squareWidth.setAlpha (isSquare ? 1.0f : 0.35f);
 
     stepGrid.setPlayhead (processor.getSequencerStep());
 

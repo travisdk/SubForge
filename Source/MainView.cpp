@@ -82,7 +82,7 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
 
     for (auto* c : std::initializer_list<juce::Component*> {
              &filterMode, &filterCurve, &envAmount, &filterDecay, &drive, &keyTrack, &cutoff, &resonance,
-             &wave, &octave, &detune, &sub, &squareWidth, &subWave,
+             &wave, &octave, &detune, &sub, &squareWidth, &squareSag, &subWave,
              &distType, &distGain, &distTone, &distMix,
              &attack, &decay, &sustain, &release, &pitchEnv, &pitchDecay, &click,
              &lfoSync, &lfoRate, &lfoDepth, &lfoShape, &squarePwm, &lfoRetrig,
@@ -163,7 +163,8 @@ void MainView::setTooltips()
     octave.setTooltip ("Shifts the oscillator up or down in octaves.");
     detune.setTooltip ("Detunes a second oscillator for a wider, chorused sound. Keep it low for tight bass.");
     sub.setTooltip ("Level of the sub oscillator one octave below. Adds weight on big speakers.");
-    squareWidth.setTooltip ("Pulse width of the SQR wave. 50 % is a perfect square; classic acid basslines often used a slightly off-centre square, so try 45-55 %. PLS stays a fixed 25 %.");
+    squareWidth.setTooltip ("Pulse width of the SQR wave. 50 % is a perfect square; classic acid basslines often used a slightly off-centre square, so try 45-55 %. PLS stays a fixed 25 %. A few percent off-centre gives a rawer, more classic acid sound, clearly audible from around 40 or 60 %.");
+    squareSag.setTooltip ("Lets the flat tops and bottoms of the SQR wave sag towards the centre, like a classic acid square. 0 % is a clean square.");
     subWave.setTooltip ("Sub oscillator shape: sine for clean weight, square for more presence.");
 
     // drive
@@ -346,7 +347,6 @@ void MainView::paint (juce::Graphics& g)
 
     g.setColour (P::dimText);
     g.setFont (lookAndFeel.labelFont (11.0f).withExtraKerningFactor (0.1f));
-    g.drawText ("SUB WAVE", 806, 106, 90, 16, juce::Justification::centred);
     g.drawText ("RETRIG", kLfoPanel.getRight() - 72, kLfoPanel.getY() + 6, 46, 24, juce::Justification::centredRight);
 }
 
@@ -411,8 +411,8 @@ void MainView::resized()
 
     // osc
     wave.setBounds (kOscPanel.getRight() - 14 - 200, kOscPanel.getY() + 10, 200, 24);
-    layoutKnobRow ({ 560, 105, 240, 78 }, { &octave, &detune, &sub, &squareWidth });
-    subWave.setBounds (812, 132, 78, 26);
+    layoutKnobRow ({ 560, 105, 330, 78 }, { &octave, &detune, &sub, &squareWidth, &squareSag });
+    subWave.setBounds (596, kOscPanel.getY() + 10, 86, 24); // in the title row, so the knobs get the full width
 
     // drive
     distType.setBounds (kDrivePanel.getRight() - 14 - 120, kDrivePanel.getY() + 10, 120, 24);
@@ -483,7 +483,7 @@ void MainView::timerCallback()
 
     // Width and PWM only shape the square wave
     const bool isSquare = (int) processor.apvts.getRawParameterValue ("wave")->load() == 1;
-    for (auto* knob : { &squareWidth, &squarePwm })
+    for (auto* knob : { &squareWidth, &squareSag, &squarePwm })
     {
         knob->setEnabled (isSquare);
         knob->setAlpha (isSquare ? 1.0f : 0.35f);

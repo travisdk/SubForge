@@ -44,6 +44,17 @@ https://github.com/user-attachments/assets/3b5655d9-1d9e-4a71-944f-db04779f6a4d
 - 109 sound presets and 62 patterns, plus your own presets and patterns.
 - Vector interface that scales from 75 % to 200 %.
 
+### Square wave shaping
+
+Three controls shape the SQR wave. **Width** sets how long it stays high (50 %
+is a perfect square, and a few percent off-centre gives a rawer sound), **PWM**
+lets the LFO sweep the width, and **Sag** lets the flat tops and bottoms sag
+towards the centre. PLS stays a fixed 25 %, the same as SQR with Width at 25 %.
+The picture shows Width 45 % with Sag at 0, 50 and 100 % (grey: the plain
+square). `SubForge_WaveShapes` draws it.
+
+![The square wave at Width 45 % with Sag 0, 50 and 100 %](docs/images/square-shaping.png)
+
 See [CHANGELOG.md](CHANGELOG.md) for the full list.
 
 ## Playing with the sequencer

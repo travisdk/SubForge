@@ -73,7 +73,7 @@ Sådan deler de data uden låse:
 
 ### 3.1 Oscillatorer (`Oscillator`, linje 122)
 
-- Fem bølgeformer: saw, square, pulse 25 %, sine og triangle. Square har en bredde (10-90 %, parameteren `squareWidth`, standard 50 %); den glattes pr. sample og holdes mindst to samples fra den anden kant, så båndbegrænsningen virker ved høje toner.
+- Fem bølgeformer: saw, square, pulse 25 %, sine og triangle. Square har en bredde (10-90 %, parameteren `squareWidth`, standard 50 %); den glattes pr. sample og holdes mindst to samples fra den anden kant, så båndbegrænsningen virker ved høje toner. `squarePwm` lader den eksisterende LFO svinge bredden bipolart omkring knappen (100 % ≈ ±40 %, holdt inden for 10-90 %; `modulatedSquareWidth`). `squareSag` er et one-pole highpass (`SquareSag`) på square-signalet med knækfrekvens efter tonehøjden, så toppe og bunde falder mod midten; forstærkningen holder toppene på samme niveau, og 0 % går helt udenom. Sag blandes ind og ud sammen med square under bølgeskift. Knapper kan finjusteres med Shift-træk (JUCE's hastighedstilstand, som også Ctrl/Alt/Cmd-træk bruger).
 - **Anti-aliasing:**
   - Saw og firkant får et polynomielt korrektionsled ved hvert spring (`stepResidual`, linje 86, PolyBLEP-metoden). Udledningen står i kommentaren over funktionen.
   - Triangle får den integrerede udgave (`polyBlamp`, linje 107) i knækkene.

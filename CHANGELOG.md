@@ -22,6 +22,18 @@ tag the commit (`vX.Y.Z`).
   pulse-width-modulation sound. It uses the LFO's sync, rate, shape and retrigger,
   and Depth still moves only the filter. At 0 % nothing changes. The knob is
   greyed out unless the wave is SQR.
+- **Square Sag.** A new Sag knob in the OSC panel lets the flat tops and bottoms
+  of the square sag towards the centre, like a classic acid square. At 0 % the
+  square is clean and nothing changes. The knob is greyed out unless the wave is
+  SQR. Randomize gives a square some sag, and Mutate nudges it.
+- **Fine adjustment.** Hold Shift while dragging any knob to change it in tiny
+  steps (Ctrl/Alt-drag and the mouse wheel work as before). Width and Sag show
+  one decimal, so 47.5 % and 48 % can be told apart.
+
+### Changed
+- The sub wave chip moved into the title row of the OSC panel and reads
+  "SUB SINE" or "SUB SQR", to make room for five knobs. The LFO panel is titled
+  "LFO" and its knobs use slightly smaller text.
 
 ## [1.2.2] – 2026-10-22
 

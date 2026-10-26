@@ -173,6 +173,47 @@ int main()
         CHECK (render (a, 20000) != render (b, 20000)); // the filter moves
     }
 
+    // Sag glides in and out and a wave switch with sag set does not click either
+    {
+        auto p = heldNote();
+        p.wave = 1;
+        CHECK (switchJump (p, [] (BassParams& q) { q.squareSag = 1.0f; }) < 0.01f);
+        p.squareSag = 1.0f;
+        CHECK (switchJump (p, [] (BassParams& q) { q.squareSag = 0.0f; }) < 0.01f);
+        CHECK (switchJump (p, [] (BassParams& q) { q.wave = 0; }) < 0.01f);
+        p.wave = 0;
+        CHECK (switchJump (p, [] (BassParams& q) { q.wave = 1; }) < 0.01f);
+    }
+
+    // Sag only changes the square; every other wave sounds the same with sag turned all the way up
+    for (int wave : { 0, 2, 3, 4 })
+    {
+        auto p = heldNote();
+        p.wave = wave;
+        BassSynth a, b;
+        a.setParams (p);
+        p.squareSag = 1.0f;
+        b.setParams (p);
+        a.prepare (fs);
+        b.prepare (fs);
+        a.noteOn (36, 1.0f);
+        b.noteOn (36, 1.0f);
+        CHECK (render (a, 20000) == render (b, 20000));
+    }
+    {
+        auto p = heldNote();
+        p.wave = 1;
+        BassSynth a, b;
+        a.setParams (p);
+        p.squareSag = 1.0f;
+        b.setParams (p);
+        a.prepare (fs);
+        b.prepare (fs);
+        a.noteOn (36, 1.0f);
+        b.noteOn (36, 1.0f);
+        CHECK (render (a, 20000) != render (b, 20000));
+    }
+
     // PWM glides in and out, so turning the knob does not click
     {
         auto p = heldNote();

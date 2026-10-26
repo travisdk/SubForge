@@ -228,6 +228,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
     // Added after 1.2.2, so last in the list and version 3. A project or preset without it gets 50 %.
     params.push_back (floatParam ("squareWidth", "Square Width", { 0.1f, 0.9f }, 0.5f, "", 3));
     params.push_back (floatParam ("squarePwm", "Square PWM", { 0.0f, 1.0f }, 0.0f, "", 3));
+    params.push_back (floatParam ("squareSag", "Square Sag", { 0.0f, 1.0f }, 0.0f, "", 3));
 
     return { params.begin(), params.end() };
 }
@@ -444,7 +445,7 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
                 if (auto* b = dynamic_cast<juce::AudioParameterBool*> (p))
                     b->setValueNotifyingHost (b->get() ? 1.0f : 0.0f);
             // A project saved before these parameters existed must not keep the values this instance had.
-            for (auto* id : { "squareWidth", "squarePwm" })
+            for (auto* id : { "squareWidth", "squarePwm", "squareSag" })
                 if (! state.getChildWithProperty ("id", id).isValid())
                     if (auto* param = apvts.getParameter (id))
                         param->setValueNotifyingHost (param->getDefaultValue());

@@ -26,7 +26,7 @@ enum PatchParam
     pLfoShape, pLfoSync, pLfoRate, pLfoDepth, pLfoRetrig,
     pDistType, pDistDrive, pDistTone, pDistMix,
     pAccentSweep,
-    pSquareWidth, pSquarePwm,
+    pSquareWidth, pSquarePwm, pSquareSag,
     kNumPatchParams
 };
 
@@ -43,7 +43,7 @@ inline constexpr const char* kPatchParamIds[kNumPatchParams] = {
     "pitchEnv", "pitchDecay", "click",
     "lfoShape", "lfoSync", "lfoRate", "lfoDepth", "lfoRetrig",
     "distType", "distDrive", "distTone", "distMix",
-    "accentSweep", "squareWidth", "squarePwm"
+    "accentSweep", "squareWidth", "squarePwm", "squareSag"
 };
 
 using PatchValues = std::array<float, kNumPatchParams>;
@@ -51,8 +51,8 @@ using PatchValues = std::array<float, kNumPatchParams>;
 // Neutral settings for the extra parameters, so presets that leave them out
 // sound as before: LP24, no key track/accent/pitch env/click, LFO depth 0, distortion off.
 // Columns: filterMode keyTrack accent | pitchEnv pitchDecay click | lfoShape lfoSync lfoRate lfoDepth lfoRetrig
-//          | distType distDrive distTone distMix | accentSweep | squareWidth squarePwm
-inline constexpr std::array<float, kNumExtraParams> kExtraDefaults { 0, 0, 0, 0, 60, 0, 0, 7, 2, 0, 0, 0, 0.5f, 0.5f, 1, 0, 0.5f, 0 };
+//          | distType distDrive distTone distMix | accentSweep | squareWidth squarePwm squareSag
+inline constexpr std::array<float, kNumExtraParams> kExtraDefaults { 0, 0, 0, 0, 60, 0, 0, 7, 2, 0, 0, 0, 0.5f, 0.5f, 1, 0, 0.5f, 0, 0 };
 
 // Factory presets list their extras up to accentSweep. Parameters from pSquareWidth on are
 // not listed: every factory preset gets their default. Keep this pointing at the first
@@ -309,6 +309,7 @@ inline BassParams toBassParams (const PatchValues& v, float gain)
     p.accentSweep = v[pAccentSweep];
     p.squareWidth = v[pSquareWidth];
     p.squarePwm = v[pSquarePwm];
+    p.squareSag = v[pSquareSag];
     p.gain = gain;
     return p;
 }
@@ -431,6 +432,7 @@ inline PatchValues randomPatch (std::mt19937& rng)
     // and one in five of them gets some PWM
     v[pSquareWidth] = 0.5f;
     v[pSquarePwm] = 0.0f;
+    v[pSquareSag] = 0.0f;
     if (v[pWave] == 1.0f)
     {
         if (! chance (0.8f))

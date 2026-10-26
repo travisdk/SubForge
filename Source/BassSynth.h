@@ -40,6 +40,7 @@ struct BassParams
     int subWave = 0;       // 0 sine, 1 square
     float squareWidth = 0.5f; // 0.1..0.9, share of the cycle the square wave is high; only wave 1 uses it
     float squarePwm = 0.0f;   // 0..1, how far the LFO swings the width around squareWidth (1 = about +-0.4)
+    float squareSag = 0.0f;   // 0..1, how far the flat tops and bottoms of the square sag towards the centre
     float detuneCents = 0.0f;
     float cutoffHz = 400.0f;
     float resonance = 0.3f;
@@ -203,6 +204,30 @@ private:
             out -= 2.0f * pw - 1.0f; // remove DC of asymmetric pulse
         }
         return out;
+    }
+};
+
+// Lets the flat tops and bottoms of a square sag towards the centre, like a coupling
+// capacitor does: a one-pole highpass whose corner follows the pitch, so the sag looks the
+// same on every note. The gain keeps the peaks at the level of the plain square.
+struct SquareSag
+{
+    float lowpass = 0.0f;
+
+    void reset() { lowpass = 0.0f; }
+
+    // amount 0..1; 0 returns x untouched. inc is the phase increment, i.e. the pitch.
+    float process (float x, float inc, float amount)
+    {
+        if (amount <= 0.0f)
+        {
+            lowpass = 0.0f; // the next start of the effect begins from the centre
+            return x;
+        }
+        const float corner = 0.5f * amount; // highpass corner as a share of the pitch, up to half of it
+        lowpass += (1.0f - std::exp (-2.0f * kPi * corner * inc)) * (x - lowpass);
+        const float left = std::exp (-kPi * corner); // share of a flat part still there after half a cycle
+        return (x - lowpass) * 0.5f * (1.0f + left);
     }
 };
 
@@ -583,6 +608,7 @@ public:
         osc1.reset();
         osc2.reset();
         subOsc.reset();
+        squareSag.reset();
         lfo.reset();
         pitchEnv = 0.0f;
         clickEnv = 0.0f;
@@ -642,6 +668,7 @@ public:
                 osc1.reset();
                 osc2.reset();
                 subOsc.reset();
+                squareSag.reset();
                 // nothing is sounding, so the new level can start at once; a retrigger glides to it
                 velScaleSmoothed = velScale;
                 accentSmoothed = accented ? params.accent : 0.0f;
@@ -769,7 +796,7 @@ public:
             const float inc = std::min (0.45f, 440.0f * std::exp2 ((oscPitch - 69.0f) / 12.0f) / fs);
 
             const float width = modulatedSquareWidth (smoothed.squareWidth, smoothed.squarePwm, lfoValue);
-            float osc, sub;
+            float osc, sub, squareShare; // squareShare: how much of osc is the square wave
             if (waveFade < 1.0f)
             {
                 // a new wave is blended in at the same phase rather than switched
@@ -777,12 +804,17 @@ public:
                 osc = 0.5f * (osc1.nextCrossfade (inc, previousWave, active.wave, waveFade, width)
                               + osc2.nextCrossfade (inc * detuneRatio, previousWave, active.wave, waveFade, width));
                 sub = subOsc.nextCrossfade (inc * 0.5f, subOscWave (previousSubWave), subOscWave (active.subWave), waveFade);
+                squareShare = (previousWave == 1 ? 1.0f - waveFade : 0.0f) + (active.wave == 1 ? waveFade : 0.0f);
             }
             else
             {
                 osc = 0.5f * (osc1.next (inc, active.wave, width) + osc2.next (inc * detuneRatio, active.wave, width));
                 sub = subOsc.next (inc * 0.5f, subOscWave (active.subWave));
+                squareShare = active.wave == 1 ? 1.0f : 0.0f;
             }
+            // the square sags, any other wave passes untouched
+            const float sagged = squareSag.process (osc, inc, squareShare > 0.0f ? smoothed.squareSag : 0.0f);
+            osc += squareShare * (sagged - osc);
             const float x = osc + smoothed.sub * sub;
 
             const float envValue = filterEnv.next();
@@ -837,6 +869,7 @@ private:
         glide (smoothed.sub, params.sub);
         glide (smoothed.squareWidth, params.squareWidth);
         glide (smoothed.squarePwm, params.squarePwm);
+        glide (smoothed.squareSag, params.squareSag);
         glide (smoothed.resonance, params.resonance);
         glide (smoothed.distDrive, params.distDrive);
         glide (smoothed.distMix, params.distMix);
@@ -872,6 +905,7 @@ private:
     float fs = 44100.0f;
 
     Oscillator osc1, osc2, subOsc;
+    SquareSag squareSag;
     LadderFilter ladder;
     DiodeLadderFilter diode;
     Distortion distortion;

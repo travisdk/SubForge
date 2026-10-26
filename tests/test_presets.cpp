@@ -26,13 +26,15 @@ int main()
     }
 
     // the width is the last parameter, and no factory preset changes it
-    CHECK (std::string (kPatchParamIds[kNumPatchParams - 2]) == "squareWidth");
-    CHECK (std::string (kPatchParamIds[kNumPatchParams - 1]) == "squarePwm");
-    CHECK (pSquarePwm == kNumPatchParams - 1);
+    CHECK (std::string (kPatchParamIds[kNumPatchParams - 3]) == "squareWidth");
+    CHECK (std::string (kPatchParamIds[kNumPatchParams - 2]) == "squarePwm");
+    CHECK (std::string (kPatchParamIds[kNumPatchParams - 1]) == "squareSag");
+    CHECK (pSquareSag == kNumPatchParams - 1);
     for (const auto& preset : kPresets)
     {
         CHECK (preset.values()[pSquareWidth] == 0.5f);
         CHECK (preset.values()[pSquarePwm] == 0.0f);
+        CHECK (preset.values()[pSquareSag] == 0.0f);
     }
 
     std::mt19937 rng (1);
@@ -52,6 +54,7 @@ int main()
         {
             CHECK (width == 0.5f);
             CHECK (patch[pSquarePwm] == 0.0f);
+            CHECK (patch[pSquareSag] == 0.0f);
             continue;
         }
         ++squares;

@@ -152,6 +152,86 @@ int main()
         CHECK (same);
     }
 
+    // Sag: 0 passes the square through untouched
+    {
+        SquareSag sag;
+        Oscillator osc;
+        bool same = true;
+        for (int i = 0; i < 5000; ++i)
+        {
+            const float x = osc.next (0.01f, 1, 0.45f);
+            same = same && sag.process (x, 0.01f, 0.0f) == x;
+        }
+        CHECK (same);
+        CHECK (sag.lowpass == 0.0f);
+    }
+
+    // Sag: the flat parts sag towards the centre (more with more sag), the peaks stay at the plain level,
+    // and there is no DC, at several widths and pitches
+    for (float width : { 0.45f, 0.5f, 0.7f })
+        for (double hz : { 55.0, 440.0 })
+        {
+            const float inc = (float) (hz / fs);
+            const int period = (int) std::round (fs / hz);
+            float lastTop[3] {}, plainPeak = 0.0f;
+            for (int a = 0; a < 3; ++a)
+            {
+                const float amount = a == 0 ? 0.0f : (a == 1 ? 0.5f : 1.0f);
+                SquareSag sag;
+                Oscillator osc;
+                double sum = 0.0;
+                float peak = 0.0f;
+                int counted = 0;
+                for (int i = 0; i < 60 * period; ++i)
+                {
+                    const float y = sag.process (osc.next (inc, 1, width), inc, amount);
+                    if (i >= 20 * period)
+                    {
+                        sum += y;
+                        peak = std::max (peak, std::abs (y));
+                        ++counted;
+                        if (osc.phase > width - 0.02f && osc.phase < width - 0.01f)
+                            lastTop[a] = y; // just before the falling edge
+                    }
+                }
+                CHECK (std::abs (sum / counted) < 0.01);
+                if (a == 0)
+                    plainPeak = peak;
+                CHECK (peak < plainPeak * 1.05f);
+            }
+            std::printf ("sag, width %.2f at %.0f Hz: end of the top %.2f / %.2f / %.2f for sag 0 / 50 / 100 %%\n",
+                         width, hz, lastTop[0], lastTop[1], lastTop[2]);
+            CHECK (std::abs (lastTop[0] - (2.0f - 2.0f * width)) < 0.03f); // the top of the plain square, DC removed
+            CHECK (lastTop[1] < lastTop[0] - 0.1f);
+            CHECK (lastTop[2] < lastTop[1] - 0.1f);
+            CHECK (lastTop[2] > 0.0f);
+        }
+
+    // Sag adds no aliasing: through the same highpass, the band-limited square stays as close to the
+    // additive reference as it was before, compared with the naive square
+    for (double hz : { 1500.0, 3000.0 })
+    {
+        const float inc = (float) (hz / fs);
+        SquareSag sagOsc, sagRef, sagNaive;
+        Oscillator osc;
+        double naiveError = 0.0, error = 0.0;
+        for (int i = 0; i < 48000; ++i)
+        {
+            const double t = osc.phase;
+            const float y = sagOsc.process (osc.next (inc, 1, 0.45f), inc, 1.0f);
+            const float ref = sagRef.process ((float) pulseReference (0.45, t, hz), inc, 1.0f);
+            const float naivePulse = sagNaive.process ((float) ((t < 0.45 ? 1.0 : -1.0) - (2.0 * 0.45 - 1.0)), inc, 1.0f);
+            if (i > 2000)
+            {
+                naiveError += (naivePulse - ref) * (naivePulse - ref);
+                error += (y - ref) * (y - ref);
+            }
+        }
+        const double improvementDb = 10.0 * std::log10 (naiveError / error);
+        std::printf ("sagged square at %.0f Hz: %.1f dB less error than naive\n", hz, improvementDb);
+        CHECK (improvementDb > 6.0);
+    }
+
     // PWM: bipolar around the Width knob, within 10-90 % for every setting
     for (int step = 0; step <= 16; ++step)
         for (float pwm : { 0.0f, 0.3f, 1.0f })

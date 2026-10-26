@@ -122,6 +122,13 @@ target_include_directories(SubForge_Screenshot PRIVATE Source $<TARGET_PROPERTY:
 target_compile_definitions(SubForge_Screenshot PRIVATE $<TARGET_PROPERTY:SubForge,COMPILE_DEFINITIONS>)
 target_link_libraries(SubForge_Screenshot PRIVATE SubForge)
 
+# Draws the square wave at several Sag settings for the README (not part of a normal build):
+#   cmake --build build --target SubForge_WaveShapes && build/SubForge_WaveShapes docs/images/square-shaping.png
+add_executable(SubForge_WaveShapes EXCLUDE_FROM_ALL tools/wave_shapes.cpp)
+target_include_directories(SubForge_WaveShapes PRIVATE Source $<TARGET_PROPERTY:SubForge,INCLUDE_DIRECTORIES>)
+target_compile_definitions(SubForge_WaveShapes PRIVATE $<TARGET_PROPERTY:SubForge,COMPILE_DEFINITIONS>)
+target_link_libraries(SubForge_WaveShapes PRIVATE SubForge)
+
 # Renders the audio demo (not part of a normal build):
 #   cmake --build build --target SubForge_RenderDemo && build/SubForge_RenderDemo demo.wav timecodes.txt
 add_executable(SubForge_RenderDemo EXCLUDE_FROM_ALL tools/render_demo.cpp)

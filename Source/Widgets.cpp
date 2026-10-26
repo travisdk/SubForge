@@ -28,6 +28,12 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state, const juce::String& param
 
     auto* param = state.getParameter (paramId);
     slider.setDoubleClickReturnValue (true, param->convertFrom0to1 (param->getDefaultValue()));
+
+    // Fine adjustment: dragging while holding Shift (or Ctrl/Alt/Cmd) follows the speed of the
+    // mouse, so slow movements change the value in tiny steps. The mouse wheel is JUCE's own.
+    slider.setVelocityModeParameters (1.0, 1, 0.0, true,
+                                      (juce::ModifierKeys::Flags) (juce::ModifierKeys::shiftModifier
+                                                                   | juce::ModifierKeys::ctrlAltCommandModifiers));
     addAndMakeVisible (slider);
 }
 

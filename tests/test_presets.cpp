@@ -25,15 +25,30 @@ int main()
         CHECK (volume >= -36.0f && volume <= 6.0f);
     }
 
+    // the width is the last parameter, and no factory preset changes it
+    CHECK (std::string (kPatchParamIds[kNumPatchParams - 1]) == "squareWidth");
+    CHECK (pSquareWidth == kNumPatchParams - 1);
+    for (const auto& preset : kPresets)
+        CHECK (preset.values()[pSquareWidth] == 0.5f);
+
     std::mt19937 rng (1);
-    int clampedHigh = 0;
+    int clampedHigh = 0, widthChanged = 0;
     for (int i = 0; i < 2000; ++i)
     {
         const auto patch = randomPatch (rng);
         const auto [rms, peak] = measureLevel (patch);
         CHECK (std::isfinite (rms) && std::isfinite (peak));
         clampedHigh += normalizedVolumeDb (patch) >= 6.0f ? 1 : 0;
+
+        // only a square wave gets a width other than 50 %
+        CHECK (patch[pSquareWidth] >= 0.2f && patch[pSquareWidth] <= 0.8f);
+        if (patch[pSquareWidth] != 0.5f)
+        {
+            CHECK (patch[pWave] == 1.0f);
+            ++widthChanged;
+        }
     }
+    CHECK (widthChanged > 50 && widthChanged < 600);
     CHECK (clampedHigh < 40); // only rare, very quiet random patches hit the volume limit
 
     return finish ("presets");

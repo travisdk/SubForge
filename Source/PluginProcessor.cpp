@@ -37,7 +37,7 @@ int noteFromText (const juce::String& text)
 // Parameters without a unit are 0..1 amounts and display as percent.
 std::unique_ptr<juce::AudioParameterFloat> floatParam (const char* id, const char* name,
                                                        juce::NormalisableRange<float> range,
-                                                       float defaultValue, const char* unit = "")
+                                                       float defaultValue, const char* unit = "", int versionHint = 1)
 {
     const juce::String unitText (unit);
     const bool isPercent = unitText.isEmpty();
@@ -57,7 +57,7 @@ std::unique_ptr<juce::AudioParameterFloat> floatParam (const char* id, const cha
         return isPercent ? value / 100.0f : value;
     };
 
-    return std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id, 1 }, name, range, defaultValue,
+    return std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id, versionHint }, name, range, defaultValue,
                                                         juce::AudioParameterFloatAttributes()
                                                             .withStringFromValueFunction (toText)
                                                             .withValueFromStringFunction (fromText));
@@ -224,6 +224,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
     for (int i = 0; i < subforge::kNumPatternSlots; ++i)
         slotNames.add (String::charToString ((juce_wchar) ('A' + i)));
     params.push_back (std::make_unique<AudioParameterChoice> (ParameterID { "seqPattern", 2 }, "Sequencer Pattern", slotNames, 0));
+
+    // Added after 1.2.2, so last in the list and version 3. A project or preset without it gets 50 %.
+    params.push_back (floatParam ("squareWidth", "Square Width", { 0.1f, 0.9f }, 0.5f, "", 3));
 
     return { params.begin(), params.end() };
 }
@@ -439,6 +442,10 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
             for (auto* p : getParameters())
                 if (auto* b = dynamic_cast<juce::AudioParameterBool*> (p))
                     b->setValueNotifyingHost (b->get() ? 1.0f : 0.0f);
+            // A project saved before Square Width existed must not keep the width this instance had.
+            if (! state.getChildWithProperty ("id", "squareWidth").isValid())
+                if (auto* width = apvts.getParameter ("squareWidth"))
+                    width->setValueNotifyingHost (width->getDefaultValue());
             restoringState = false;
 
             // the project starts in the slot its Pattern parameter was saved on

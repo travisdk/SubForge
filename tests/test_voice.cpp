@@ -111,6 +111,27 @@ int main()
         CHECK (tail.back() == 0.0f);
     }
 
+    // Square width: a new width glides in, so turning the knob does not click
+    {
+        auto p = heldNote();
+        p.wave = 1;
+        CHECK (switchJump (p, [] (BassParams& q) { q.squareWidth = 0.15f; }) < 0.01f);
+    }
+
+    // The width does nothing to the other waves
+    {
+        auto p = heldNote();
+        BassSynth a, b;
+        a.setParams (p);
+        p.squareWidth = 0.2f;
+        b.setParams (p);
+        a.prepare (fs);
+        b.prepare (fs);
+        a.noteOn (36, 1.0f);
+        b.noteOn (36, 1.0f);
+        CHECK (render (a, 5000) == render (b, 5000));
+    }
+
     // Retrigger with no gap between notes, alternating accented and plain
     {
         auto p = heldNote();

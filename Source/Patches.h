@@ -26,6 +26,7 @@ enum PatchParam
     pLfoShape, pLfoSync, pLfoRate, pLfoDepth, pLfoRetrig,
     pDistType, pDistDrive, pDistTone, pDistMix,
     pAccentSweep,
+    pSquareWidth,
     kNumPatchParams
 };
 
@@ -42,7 +43,7 @@ inline constexpr const char* kPatchParamIds[kNumPatchParams] = {
     "pitchEnv", "pitchDecay", "click",
     "lfoShape", "lfoSync", "lfoRate", "lfoDepth", "lfoRetrig",
     "distType", "distDrive", "distTone", "distMix",
-    "accentSweep"
+    "accentSweep", "squareWidth"
 };
 
 using PatchValues = std::array<float, kNumPatchParams>;
@@ -50,19 +51,32 @@ using PatchValues = std::array<float, kNumPatchParams>;
 // Neutral settings for the extra parameters, so presets that leave them out
 // sound as before: LP24, no key track/accent/pitch env/click, LFO depth 0, distortion off.
 // Columns: filterMode keyTrack accent | pitchEnv pitchDecay click | lfoShape lfoSync lfoRate lfoDepth lfoRetrig
-//          | distType distDrive distTone distMix | accentSweep
-inline constexpr std::array<float, kNumExtraParams> kExtraDefaults { 0, 0, 0, 0, 60, 0, 0, 7, 2, 0, 0, 0, 0.5f, 0.5f, 1, 0 };
+//          | distType distDrive distTone distMix | accentSweep | squareWidth
+inline constexpr std::array<float, kNumExtraParams> kExtraDefaults { 0, 0, 0, 0, 60, 0, 0, 7, 2, 0, 0, 0, 0.5f, 0.5f, 1, 0, 0.5f };
+
+// Factory presets list their extras up to accentSweep. Parameters added later are not
+// listed: every factory preset gets the default (squareWidth 50 %).
+constexpr int kNumListedExtraParams = kNumExtraParams - 1;
 
 struct Preset
 {
     const char* name;
     std::array<float, kNumCoreParams> core;
-    std::array<float, kNumExtraParams> extra = kExtraDefaults;
+    std::array<float, kNumListedExtraParams> extra = listedDefaults();
+
+    static constexpr std::array<float, kNumListedExtraParams> listedDefaults()
+    {
+        std::array<float, kNumListedExtraParams> d {};
+        for (int i = 0; i < kNumListedExtraParams; ++i)
+            d[(size_t) i] = kExtraDefaults[(size_t) i];
+        return d;
+    }
 
     PatchValues values() const
     {
         PatchValues v {};
         std::copy (core.begin(), core.end(), v.begin());
+        std::copy (kExtraDefaults.begin(), kExtraDefaults.end(), v.begin() + kNumCoreParams);
         std::copy (extra.begin(), extra.end(), v.begin() + kNumCoreParams);
         return v;
     }
@@ -290,6 +304,7 @@ inline BassParams toBassParams (const PatchValues& v, float gain)
     p.distTone = v[pDistTone];
     p.distMix = v[pDistMix];
     p.accentSweep = v[pAccentSweep];
+    p.squareWidth = v[pSquareWidth];
     p.gain = gain;
     return p;
 }
@@ -407,6 +422,11 @@ inline PatchValues randomPatch (std::mt19937& rng)
     v[pDistTone] = 0.3f + 0.5f * r();
     v[pDistMix] = 0.6f + 0.4f * r();
     v[pAccentSweep] = v[pAccent] > 0.0f ? 0.8f * r() : 0.0f;
+
+    // only a square wave has a width; mostly it stays at 50 %
+    v[pSquareWidth] = 0.5f;
+    if (v[pWave] == 1.0f && chance (0.3f))
+        v[pSquareWidth] = 0.2f + 0.6f * r();
     return v;
 }
 

@@ -38,6 +38,7 @@ struct BassParams
     int octave = 0;        // -2..+1
     float sub = 0.5f;      // sub oscillator level
     int subWave = 0;       // 0 sine, 1 square
+    float squareWidth = 0.5f; // 0.1..0.9, share of the cycle the square wave is high; only wave 1 uses it
     float detuneCents = 0.0f;
     float cutoffHz = 400.0f;
     float resonance = 0.3f;
@@ -128,18 +129,19 @@ struct Oscillator
     void reset() { phase = 0.0f; }
 
     // wave: 0 saw, 1 square, 2 pulse 25%, 3 sine, 4 triangle
-    float next (float inc, int wave)
+    // width: how much of the cycle the square (wave 1) is high; the other waves ignore it
+    float next (float inc, int wave, float width = 0.5f)
     {
-        const float out = shape (phase, inc, wave);
+        const float out = shape (phase, inc, wave, width);
         advance (inc);
         return out;
     }
 
     // Blends from one wave to another at the same phase, for click-free switching.
-    float nextCrossfade (float inc, int fromWave, int toWave, float amount)
+    float nextCrossfade (float inc, int fromWave, int toWave, float amount, float width = 0.5f)
     {
-        const float from = shape (phase, inc, fromWave);
-        const float out = from + amount * (shape (phase, inc, toWave) - from);
+        const float from = shape (phase, inc, fromWave, width);
+        const float out = from + amount * (shape (phase, inc, toWave, width) - from);
         advance (inc);
         return out;
     }
@@ -152,7 +154,15 @@ private:
             phase -= 1.0f;
     }
 
-    static float shape (float t, float inc, int wave)
+    // The two edges of the pulse must stay at least two samples apart, or their
+    // band-limited steps overlap and no longer cancel the aliasing. Never moves 0.5.
+    static float limitedWidth (float width, float inc)
+    {
+        const float minWidth = std::min (0.5f, std::max (0.1f, 2.0f * inc));
+        return std::clamp (width, minWidth, 1.0f - minWidth);
+    }
+
+    static float shape (float t, float inc, int wave, float width)
     {
         float out;
 
@@ -175,7 +185,7 @@ private:
         }
         else
         {
-            const float pw = wave == 1 ? 0.5f : 0.25f;
+            const float pw = wave == 1 ? limitedWidth (width, inc) : 0.25f;
             out = t < pw ? 1.0f : -1.0f;
             out += 2.0f * stepResidualAtWrap (t, inc);  // rises by 2 at phase 0
             float t2 = t + 1.0f - pw;                   // phase measured from the falling edge at pw
@@ -755,13 +765,13 @@ public:
             {
                 // a new wave is blended in at the same phase rather than switched
                 waveFade = std::min (1.0f, waveFade + waveFadeStep);
-                osc = 0.5f * (osc1.nextCrossfade (inc, previousWave, active.wave, waveFade)
-                              + osc2.nextCrossfade (inc * detuneRatio, previousWave, active.wave, waveFade));
+                osc = 0.5f * (osc1.nextCrossfade (inc, previousWave, active.wave, waveFade, smoothed.squareWidth)
+                              + osc2.nextCrossfade (inc * detuneRatio, previousWave, active.wave, waveFade, smoothed.squareWidth));
                 sub = subOsc.nextCrossfade (inc * 0.5f, subOscWave (previousSubWave), subOscWave (active.subWave), waveFade);
             }
             else
             {
-                osc = 0.5f * (osc1.next (inc, active.wave) + osc2.next (inc * detuneRatio, active.wave));
+                osc = 0.5f * (osc1.next (inc, active.wave, smoothed.squareWidth) + osc2.next (inc * detuneRatio, active.wave, smoothed.squareWidth));
                 sub = subOsc.next (inc * 0.5f, subOscWave (active.subWave));
             }
             const float x = osc + smoothed.sub * sub;
@@ -816,6 +826,7 @@ private:
         glide (smoothed.gain, params.gain);
         glide (smoothed.drive, params.drive);
         glide (smoothed.sub, params.sub);
+        glide (smoothed.squareWidth, params.squareWidth);
         glide (smoothed.resonance, params.resonance);
         glide (smoothed.distDrive, params.distDrive);
         glide (smoothed.distMix, params.distMix);

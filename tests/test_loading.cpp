@@ -203,6 +203,82 @@ int main()
         CHECK (patterns.name() != "Deep");
     }
 
+    // a preset or project from before Square Width existed loads with 50 %, not the width left over
+    {
+        SubForgeProcessor processor;
+        SoundPresets presets (processor.apvts, prefs, [] {});
+        presets.setFolder (root.getChildFile ("Presets"));
+        auto setWidth = [&processor] (float value)
+        {
+            subforge::files::setParameterValue (*processor.apvts.getParameter ("squareWidth"), value);
+        };
+
+        setWidth (0.2f);
+        presets.load (0);
+        CHECK (juce::approximatelyEqual (plainValue (processor, "squareWidth"), 0.5f)); // a factory preset
+
+        juce::XmlElement preset ("SubForgePreset");
+        auto* cutoff = preset.createNewChildElement ("Param");
+        cutoff->setAttribute ("id", "cutoff");
+        cutoff->setAttribute ("value", 500.0);
+        CHECK (root.getChildFile ("Presets").createDirectory());
+        CHECK (preset.writeTo (root.getChildFile ("Presets/Old.sfpreset")));
+        presets.rescan();
+        setWidth (0.2f);
+        for (int i = subforge::kNumPresets; i < presets.numEntries(); ++i)
+            if (presets.entryName (i) == "Old")
+                presets.load (i);
+        CHECK (presets.name() == "Old");
+        CHECK (juce::approximatelyEqual (plainValue (processor, "squareWidth"), 0.5f));
+
+        auto oldProject = savedState (processor);
+        CHECK (oldProject != nullptr);
+        if (auto* child = oldProject->getChildByAttribute ("id", "squareWidth"))
+            oldProject->removeChildElement (child, true);
+        CHECK (oldProject->getChildByAttribute ("id", "squareWidth") == nullptr);
+        setWidth (0.2f);
+        setState (processor, *oldProject);
+        CHECK (juce::approximatelyEqual (plainValue (processor, "squareWidth"), 0.5f));
+        CHECK (std::abs (plainValue (processor, "cutoff") - 500.0f) < 0.5f);
+
+        // a saved project keeps its width
+        setWidth (0.2f);
+        auto project = savedState (processor);
+        setWidth (0.7f);
+        setState (processor, *project);
+        CHECK (std::abs (plainValue (processor, "squareWidth") - 0.2f) < 1.0e-3f);
+    }
+
+    // Mutate leaves the width alone unless the wave is a square
+    {
+        SubForgeProcessor processor;
+        SoundPresets presets (processor.apvts, prefs, [] {});
+        auto* width = processor.apvts.getParameter ("squareWidth");
+        auto setPlain = [&processor] (const char* id, float value)
+        {
+            subforge::files::setParameterValue (*processor.apvts.getParameter (id), value);
+        };
+
+        int changedOnSaw = 0, changedOnSquare = 0;
+        for (int i = 0; i < 200; ++i)
+        {
+            setPlain ("wave", 3.0f); // sine; mutate flips a wave only now and then
+            setPlain ("squareWidth", 0.2f);
+            presets.mutate();
+            if ((int) plainValue (processor, "wave") != 1 && ! juce::approximatelyEqual (plainValue (processor, "squareWidth"), 0.2f))
+                ++changedOnSaw;
+
+            setPlain ("wave", 1.0f);
+            setPlain ("squareWidth", 0.2f);
+            presets.mutate();
+            if ((int) plainValue (processor, "wave") == 1 && ! juce::approximatelyEqual (plainValue (processor, "squareWidth"), 0.2f))
+                ++changedOnSquare;
+        }
+        CHECK (changedOnSaw == 0);
+        CHECK (changedOnSquare > 100);
+        juce::ignoreUnused (width);
+    }
+
     // a name of only characters a file name can't hold is not saved as a hidden, nameless file
     {
         SubForgeProcessor processor;

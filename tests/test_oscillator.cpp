@@ -152,5 +152,36 @@ int main()
         CHECK (same);
     }
 
+    // PWM: bipolar around the Width knob, within 10-90 % for every setting
+    for (int step = 0; step <= 16; ++step)
+        for (float pwm : { 0.0f, 0.3f, 1.0f })
+            for (int i = 0; i <= 100; ++i)
+            {
+                const float width = std::clamp (0.1f + 0.05f * (float) step, 0.1f, 0.9f); // the knob's range
+                const float lfo = (float) i / 100.0f;
+                const float w = modulatedSquareWidth (width, pwm, lfo);
+                CHECK (w >= 0.1f && w <= 0.9f);
+                if (pwm == 0.0f)
+                    CHECK (w == width);
+            }
+    CHECK (modulatedSquareWidth (0.5f, 1.0f, 0.5f) == 0.5f);
+    CHECK (std::abs (modulatedSquareWidth (0.5f, 1.0f, 1.0f) - 0.9f) < 1.0e-6f);
+    CHECK (std::abs (modulatedSquareWidth (0.5f, 1.0f, 0.0f) - 0.1f) < 1.0e-6f);
+    CHECK (std::abs (modulatedSquareWidth (0.5f, 0.5f, 1.0f) - 0.7f) < 1.0e-6f);
+
+    // every LFO shape stays within 0..1, which is what keeps the width inside its limits
+    for (int shape = 0; shape < 5; ++shape)
+    {
+        Lfo lfo;
+        float low = 1.0f, high = 0.0f;
+        for (int i = 0; i < 200000; ++i)
+        {
+            const float v = lfo.next (0.0007f, shape, 0.9f);
+            low = std::min (low, v);
+            high = std::max (high, v);
+        }
+        CHECK (low >= 0.0f && high <= 1.0f);
+    }
+
     return finish ("oscillator");
 }

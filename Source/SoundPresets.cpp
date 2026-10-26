@@ -175,7 +175,7 @@ void SoundPresets::mutate()
         auto* param = state.getParameter (kPatchParamIds[i]);
         auto& value = values[(size_t) i];
 
-        if (i == pSquareWidth && values[(size_t) pWave] != 1.0f) // only a square wave has a width
+        if ((i == pSquareWidth || i == pSquarePwm) && values[(size_t) pWave] != 1.0f) // only a square wave has a width
             continue;
 
         if (dynamic_cast<juce::AudioParameterChoice*> (param) != nullptr

@@ -26,13 +26,17 @@ int main()
     }
 
     // the width is the last parameter, and no factory preset changes it
-    CHECK (std::string (kPatchParamIds[kNumPatchParams - 1]) == "squareWidth");
-    CHECK (pSquareWidth == kNumPatchParams - 1);
+    CHECK (std::string (kPatchParamIds[kNumPatchParams - 2]) == "squareWidth");
+    CHECK (std::string (kPatchParamIds[kNumPatchParams - 1]) == "squarePwm");
+    CHECK (pSquarePwm == kNumPatchParams - 1);
     for (const auto& preset : kPresets)
+    {
         CHECK (preset.values()[pSquareWidth] == 0.5f);
+        CHECK (preset.values()[pSquarePwm] == 0.0f);
+    }
 
     std::mt19937 rng (1);
-    int clampedHigh = 0, squares = 0, exactlyHalf = 0, slightlyOff = 0, furtherOut = 0;
+    int clampedHigh = 0, pwmOn = 0, squares = 0, exactlyHalf = 0, slightlyOff = 0, furtherOut = 0;
     for (int i = 0; i < 2000; ++i)
     {
         const auto patch = randomPatch (rng);
@@ -47,9 +51,15 @@ int main()
         if (patch[pWave] != 1.0f)
         {
             CHECK (width == 0.5f);
+            CHECK (patch[pSquarePwm] == 0.0f);
             continue;
         }
         ++squares;
+        if (patch[pSquarePwm] != 0.0f)
+        {
+            CHECK (patch[pSquarePwm] >= 0.2f && patch[pSquarePwm] <= 0.7f);
+            ++pwmOn;
+        }
         if (width == 0.5f)
             ++exactlyHalf;
         else if (width >= 0.42f && width <= 0.58f)
@@ -58,6 +68,7 @@ int main()
             ++furtherOut;
     }
     CHECK (squares > 300);
+    CHECK (std::abs ((float) pwmOn / squares - 0.2f) < 0.06f);
     CHECK (std::abs ((float) exactlyHalf / squares - 0.7f) < 0.07f);
     // a third of the widest band (25-75) lands inside 42-58, so it counts as slightly off
     CHECK (std::abs ((float) slightlyOff / squares - 0.232f) < 0.06f);

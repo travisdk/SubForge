@@ -26,7 +26,7 @@ enum PatchParam
     pLfoShape, pLfoSync, pLfoRate, pLfoDepth, pLfoRetrig,
     pDistType, pDistDrive, pDistTone, pDistMix,
     pAccentSweep,
-    pSquareWidth,
+    pSquareWidth, pSquarePwm,
     kNumPatchParams
 };
 
@@ -43,7 +43,7 @@ inline constexpr const char* kPatchParamIds[kNumPatchParams] = {
     "pitchEnv", "pitchDecay", "click",
     "lfoShape", "lfoSync", "lfoRate", "lfoDepth", "lfoRetrig",
     "distType", "distDrive", "distTone", "distMix",
-    "accentSweep", "squareWidth"
+    "accentSweep", "squareWidth", "squarePwm"
 };
 
 using PatchValues = std::array<float, kNumPatchParams>;
@@ -51,8 +51,8 @@ using PatchValues = std::array<float, kNumPatchParams>;
 // Neutral settings for the extra parameters, so presets that leave them out
 // sound as before: LP24, no key track/accent/pitch env/click, LFO depth 0, distortion off.
 // Columns: filterMode keyTrack accent | pitchEnv pitchDecay click | lfoShape lfoSync lfoRate lfoDepth lfoRetrig
-//          | distType distDrive distTone distMix | accentSweep | squareWidth
-inline constexpr std::array<float, kNumExtraParams> kExtraDefaults { 0, 0, 0, 0, 60, 0, 0, 7, 2, 0, 0, 0, 0.5f, 0.5f, 1, 0, 0.5f };
+//          | distType distDrive distTone distMix | accentSweep | squareWidth squarePwm
+inline constexpr std::array<float, kNumExtraParams> kExtraDefaults { 0, 0, 0, 0, 60, 0, 0, 7, 2, 0, 0, 0, 0.5f, 0.5f, 1, 0, 0.5f, 0 };
 
 // Factory presets list their extras up to accentSweep. Parameters from pSquareWidth on are
 // not listed: every factory preset gets their default. Keep this pointing at the first
@@ -308,6 +308,7 @@ inline BassParams toBassParams (const PatchValues& v, float gain)
     p.distMix = v[pDistMix];
     p.accentSweep = v[pAccentSweep];
     p.squareWidth = v[pSquareWidth];
+    p.squarePwm = v[pSquarePwm];
     p.gain = gain;
     return p;
 }
@@ -426,10 +427,15 @@ inline PatchValues randomPatch (std::mt19937& rng)
     v[pDistMix] = 0.6f + 0.4f * r();
     v[pAccentSweep] = v[pAccent] > 0.0f ? 0.8f * r() : 0.0f;
 
-    // only a square wave has a width: 70 % exactly 50, 20 % slightly off-centre, 10 % further out
+    // only a square wave has a width: 70 % exactly 50, 20 % slightly off-centre, 10 % further out;
+    // and one in five of them gets some PWM
     v[pSquareWidth] = 0.5f;
+    v[pSquarePwm] = 0.0f;
     if (v[pWave] == 1.0f)
     {
+        if (! chance (0.8f))
+            v[pSquarePwm] = 0.2f + 0.5f * r();
+
         const float d = r();
         if (d >= 0.9f)
             v[pSquareWidth] = 0.25f + 0.5f * r();

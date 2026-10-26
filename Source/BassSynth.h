@@ -39,6 +39,7 @@ struct BassParams
     float sub = 0.5f;      // sub oscillator level
     int subWave = 0;       // 0 sine, 1 square
     float squareWidth = 0.5f; // 0.1..0.9, share of the cycle the square wave is high; only wave 1 uses it
+    float squarePwm = 0.0f;   // 0..1, how far the LFO swings the width around squareWidth (1 = about +-0.4)
     float detuneCents = 0.0f;
     float cutoffHz = 400.0f;
     float resonance = 0.3f;
@@ -120,6 +121,13 @@ inline float polyBlamp (float t, float dt)
         return t * t * t / 3.0f;
     }
     return 0.0f;
+}
+
+// The square width moved by the LFO (0..1) around the knob setting: bipolar, so the knob is the
+// middle. Kept within 10-90 %; the oscillator also keeps it clear of the other edge at high pitches.
+inline float modulatedSquareWidth (float width, float pwm, float lfo)
+{
+    return std::clamp (width + pwm * 0.4f * (2.0f * lfo - 1.0f), 0.1f, 0.9f);
 }
 
 struct Oscillator
@@ -760,18 +768,19 @@ public:
             const float oscPitch = pitch + params.pitchEnvSemis * pitchEnv;
             const float inc = std::min (0.45f, 440.0f * std::exp2 ((oscPitch - 69.0f) / 12.0f) / fs);
 
+            const float width = modulatedSquareWidth (smoothed.squareWidth, smoothed.squarePwm, lfoValue);
             float osc, sub;
             if (waveFade < 1.0f)
             {
                 // a new wave is blended in at the same phase rather than switched
                 waveFade = std::min (1.0f, waveFade + waveFadeStep);
-                osc = 0.5f * (osc1.nextCrossfade (inc, previousWave, active.wave, waveFade, smoothed.squareWidth)
-                              + osc2.nextCrossfade (inc * detuneRatio, previousWave, active.wave, waveFade, smoothed.squareWidth));
+                osc = 0.5f * (osc1.nextCrossfade (inc, previousWave, active.wave, waveFade, width)
+                              + osc2.nextCrossfade (inc * detuneRatio, previousWave, active.wave, waveFade, width));
                 sub = subOsc.nextCrossfade (inc * 0.5f, subOscWave (previousSubWave), subOscWave (active.subWave), waveFade);
             }
             else
             {
-                osc = 0.5f * (osc1.next (inc, active.wave, smoothed.squareWidth) + osc2.next (inc * detuneRatio, active.wave, smoothed.squareWidth));
+                osc = 0.5f * (osc1.next (inc, active.wave, width) + osc2.next (inc * detuneRatio, active.wave, width));
                 sub = subOsc.next (inc * 0.5f, subOscWave (active.subWave));
             }
             const float x = osc + smoothed.sub * sub;
@@ -827,6 +836,7 @@ private:
         glide (smoothed.drive, params.drive);
         glide (smoothed.sub, params.sub);
         glide (smoothed.squareWidth, params.squareWidth);
+        glide (smoothed.squarePwm, params.squarePwm);
         glide (smoothed.resonance, params.resonance);
         glide (smoothed.distDrive, params.distDrive);
         glide (smoothed.distMix, params.distMix);

@@ -213,9 +213,16 @@ int main()
             subforge::files::setParameterValue (*processor.apvts.getParameter ("squareWidth"), value);
         };
 
+        auto setPwm = [&processor] (float value)
+        {
+            subforge::files::setParameterValue (*processor.apvts.getParameter ("squarePwm"), value);
+        };
+
         setWidth (0.2f);
+        setPwm (0.6f);
         presets.load (0);
         CHECK (juce::approximatelyEqual (plainValue (processor, "squareWidth"), 0.5f)); // a factory preset
+        CHECK (juce::approximatelyEqual (plainValue (processor, "squarePwm"), 0.0f));
 
         juce::XmlElement preset ("SubForgePreset");
         auto* cutoff = preset.createNewChildElement ("Param");
@@ -225,28 +232,38 @@ int main()
         CHECK (preset.writeTo (root.getChildFile ("Presets/Old.sfpreset")));
         presets.rescan();
         setWidth (0.2f);
+        setPwm (0.6f);
         for (int i = subforge::kNumPresets; i < presets.numEntries(); ++i)
             if (presets.entryName (i) == "Old")
                 presets.load (i);
         CHECK (presets.name() == "Old");
         CHECK (juce::approximatelyEqual (plainValue (processor, "squareWidth"), 0.5f));
+        CHECK (juce::approximatelyEqual (plainValue (processor, "squarePwm"), 0.0f));
 
         auto oldProject = savedState (processor);
         CHECK (oldProject != nullptr);
-        if (auto* child = oldProject->getChildByAttribute ("id", "squareWidth"))
-            oldProject->removeChildElement (child, true);
-        CHECK (oldProject->getChildByAttribute ("id", "squareWidth") == nullptr);
+        for (auto* id : { "squareWidth", "squarePwm" })
+        {
+            if (auto* child = oldProject->getChildByAttribute ("id", id))
+                oldProject->removeChildElement (child, true);
+            CHECK (oldProject->getChildByAttribute ("id", id) == nullptr);
+        }
         setWidth (0.2f);
+        setPwm (0.6f);
         setState (processor, *oldProject);
         CHECK (juce::approximatelyEqual (plainValue (processor, "squareWidth"), 0.5f));
+        CHECK (juce::approximatelyEqual (plainValue (processor, "squarePwm"), 0.0f));
         CHECK (std::abs (plainValue (processor, "cutoff") - 500.0f) < 0.5f);
 
         // a saved project keeps its width
         setWidth (0.2f);
+        setPwm (0.6f);
         auto project = savedState (processor);
         setWidth (0.7f);
+        setPwm (0.1f);
         setState (processor, *project);
         CHECK (std::abs (plainValue (processor, "squareWidth") - 0.2f) < 1.0e-3f);
+        CHECK (std::abs (plainValue (processor, "squarePwm") - 0.6f) < 1.0e-3f);
     }
 
     // Mutate leaves the width alone unless the wave is a square
@@ -263,8 +280,11 @@ int main()
         {
             setPlain ("wave", 3.0f); // sine; mutate flips a wave only now and then
             setPlain ("squareWidth", 0.2f);
+            setPlain ("squarePwm", 0.6f);
             presets.mutate();
-            if ((int) plainValue (processor, "wave") != 1 && ! juce::approximatelyEqual (plainValue (processor, "squareWidth"), 0.2f))
+            if ((int) plainValue (processor, "wave") != 1
+                && (! juce::approximatelyEqual (plainValue (processor, "squareWidth"), 0.2f)
+                    || ! juce::approximatelyEqual (plainValue (processor, "squarePwm"), 0.6f)))
                 ++changedOffSquare;
 
             setPlain ("wave", 1.0f);

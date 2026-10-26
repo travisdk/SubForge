@@ -118,6 +118,93 @@ int main()
         CHECK (switchJump (p, [] (BassParams& q) { q.squareWidth = 0.15f; }) < 0.01f);
     }
 
+    // PWM: a square with no PWM ignores the LFO shape and rate, however fast it runs
+    {
+        auto p = heldNote();
+        p.wave = 1;
+        p.lfoSync = 0;
+        BassSynth a, b;
+        a.setParams (p);
+        p.lfoShape = kLfoSampleHold;
+        p.lfoRateHz = 17.0f;
+        b.setParams (p);
+        a.prepare (fs);
+        b.prepare (fs);
+        a.noteOn (36, 1.0f);
+        b.noteOn (36, 1.0f);
+        CHECK (render (a, 20000) == render (b, 20000));
+    }
+
+    // PWM works without LFO Depth, and only on a square
+    {
+        auto p = heldNote();
+        p.lfoSync = 0;
+        p.lfoDepth = 0.0f;
+        auto audio = [&] (int wave, float pwm)
+        {
+            auto q = p;
+            q.wave = wave;
+            q.squarePwm = pwm;
+            BassSynth synth;
+            synth.setParams (q);
+            synth.prepare (fs);
+            synth.noteOn (36, 1.0f);
+            return render (synth, 20000);
+        };
+        CHECK (audio (1, 0.8f) != audio (1, 0.0f));
+        CHECK (audio (0, 0.8f) == audio (0, 0.0f));
+        CHECK (audio (3, 0.8f) == audio (3, 0.0f));
+    }
+
+    // LFO Depth still moves only the filter: it does not touch the square when the cutoff is wide open
+    {
+        auto p = heldNote();
+        p.wave = 1;
+        p.lfoSync = 0;
+        p.squarePwm = 0.0f;
+        BassSynth a, b;
+        a.setParams (p);
+        p.lfoDepth = 0.8f;
+        b.setParams (p);
+        a.prepare (fs);
+        b.prepare (fs);
+        a.noteOn (36, 1.0f);
+        b.noteOn (36, 1.0f);
+        CHECK (render (a, 20000) != render (b, 20000)); // the filter moves
+    }
+
+    // PWM glides in and out, so turning the knob does not click
+    {
+        auto p = heldNote();
+        p.wave = 1;
+        p.lfoSync = 0;
+        CHECK (switchJump (p, [] (BassParams& q) { q.squarePwm = 1.0f; }) < 0.01f);
+    }
+
+    // Any LFO shape, width and pitch gives finite, bounded audio
+    for (int shape = 0; shape < 5; ++shape)
+        for (float width : { 0.1f, 0.5f, 0.9f })
+            for (int note : { 24, 60, 108 })
+            {
+                auto p = heldNote();
+                p.wave = 1;
+                p.lfoShape = shape;
+                p.lfoSync = 0;
+                p.lfoRateHz = 9.0f;
+                p.squareWidth = width;
+                p.squarePwm = 1.0f;
+                p.cutoffHz = 18000.0f;
+                p.resonance = 0.0f;
+                BassSynth synth;
+                synth.setParams (p);
+                synth.prepare (fs);
+                synth.noteOn (note, 1.0f);
+                bool ok = true;
+                for (float s : render (synth, (int) fs / 2))
+                    ok = ok && std::isfinite (s) && std::abs (s) < 4.0f;
+                CHECK (ok);
+            }
+
     // The width does nothing to the other waves
     {
         auto p = heldNote();

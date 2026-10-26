@@ -429,7 +429,7 @@ inline PatchValues randomPatch (std::mt19937& rng)
     v[pAccentSweep] = v[pAccent] > 0.0f ? 0.8f * r() : 0.0f;
 
     // only a square wave has a width: 70 % exactly 50, 20 % slightly off-centre, 10 % further out;
-    // and one in five of them gets some PWM
+    // one in five gets some PWM and two in five some sag
     v[pSquareWidth] = 0.5f;
     v[pSquarePwm] = 0.0f;
     v[pSquareSag] = 0.0f;
@@ -440,9 +440,12 @@ inline PatchValues randomPatch (std::mt19937& rng)
 
         const float d = r();
         if (d >= 0.9f)
-            v[pSquareWidth] = 0.25f + 0.5f * r();
+            v[pSquareWidth] = 0.2f + 0.6f * r();
         else if (d >= 0.7f)
-            v[pSquareWidth] = 0.42f + 0.16f * r();
+            v[pSquareWidth] = 0.35f + 0.3f * r();
+
+        if (! chance (0.6f))
+            v[pSquareSag] = 0.2f + 0.6f * r();
     }
     return v;
 }

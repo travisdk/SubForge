@@ -166,7 +166,7 @@ void MainView::setTooltips()
     // one decimal, so a fine adjustment from 47 to 48 % can be seen
     squareWidth.setValueText ([] (double v) { return juce::String (v * 100.0, 1) + " %"; });
     squareWidth.setTooltip ("Pulse width of the SQR wave. 50 % is a perfect square; a few percent off-centre gives a rawer, more classic acid sound, clearly audible from around 40 or 60 %. PLS stays a fixed 25 %.");
-    squareSag.setTooltip ("Lets the flat tops and bottoms of the SQR wave sag towards the centre, like a classic acid square. 0 % is a clean square.");
+    squareSag.setTooltip ("Lets the flat tops and bottoms of the SQR wave sag towards the centre, like a classic acid square. 0 % is a clean square. Most audible with Drive or distortion.");
     subWave.setTooltip ("Sub oscillator shape: sine for clean weight, square for more presence.");
 
     // drive

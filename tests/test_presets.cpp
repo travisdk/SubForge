@@ -14,7 +14,7 @@ using namespace subforge;
 int main()
 {
     constexpr int kNumEarlierPresets = 109; // before the square shaping presets, which come last
-    CHECK (kNumPresets == 117);
+    CHECK (kNumPresets == 115);
 
     std::set<std::string> names;
     for (const auto& preset : kPresets)

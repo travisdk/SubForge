@@ -280,14 +280,11 @@ inline const Preset kPresets[] = {
     { "Acid - Acid Shrieker",       { 0, 0, 0, 0, 0, 500, 0.85f, 0.80f, 320, 0.25f, 1, 1500, 0.90f, 15, 60, 0.60f },
                                     { 3, 0.20f, 0.85f, 0, 60, 0, 0, 7, 2, 0, 0, 1, 0.40f, 0.65f, 0.40f, 0.80f } },
 
-    // Square shaping, added in 1.3.0: the last three values are Width, PWM and Sag.
+    // Square shaping, added in 1.3.0 (they need 1.3.0 or later to sound as intended): the last three values are Width, PWM and Sag.
     // lfoSync 2 = 1/1, 10 = 1/16, 0 = free running (lfoRate in Hz).
     { "PWM Slow Sweep",    { 1,  0,  6, 0.40f, 0,  1400, 0.20f, 0.15f, 400, 0.15f,   8,  900, 0.80f, 150,   20, 0.5f },
                            { 0, 0.30f, 0.0f,    0,  60, 0.00f,   1,  2, 0.5f, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.0f },
                            { 0.50f, 0.75f, 0.0f } },
-    { "PWM Wobble",        { 1,  0,  0, 0.50f, 0,   900, 0.25f, 0.20f, 300, 0.20f,   2,  700, 0.85f, 100,   20, 0.5f },
-                           { 0, 0.0f, 0.0f,    0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.0f },
-                           { 0.50f, 0.60f, 0.0f } },
     { "PWM Free Chorus",   { 1,  0, 12, 0.30f, 0,  1100, 0.20f, 0.10f, 350, 0.20f,   6, 1000, 0.85f, 200,   30, 0.4f },
                            { 0, 0.20f, 0.0f,    0,  60, 0.00f,   1,  0, 0.35f, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.0f },
                            { 0.50f, 0.50f, 0.0f } },
@@ -303,9 +300,6 @@ inline const Preset kPresets[] = {
     { "Off-Centre Acid",   { 1,  0,  0, 0.00f, 0,   220, 0.76f, 0.68f, 300, 0.25f,   1,  450, 0.60f,  40,   60, 0.6f },
                            { 0, 0.20f, 0.60f,   0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.5f },
                            { 0.43f, 0.0f, 0.35f } },
-    { "Sag Heavy Pulse",   { 1, -1,  8, 0.50f, 1,   500, 0.20f, 0.30f, 200, 0.30f,   1,  500, 0.80f,  80,   10, 0.5f },
-                           { 0, 0.0f, 0.0f,     0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   1, 0.30f, 0.50f, 0.80f, 0.0f },
-                           { 0.50f, 0.0f, 0.80f } },
 };
 
 inline constexpr int kNumPresets = (int) (sizeof (kPresets) / sizeof (kPresets[0]));

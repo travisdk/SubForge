@@ -253,20 +253,19 @@ int main()
     {
         SubForgeProcessor processor;
         SoundPresets presets (processor.apvts, prefs, [] {});
-        auto* width = processor.apvts.getParameter ("squareWidth");
         auto setPlain = [&processor] (const char* id, float value)
         {
             subforge::files::setParameterValue (*processor.apvts.getParameter (id), value);
         };
 
-        int changedOnSaw = 0, changedOnSquare = 0;
+        int changedOffSquare = 0, changedOnSquare = 0;
         for (int i = 0; i < 200; ++i)
         {
             setPlain ("wave", 3.0f); // sine; mutate flips a wave only now and then
             setPlain ("squareWidth", 0.2f);
             presets.mutate();
             if ((int) plainValue (processor, "wave") != 1 && ! juce::approximatelyEqual (plainValue (processor, "squareWidth"), 0.2f))
-                ++changedOnSaw;
+                ++changedOffSquare;
 
             setPlain ("wave", 1.0f);
             setPlain ("squareWidth", 0.2f);
@@ -274,9 +273,8 @@ int main()
             if ((int) plainValue (processor, "wave") == 1 && ! juce::approximatelyEqual (plainValue (processor, "squareWidth"), 0.2f))
                 ++changedOnSquare;
         }
-        CHECK (changedOnSaw == 0);
+        CHECK (changedOffSquare == 0);
         CHECK (changedOnSquare > 100);
-        juce::ignoreUnused (width);
     }
 
     // a name of only characters a file name can't hold is not saved as a hidden, nameless file

@@ -410,8 +410,8 @@ void MainView::resized()
 
     // osc
     wave.setBounds (kOscPanel.getRight() - 14 - 200, kOscPanel.getY() + 10, 200, 24);
-    layoutKnobRow ({ 560, 98, 240, 82 }, { &octave, &detune, &sub, &squareWidth });
-    subWave.setBounds (812, 126, 78, 26);
+    layoutKnobRow ({ 560, 105, 240, 78 }, { &octave, &detune, &sub, &squareWidth });
+    subWave.setBounds (812, 132, 78, 26);
 
     // drive
     distType.setBounds (kDrivePanel.getRight() - 14 - 120, kDrivePanel.getY() + 10, 120, 24);

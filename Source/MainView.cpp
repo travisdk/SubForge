@@ -163,7 +163,7 @@ void MainView::setTooltips()
     octave.setTooltip ("Shifts the oscillator up or down in octaves.");
     detune.setTooltip ("Detunes a second oscillator for a wider, chorused sound. Keep it low for tight bass.");
     sub.setTooltip ("Level of the sub oscillator one octave below. Adds weight on big speakers.");
-    squareWidth.setTooltip ("Pulse width of the square wave: 50 % is a plain square, lower or higher sounds thinner and more nasal. Only the SQR wave uses it.");
+    squareWidth.setTooltip ("Pulse width of the square wave: 50 % is a plain square, lower or higher sounds thinner and more nasal. Only SQR uses it: PULSE is fixed at 25 %, the same sound as SQR with Width at 25 %.");
     subWave.setTooltip ("Sub oscillator shape: sine for clean weight, square for more presence.");
 
     // drive

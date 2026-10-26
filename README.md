@@ -29,8 +29,9 @@ https://github.com/user-attachments/assets/3b5655d9-1d9e-4a71-944f-db04779f6a4d
 
 ## Features
 
-- Saw, square (with adjustable width), pulse, sine and triangle waveforms,
-  band-limited to keep aliasing low, plus a sine or square sub-oscillator.
+- Saw, square (with adjustable width), pulse (fixed at 25 %, like a square at
+  25 % width), sine and triangle waveforms, band-limited to keep aliasing
+  low, plus a sine or square sub-oscillator.
 - Filter with LP 24, LP 12, BP 12 and diode ladder modes, key tracking and an
   accent sweep.
 - Pitch envelope, tempo-synced LFO, glide, click, distortion (overdrive,

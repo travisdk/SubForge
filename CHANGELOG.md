@@ -27,8 +27,8 @@ tag the commit (`vX.Y.Z`).
   square is clean and nothing changes. The knob is greyed out unless the wave is
   SQR. Randomize gives a square some sag, and Mutate nudges it.
 - **Fine adjustment.** Hold Shift while dragging any knob to change it in tiny
-  steps (Ctrl/Alt-drag and the mouse wheel work as before). Width and Sag show
-  one decimal, so 47.5 % and 48 % can be told apart.
+  steps (Ctrl/Alt-drag and the mouse wheel work as before). Width shows one
+  decimal, so 47.5 % and 48 % can be told apart.
 
 ### Changed
 - The sub wave chip moved into the title row of the OSC panel and reads

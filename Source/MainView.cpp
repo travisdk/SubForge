@@ -347,6 +347,10 @@ void MainView::paint (juce::Graphics& g)
         g.drawText ("PATTERN", 520, kSeqPanel.getY() + 10, 40, 24, juce::Justification::centredRight);
     }
 
+    // separates the sub wave chips from the main wave chips
+    g.setColour (P::panelEdge.brighter (0.15f));
+    g.drawVerticalLine (subWave.getX() - 9, (float) subWave.getY() + 2.0f, (float) subWave.getBottom() - 2.0f);
+
     g.setColour (P::dimText);
     g.setFont (lookAndFeel.labelFont (11.0f).withExtraKerningFactor (0.1f));
     g.drawText ("RETRIG", kLfoPanel.getRight() - 72, kLfoPanel.getY() + 6, 46, 24, juce::Justification::centredRight);
@@ -412,8 +416,9 @@ void MainView::resized()
     resonance.setBounds (430, 112, 100, 172);
 
     // osc
-    subWave.setBounds (kOscPanel.getRight() - 14 - 86, kOscPanel.getY() + 10, 86, 24); // in the title row, far right, so the knobs get the full width
-    wave.setBounds (subWave.getX() - 8 - 200, kOscPanel.getY() + 10, 200, 24);
+    // title row: the main waves, a separator, then the sub oscillator's two shapes furthest right
+    subWave.setBounds (kOscPanel.getRight() - 14 - 76, kOscPanel.getY() + 10, 76, 24);
+    wave.setBounds (subWave.getX() - 17 - 190, kOscPanel.getY() + 10, 190, 24);
     layoutKnobRow ({ 560, 105, 330, 78 }, { &octave, &detune, &sub, &squareWidth, &squareSag });
 
     // drive

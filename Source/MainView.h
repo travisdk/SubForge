@@ -167,7 +167,7 @@ private:
     Knob sub { processor.apvts, "sub", "Sub", small() };
     Knob squareWidth { processor.apvts, "squareWidth", "Width", small() };
     Knob squareSag { processor.apvts, "squareSag", "Sag", small() };
-    subforge::ui::ChoiceChip subWave { param ("subWave"), { "Sub sine", "Sub sqr" } };
+    subforge::ui::SegmentedChoice subWave { param ("subWave"), { "SIN", "SQR" } };
 
     // drive
     subforge::ui::ChoiceChip distType { param ("distType") };

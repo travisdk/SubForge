@@ -38,7 +38,7 @@ tag the commit (`vX.Y.Z`).
 
 ### Changed
 - The sub wave choice moved into the title row of the OSC panel, as two chips
-  (SIN, SQR) furthest right behind a separator, to make room for five knobs. The LFO panel is titled
+  (SIN, SQR) furthest right, behind a separator and a "SUB" label, to make room for five knobs. The LFO panel is titled
   "LFO" and its knobs use slightly smaller text.
 
 ## [1.2.2] – 2026-10-22

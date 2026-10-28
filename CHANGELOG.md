@@ -10,7 +10,7 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
-## [1.3.0] – 2026-10-26
+## [1.3.0] – 2026-10-28
 
 ### Added
 - **Square Width.** A new Width knob in the OSC panel sets how long the square

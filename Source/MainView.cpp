@@ -412,9 +412,9 @@ void MainView::resized()
     resonance.setBounds (430, 112, 100, 172);
 
     // osc
-    wave.setBounds (kOscPanel.getRight() - 14 - 200, kOscPanel.getY() + 10, 200, 24);
+    subWave.setBounds (kOscPanel.getRight() - 14 - 86, kOscPanel.getY() + 10, 86, 24); // in the title row, far right, so the knobs get the full width
+    wave.setBounds (subWave.getX() - 8 - 200, kOscPanel.getY() + 10, 200, 24);
     layoutKnobRow ({ 560, 105, 330, 78 }, { &octave, &detune, &sub, &squareWidth, &squareSag });
-    subWave.setBounds (596, kOscPanel.getY() + 10, 86, 24); // in the title row, so the knobs get the full width
 
     // drive
     distType.setBounds (kDrivePanel.getRight() - 14 - 120, kDrivePanel.getY() + 10, 120, 24);

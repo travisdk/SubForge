@@ -79,7 +79,8 @@ private:
 };
 
 // "LABEL value" chip. Drag vertically or use the wheel to change the value;
-// choice parameters also step forward on click.
+// choice parameters and small ranges also step on click: forward with the left
+// button, back with the right, wrapping.
 class ValueChip : public juce::Component, public juce::SettableTooltipClient
 {
 public:
@@ -101,6 +102,7 @@ private:
     juce::ParameterAttachment attachment;
     float dragStartNormalised = 0.0f;
     bool dragged = false;
+    bool backwards = false; // right button: a click steps back instead of forward
 };
 
 // Live magnitude response of the filter, recomputed on the message thread

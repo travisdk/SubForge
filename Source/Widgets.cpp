@@ -161,8 +161,9 @@ void ValueChip::paint (juce::Graphics& g)
                 juce::Justification::centredLeft);
 }
 
-void ValueChip::mouseDown (const juce::MouseEvent&)
+void ValueChip::mouseDown (const juce::MouseEvent& e)
 {
+    backwards = e.mods.isPopupMenu();
     dragStartNormalised = param.getValue();
     dragged = false;
     attachment.beginGesture();
@@ -180,11 +181,21 @@ void ValueChip::mouseDrag (const juce::MouseEvent& e)
 void ValueChip::mouseUp (const juce::MouseEvent&)
 {
     attachment.endGesture();
-    if (! dragged && param.getNumSteps() < 64) // a click steps choices and small ranges forward, wrapping
+    if (! dragged && param.getNumSteps() < 64) // a click steps choices and small ranges, wrapping: forward on the left button, back on the right
     {
         const auto range = param.getNormalisableRange();
-        const float next = param.convertFrom0to1 (param.getValue()) + (range.interval > 0.0f ? range.interval : 1.0f);
-        attachment.setValueAsCompleteGesture (next > range.end ? range.start : next);
+        const float step = range.interval > 0.0f ? range.interval : 1.0f;
+        const float current = param.convertFrom0to1 (param.getValue());
+        if (backwards)
+        {
+            const float previous = current - step;
+            attachment.setValueAsCompleteGesture (previous < range.start ? range.end : previous);
+        }
+        else
+        {
+            const float next = current + step;
+            attachment.setValueAsCompleteGesture (next > range.end ? range.start : next);
+        }
     }
 }
 

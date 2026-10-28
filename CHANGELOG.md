@@ -37,6 +37,8 @@ tag the commit (`vX.Y.Z`).
   decimal, so 47.5 % and 48 % can be told apart.
 
 ### Changed
+- Right-clicking a sequencer chip (Rate, Steps, Gate, Swing, Root) steps it back,
+  wrapping around; the left button still steps forward.
 - The sub wave choice moved into the title row of the OSC panel, as two chips
   (SIN, SQR) furthest right, behind a separator and a "SUB" label, to make room for five knobs. The LFO panel is titled
   "LFO" and its knobs use slightly smaller text.

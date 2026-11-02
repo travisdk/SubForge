@@ -55,7 +55,7 @@ jobs:
       - name: Build
         run: >
           cmake --build build --parallel
-          --target SubForge_CLAP SubForge_VST3
+          --target SubForge_CLAP SubForge_VST3 SubForge_AU
           test_presets test_patterns test_sequencer test_filter_curve test_oscillator test_voice test_levels test_loading
 
       - name: Unit tests
@@ -89,11 +89,21 @@ jobs:
           chmod +x "$VALIDATOR"
           "$VALIDATOR" validate build/SubForge_artefacts/Release/CLAP/SubForge.clap
 
+      - name: Validate AU (auval)
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          ditto build/SubForge_artefacts/Release/AU/SubForge.component ~/Library/Audio/Plug-Ins/Components/SubForge.component
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          sleep 5
+          auval -a | grep -i SbFg
+          auval -v aumu SbFg Hjuh
+
       - name: Collect the plug-ins
         run: |
           mkdir -p out
           ditto build/SubForge_artefacts/Release/VST3/SubForge.vst3 out/SubForge.vst3
           ditto build/SubForge_artefacts/Release/CLAP/SubForge.clap out/SubForge.clap
+          ditto build/SubForge_artefacts/Release/AU/SubForge.component out/SubForge.component
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

@@ -47,14 +47,22 @@ if (SUBFORGE_BUILD_TESTS)
 endif()
 add_subdirectory(${CLAP_JUCE_EXTENSIONS_DIR} clap-juce-extensions EXCLUDE_FROM_ALL)
 
+# AU exists on macOS only; the other platforms build exactly what they did before.
+if (APPLE)
+    set(SUBFORGE_FORMATS VST3 AU)
+else()
+    set(SUBFORGE_FORMATS VST3)
+endif()
+
 juce_add_plugin(SubForge
     COMPANY_NAME "Henrik Juhl"
     BUNDLE_ID dk.hjuhl.subforge
     PLUGIN_MANUFACTURER_CODE Hjuh
     PLUGIN_CODE SbFg
     PRODUCT_NAME "SubForge"
-    FORMATS VST3
+    FORMATS ${SUBFORGE_FORMATS}
     VST3_CATEGORIES Instrument Synth Mono
+    AU_MAIN_TYPE kAudioUnitType_MusicDevice
     COPY_PLUGIN_AFTER_BUILD ${SUBFORGE_INSTALL_AFTER_BUILD}   # VST3 (CLAP is copied by the command further down)
     VST3_COPY_DIR "${VST3_INSTALL_DIR}"
     IS_SYNTH TRUE

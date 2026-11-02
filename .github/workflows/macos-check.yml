@@ -1,0 +1,102 @@
+# Copyright (C) 2026 Henrik Juhl. Part of SubForge, licensed under the GNU AGPLv3 (see LICENSE).
+# SPDX-License-Identifier: AGPL-3.0-only
+
+# Experiment: does SubForge build and load on macOS (CLAP + VST3)?
+# Deliberately separate from build.yml: it runs only when the branch "macos-test" is pushed
+# (or started by hand) and never produces release archives. There is no macOS release yet.
+name: macOS check
+
+on:
+  push:
+    branches: ["macos-test"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Dependencies are pinned to exact commits/tags, as in build.yml.
+env:
+  JUCE_VERSION: "8.0.15"
+  JUCE_COMMIT: 91ad83ae34a81e0833b1a2b0866f54846370ae53   # the commit of tag 8.0.15
+  CLAP_JUCE_EXTENSIONS_COMMIT: 7adee3a1bd4684d4caa5601100e364abccff4b4d
+  PLUGINVAL_VERSION: "v1.0.4"          # VST3 validator (run only, not shipped)
+  CLAP_VALIDATOR_VERSION: "0.4.1"      # CLAP validator (run only, not shipped)
+
+jobs:
+  macos:
+    name: macOS (universal)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install Ninja
+        run: brew install ninja
+
+      - name: Fetch JUCE and clap-juce-extensions
+        run: |
+          git clone --depth 1 --branch "$JUCE_VERSION" https://github.com/juce-framework/JUCE.git _sdks/JUCE
+          test "$(git -C _sdks/JUCE rev-parse HEAD)" = "$JUCE_COMMIT" || { echo "JUCE tag $JUCE_VERSION has moved"; exit 1; }
+          git clone https://github.com/free-audio/clap-juce-extensions.git _sdks/clap-juce-extensions
+          git -C _sdks/clap-juce-extensions checkout "$CLAP_JUCE_EXTENSIONS_COMMIT"
+          git -C _sdks/clap-juce-extensions submodule update --init --recursive
+
+      - name: Configure (Intel + Apple Silicon, macOS 11 and newer)
+        run: >
+          cmake -S . -B build -G Ninja
+          -DCMAKE_BUILD_TYPE=Release
+          -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+          -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+          -DJUCE_DIR=_sdks/JUCE
+          -DCLAP_JUCE_EXTENSIONS_DIR=_sdks/clap-juce-extensions
+          -DSUBFORGE_INSTALL_AFTER_BUILD=OFF
+
+      - name: Build
+        run: >
+          cmake --build build --parallel
+          --target SubForge_CLAP SubForge_VST3
+          test_presets test_patterns test_sequencer test_filter_curve test_oscillator test_voice test_levels test_loading
+
+      - name: Unit tests
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Show what was built
+        run: |
+          find build -name "SubForge.vst3" -o -name "SubForge.clap" | head
+          lipo -archs "build/SubForge_artefacts/Release/VST3/SubForge.vst3/Contents/MacOS/SubForge"
+
+      - name: Download validators
+        run: |
+          mkdir -p _tools/pluginval _tools/clap-validator
+          gh release download "$PLUGINVAL_VERSION" -R Tracktion/pluginval -p pluginval_macOS.zip -D _tools/pluginval
+          gh release download "$CLAP_VALIDATOR_VERSION" -R free-audio/clap-validator -p "*macos-universal.zip" -D _tools/clap-validator
+          unzip -q _tools/pluginval/pluginval_macOS.zip -d _tools/pluginval
+          unzip -q _tools/clap-validator/*.zip -d _tools/clap-validator
+          find _tools -maxdepth 3 -not -name "*.zip"
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Validate VST3 (pluginval, strictness 5)
+        run: >
+          _tools/pluginval/pluginval.app/Contents/MacOS/pluginval
+          --strictness-level 5 --validate-in-process
+          build/SubForge_artefacts/Release/VST3/SubForge.vst3
+
+      - name: Validate CLAP (clap-validator)
+        run: |
+          VALIDATOR="$(find _tools/clap-validator -type f -name clap-validator | head -1)"
+          chmod +x "$VALIDATOR"
+          "$VALIDATOR" validate build/SubForge_artefacts/Release/CLAP/SubForge.clap
+
+      - name: Collect the plug-ins
+        run: |
+          mkdir -p out
+          ditto build/SubForge_artefacts/Release/VST3/SubForge.vst3 out/SubForge.vst3
+          ditto build/SubForge_artefacts/Release/CLAP/SubForge.clap out/SubForge.clap
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: SubForge-macOS-test
+          path: out/*
+          if-no-files-found: error

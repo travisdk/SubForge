@@ -72,7 +72,7 @@ jobs:
           gh release download "$PLUGINVAL_VERSION" -R Tracktion/pluginval -p pluginval_macOS.zip -D _tools/pluginval
           gh release download "$CLAP_VALIDATOR_VERSION" -R free-audio/clap-validator -p "*macos-universal*" -D _tools/clap-validator
           unzip -q _tools/pluginval/pluginval_macOS.zip -d _tools/pluginval
-          cd _tools/clap-validator && for f in *; do case "$f" in *.zip) unzip -q "$f";; *.tar.gz) tar xzf "$f";; esac; done && cd ../..
+          cd _tools/clap-validator && unzip -q *.zip && tar xzf *.tar.gz && cd ../..
           find _tools -maxdepth 3 -not -name "*.zip"
         env:
           GH_TOKEN: ${{ github.token }}

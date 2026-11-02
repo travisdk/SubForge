@@ -61,20 +61,6 @@ jobs:
       - name: Unit tests
         run: ctest --test-dir build --output-on-failure
 
-      - name: Trim the AU plist and ad-hoc sign all three bundles
-        run: |
-          # JUCE adds network.client to the AU's resourceUsage by default. SubForge uses no network
-          # (no sockets, no downloads, no browser), so that permission is removed. The file access
-          # entry stays: presets and patterns are saved in ~/Documents/SubForge.
-          AU=build/SubForge_artefacts/Release/AU/SubForge.component
-          /usr/libexec/PlistBuddy -c "Delete :AudioComponents:0:resourceUsage:network.client" "$AU/Contents/Info.plist"
-          /usr/libexec/PlistBuddy -c "Print :AudioComponents:0:resourceUsage" "$AU/Contents/Info.plist"
-          # Ad-hoc signature (no certificate), the same for all three. It must come after the plist edit.
-          for b in "$AU" build/SubForge_artefacts/Release/VST3/SubForge.vst3 build/SubForge_artefacts/Release/CLAP/SubForge.clap; do
-            codesign --force --deep --sign - "$b"
-            codesign --verify --deep --strict --verbose=2 "$b"
-          done
-
       - name: Show what was built
         run: |
           find build -name "SubForge.vst3" -o -name "SubForge.clap" | head

@@ -8,7 +8,6 @@ account behind this project.
 The archive contains SubForge in three plug-in formats: CLAP, VST®3 and
 Audio Unit. Install the one your DAW uses, or all of them. It is a universal
 build (Apple Silicon and Intel) for macOS 11 or newer. The plug-in may show a
-version like 1.3.0-N-g…, that's expected for this test build. The plug-in may show a
 version like 1.3.0-N-g…, that's expected for this test build.
 
 1. Remove the quarantine flag. Because the plug-ins are unsigned, macOS
@@ -22,9 +21,9 @@ version like 1.3.0-N-g…, that's expected for this test build.
        SubForge.clap       to  ~/Library/Audio/Plug-Ins/CLAP
        SubForge.component  to  ~/Library/Audio/Plug-Ins/Components
 
-3. Create the folder if it doesn't exist (the CLAP folder often doesn't).
+   Create the folder if it doesn't exist (the CLAP folder often doesn't).
 
-4. Restart your DAW or rescan plug-ins. SubForge appears as an instrument.
+3. Restart your DAW or rescan plug-ins. SubForge appears as an instrument.
    If the Audio Unit does not show up, run this in Terminal and restart the
    DAW:
 

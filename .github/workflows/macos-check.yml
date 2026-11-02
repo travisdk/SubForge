@@ -105,8 +105,17 @@ jobs:
           ditto build/SubForge_artefacts/Release/CLAP/SubForge.clap out/SubForge.clap
           ditto build/SubForge_artefacts/Release/AU/SubForge.component out/SubForge.component
 
+      - name: Pack the test zip
+        run: |
+          rm -rf pack && mkdir -p pack/SubForge-macOS-test
+          cp -R out/* pack/SubForge-macOS-test/
+          cp LICENSE pack/SubForge-macOS-test/LICENSE.txt
+          cp THIRD-PARTY-NOTICES.txt pack/SubForge-macOS-test/
+          cp packaging/INSTALL-macos.txt pack/SubForge-macOS-test/INSTALL.txt
+          (cd pack && ditto -c -k --keepParent SubForge-macOS-test SubForge-macOS-test.zip)
+
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: SubForge-macOS-test
-          path: out/*
+          path: pack/SubForge-macOS-test.zip
           if-no-files-found: error

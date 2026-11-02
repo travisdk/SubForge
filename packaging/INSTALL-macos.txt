@@ -1,0 +1,36 @@
+SubForge – installation on macOS (experimental test build)
+==========================================================
+
+This is an experimental, unsigned build for testing. macOS builds of
+SubForge are unsigned and will stay that way, as there is no Apple developer
+account behind this project.
+
+The archive contains SubForge in three plug-in formats: CLAP, VST®3 and
+Audio Unit. Install the one your DAW uses, or all of them. It is a universal
+build (Apple Silicon and Intel) for macOS 11 or newer.
+
+1. Remove the quarantine flag. Because the plug-ins are unsigned, macOS
+   refuses to load them otherwise. In Terminal, with the path of this folder:
+
+       xattr -dr com.apple.quarantine /path/to/SubForge-macOS-test
+
+2. Copy the plug-ins into your user plug-in folders:
+
+       SubForge.vst3       to  ~/Library/Audio/Plug-Ins/VST3
+       SubForge.clap       to  ~/Library/Audio/Plug-Ins/CLAP
+       SubForge.component  to  ~/Library/Audio/Plug-Ins/Components
+
+3. Restart your DAW or rescan plug-ins. SubForge appears as an instrument.
+   If the Audio Unit does not show up, run this in Terminal and restart the
+   DAW:
+
+       killall -9 AudioComponentRegistrar
+
+SubForge is free software: you can redistribute it and/or modify it under
+the terms of the GNU Affero General Public License, version 3 (LICENSE.txt).
+It comes with no warranty. Source code and releases:
+https://github.com/travisdk/SubForge
+
+Third-party licences are listed in THIRD-PARTY-NOTICES.txt.
+
+VST is a registered trademark of Steinberg Media Technologies GmbH.

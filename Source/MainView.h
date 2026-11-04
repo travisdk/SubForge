@@ -59,7 +59,7 @@ private:
     // hosts don't reliably take a file dragged from a plug-in (JUCE's XDND source).
     struct SlotColumn : juce::Component, juce::SettableTooltipClient
     {
-       #if JUCE_WINDOWS
+       #if JUCE_WINDOWS || JUCE_LINUX
         static constexpr bool canDrag = true;
        #else
         static constexpr bool canDrag = false;

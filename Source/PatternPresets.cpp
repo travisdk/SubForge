@@ -203,7 +203,16 @@ juce::File PatternPresets::exportMidi (int slotIndex)
     midiFile.setTicksPerQuarterNote (ticksPerQuarter);
     midiFile.addTrack (sequence);
 
-    const auto file = files::fileFor (midiFolder(), name, ".mid");
+    // file name without spaces or special characters (some hosts refuse those in a dragged file)
+    juce::String fileName;
+    for (auto c : name)
+    {
+        if (juce::CharacterFunctions::isLetterOrDigit (c) && c < 128)
+            fileName << c;
+        else if (! fileName.endsWithChar ('-'))
+            fileName << '-';
+    }
+    const auto file = midiFolder().getChildFile (fileName.trimCharactersAtEnd ("-") + ".mid");
     if (! midiFolder().createDirectory())
         return {};
     juce::FileOutputStream stream (file);

@@ -69,7 +69,12 @@ accents.
 step you slide into. Without it that accent is ignored, because the note keeps
 gliding without a new attack. With it on, the accent lifts the running filter
 sweep and the volume, fading in smoothly with no click. A slide to the same
-note holds one long note, so there the accent has no effect.
+note holds one long note, so there the accent has no effect. Snap applies to
+these slid accents too when ACC SLIDE is on.
+
+Five presets, each with a pattern of the same name, show them off: Snap Bite,
+Glide Lift, Rising Sweep, Snap Glide and Half Snap. They need version 1.4.0 or
+later to sound as intended.
 
 Randomize and Mutate leave both as they are.
 

@@ -324,7 +324,7 @@ int main()
             return q;
         };
         // The accent shape (how far the accent opens the filter) and the filter envelope, once per 8 samples.
-        constexpr int chunk = 8;
+        static constexpr int chunk = 8; // static: the lambda below uses it without capturing (MSVC requires that)
         struct Trace
         {
             std::vector<float> shape, envelope;

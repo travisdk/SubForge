@@ -40,8 +40,8 @@ https://github.com/user-attachments/assets/3b5655d9-1d9e-4a71-944f-db04779f6a4d
   distortion, fuzz, tube amp) and 4x oversampling.
 - 16-step sequencer with pitch, accent and slide per step, synced to the
   host's tempo, and eight pattern slots you switch with automation or MIDI
-  notes.
-- 115 sound presets and 62 patterns, plus your own presets and patterns.
+  notes. Accent Snap and Accent on Slide shape how accents sound.
+- 120 sound presets and 67 patterns, plus your own presets and patterns.
 - Vector interface that scales from 75 % to 200 %.
 
 ### Square wave shaping
@@ -54,6 +54,24 @@ The picture shows Width 45 % with Sag at 0, 50 and 100 % (grey: the plain
 square). `SubForge_WaveShapes` draws it.
 
 ![The square wave at Width 45 % with Sag 0, 50 and 100 %](docs/images/square-shaping.png)
+
+### Accent Snap and Accent on Slide
+
+Two controls in the PLAY panel shape accents, and both are off by default, so
+existing projects and presets sound exactly as before.
+
+**Snap** makes accents sharper: the accented note's filter sweep falls quickly
+and gets a short upward bite (more with higher Resonance), while notes without
+accent ring longer. It also shortens the build-up of **Swp** (Sweep) between
+accents.
+
+**ACC SLIDE** (the switch in the PLAY title row) lets an accent count on a
+step you slide into. Without it that accent is ignored, because the note keeps
+gliding without a new attack. With it on, the accent lifts the running filter
+sweep and the volume, fading in smoothly with no click. A slide to the same
+note holds one long note, so there the accent has no effect.
+
+Randomize and Mutate leave both as they are.
 
 See [CHANGELOG.md](CHANGELOG.md) for the full list.
 

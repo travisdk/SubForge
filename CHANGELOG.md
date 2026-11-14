@@ -10,7 +10,33 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+## [1.4.0] – 2026-11-14
+
+### Added
+- **Accent Snap.** A new Snap knob in the PLAY panel gives accents a sharper
+  sound: the accented note's filter sweep falls much faster and gets a quick
+  upward bite that grows with Resonance, while notes without accent keep
+  ringing longer, so the accents stand out. At the same time the build-up of
+  Sweep between accents lets go sooner. At 0 % nothing changes, so existing
+  projects and presets sound exactly as before.
+- **Accent on Slide.** A new ACC SLIDE switch in the PLAY panel. Normally the
+  accent of a step that is slid into is ignored, because the note keeps
+  gliding without a new attack. With ACC SLIDE on, that accent lifts the
+  running filter sweep and the volume without retriggering the note, and
+  fades in smoothly so nothing clicks. Snap applies to it too. Off by default,
+  so existing projects and presets sound exactly as before.
+- **Five new sound presets and five patterns of the same name** that show off
+  Snap and ACC SLIDE (Snap Bite, Glide Lift, Rising Sweep, Snap Glide and
+  Half Snap), added last in both lists. Sound presets now include Snap and
+  ACC SLIDE; presets that need them require 1.4.0 or later to sound as
+  intended. Randomize and Mutate leave Snap and ACC SLIDE as they are.
+
 ### Changed
+- The Sweep knob in the PLAY panel is labelled Swp, to make room for Snap.
+- The version number is shown, small, under the logo, and the About panel has a
+  new look: a small panel with the version, the author and two links, and a
+  Licences button for the third-party notices. The project link now points to
+  music.henrikjuhl.dk/plugins/subforge.
 - Slots can now be dragged straight into the DAW on Linux too (tested in Bitwig
   and REAPER, as CLAP and VST®3). Exported MIDI files get a plain file name
   without spaces: `SubForge-B-Chicago-Jack.mid`, with æ, ø and å written as ae,
@@ -218,7 +244,8 @@ First public release, as free software under the GNU AGPLv3.
 
 VST is a registered trademark of Steinberg Media Technologies GmbH.
 
-[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/travisdk/SubForge/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/travisdk/SubForge/compare/v1.3.0...v1.4.0
 [1.3.0]: https://github.com/travisdk/SubForge/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/travisdk/SubForge/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/travisdk/SubForge/compare/v1.2.0...v1.2.1

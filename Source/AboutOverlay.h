@@ -5,8 +5,8 @@
 
 #include "SubForgeLookAndFeel.h"
 
-// "About SubForge" panel shown on top of the editor: version, copyright and
-// the full third-party notices. Click outside, press Escape or Close to dismiss.
+// "About SubForge": a small rounded panel inside the editor (no dialog), with the version, the author, two links and a
+// Licences button that swaps the panel for the full third-party notices. Close it with the cross, Esc or a click outside.
 class AboutOverlay : public juce::Component
 {
 public:
@@ -16,15 +16,19 @@ public:
     void resized() override;
     void mouseDown (const juce::MouseEvent&) override;
     bool keyPressed (const juce::KeyPress&) override;
-    void focusText() { notices.grabKeyboardFocus(); }
+    void focusText();
 
 private:
     juce::Rectangle<int> panelBounds() const;
+    juce::Rectangle<int> crossArea() const;
+    void setShowingLicences (bool show);
 
     SubForgeLookAndFeel& lnf;
     std::function<void()> close;
+    juce::HyperlinkButton homepage, project;
+    juce::TextButton licencesButton { "Licences" };
     juce::TextEditor notices;
-    juce::TextButton closeButton { "Close" };
+    bool showingLicences = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AboutOverlay)
 };

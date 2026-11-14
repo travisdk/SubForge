@@ -199,8 +199,11 @@ private:
     Knob glide { processor.apvts, "glide", "Glide", small() };
     Knob velocity { processor.apvts, "velocity", "Vel", small() };
     Knob accent { processor.apvts, "accent", "Acc", small() };
-    Knob accentSweep { processor.apvts, "accentSweep", "Sweep", small() };
+    Knob accentSweep { processor.apvts, "accentSweep", "Swp", small() };
+    Knob accentSnap { processor.apvts, "accentSnap", "Snap", small() };
     Knob volume { processor.apvts, "volume", "Vol", small() };
+    juce::ToggleButton accentSlide; // an LED in the PLAY title row, like RETRIG in the LFO panel
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> accentSlideAttachment;
 
     // sequencer
     juce::ToggleButton seqOn;

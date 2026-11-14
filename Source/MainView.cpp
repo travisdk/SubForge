@@ -77,6 +77,7 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
         return hz >= 1000.0 ? juce::String (hz / 1000.0, hz >= 10000.0 ? 1 : 2) + " kHz" : juce::String (juce::roundToInt (hz)) + " Hz";
     });
     lfoRetrigAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, "lfoRetrig", lfoRetrig);
+    accentSlideAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, "accentSlide", accentSlide);
     seqOnAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (processor.apvts, "seqOn", seqOn);
     seqOn.getProperties().set (SubForgeLookAndFeel::switchProperty, true);
 
@@ -87,7 +88,7 @@ MainView::MainView (SubForgeProcessor& p, SubForgeLookAndFeel& lf, std::function
              &attack, &decay, &sustain, &release, &pitchEnv, &pitchDecay, &click,
              &lfoSync, &lfoRate, &lfoDepth, &lfoShape, &squarePwm, &lfoRetrig,
              &wheelAmount, &aftertouchAmount, &wheelDest, &aftertouchDest,
-             &glide, &velocity, &accent, &accentSweep, &volume })
+             &glide, &velocity, &accent, &accentSweep, &accentSnap, &volume, &accentSlide })
         addAndMakeVisible (c);
     distType.getProperties().set (SubForgeLookAndFeel::secondaryProperty, true);
 
@@ -198,6 +199,8 @@ void MainView::setTooltips()
     glide.setTooltip ("Time to slide between overlapping notes and sequencer slides.");
     velocity.setTooltip ("How much velocity affects the volume.");
     accent.setTooltip ("Strength of accents (high velocities or accented steps): louder and brighter.");
+    accentSnap.setTooltip ("Accent Snap: higher, accents fall faster and sharper while other notes ring longer.");
+    accentSlide.setTooltip ("Accent on Slide: an accent on a slid-into note lifts the running sound instead of being ignored.");
     accentSweep.setTooltip ("Accents close together build up and open the filter further, like a classic acid line.");
     volume.setTooltip ("Output volume.");
 
@@ -273,28 +276,40 @@ void MainView::paint (juce::Graphics& g)
 {
     g.fillAll (P::background);
 
-    // header: SF badge, and beside it the name over the tagline, the two centred on the badge by their ink
+    // header: SF badge, and beside it three left-aligned lines: the name, close under it the tagline, and with a little
+    // more air the version (the exact build; the About panel has it in full). The block is centred on the badge by its ink.
     const juce::Rectangle<float> logo { 16.0f, 14.0f, 38.0f, 38.0f };
     drawLogo (g, logo);
     const auto nameFont = lookAndFeel.titleFont (24.0f).withExtraKerningFactor (0.08f);
     const auto taglineFont = lookAndFeel.labelFont (10.5f).withExtraKerningFactor (0.2f);
+    const auto versionFont = lookAndFeel.labelFont (10.0f);
+    const juce::String version = juce::String ("v") + SUBFORGE_VERSION_STRING;
     const auto inkOf = [] (const juce::Font& font, const juce::String& text)
     {
         juce::GlyphArrangement glyphs;
         glyphs.addLineOfText (font, text, 0.0f, 0.0f);
-        return glyphs.getBoundingBox (0, -1, true); // relative to the baseline
+        juce::Path outline;
+        glyphs.createPath (outline);
+        return outline.getBounds(); // the visible letters, relative to the baseline
     };
-    const auto nameInk = inkOf (nameFont, "SUBFORGE"), taglineInk = inkOf (taglineFont, "MONO BASS SYNTH");
-    constexpr float lineGap = 6.0f;
-    const float top = logo.getCentreY() - (nameInk.getHeight() + lineGap + taglineInk.getHeight()) / 2.0f;
+    const auto nameInk = inkOf (nameFont, "SUBFORGE"), taglineInk = inkOf (taglineFont, "MONO BASS SYNTH"),
+               versionInk = inkOf (versionFont, version);
+    constexpr float nameGap = 4.0f, versionGap = 7.0f; // name to tagline, tagline to version
+    const float blockHeight = nameInk.getHeight() + nameGap + taglineInk.getHeight() + versionGap + versionInk.getHeight();
+    const float top = logo.getCentreY() - blockHeight / 2.0f;
     const float nameBaseline = top - nameInk.getY();
-    const float taglineBaseline = top + nameInk.getHeight() + lineGap - taglineInk.getY();
+    const float taglineTop = top + nameInk.getHeight() + nameGap;
+    const float taglineBaseline = taglineTop - taglineInk.getY();
+    const float versionBaseline = taglineTop + taglineInk.getHeight() + versionGap - versionInk.getY();
     g.setColour (lookAndFeel.getAccent());
     g.setFont (nameFont);
     g.drawSingleLineText ("SUBFORGE", 64, juce::roundToInt (nameBaseline));
     g.setColour (P::dimText);
     g.setFont (taglineFont);
-    g.drawSingleLineText ("MONO BASS SYNTH", 65, juce::roundToInt (taglineBaseline));
+    g.drawSingleLineText ("MONO BASS SYNTH", 65, juce::roundToInt (taglineBaseline) + 4); // 4 px lower than the block layout puts it
+    g.setColour (P::dimText.withAlpha (0.75f));
+    g.setFont (versionFont);
+    g.drawSingleLineText (version, 65, juce::roundToInt (versionBaseline));
 
     for (const auto& panel : panels)
     {
@@ -357,6 +372,7 @@ void MainView::paint (juce::Graphics& g)
     g.setColour (P::dimText);
     g.setFont (lookAndFeel.labelFont (11.0f).withExtraKerningFactor (0.1f));
     g.drawText ("RETRIG", kLfoPanel.getRight() - 72, kLfoPanel.getY() + 6, 46, 24, juce::Justification::centredRight);
+    g.drawText ("ACC SLIDE", kPlayPanel.getRight() - 96, kPlayPanel.getY() + 6, 70, 24, juce::Justification::centredRight);
 }
 
 // The SF badge: a rounded tile in the accent colour (with a slight gradient),
@@ -440,7 +456,8 @@ void MainView::resized()
     layoutKnobRow (modChips.reduced (0, 0), { &wheelDest, &aftertouchDest });
     wheelDest.setBounds (wheelDest.getBounds().reduced (2, 0));
     aftertouchDest.setBounds (aftertouchDest.getBounds().reduced (2, 0));
-    layoutKnobRow (knobArea (kPlayPanel), { &glide, &velocity, &accent, &accentSweep, &volume });
+    layoutKnobRow (knobArea (kPlayPanel), { &glide, &velocity, &accent, &accentSweep, &accentSnap, &volume });
+    accentSlide.setBounds (kPlayPanel.getRight() - 24, kPlayPanel.getY() + 9, 18, 18);
 
     // sequencer header (its panel shrinks to this row when the steps are hidden)
     panels.back().bounds = sequencerPanel();

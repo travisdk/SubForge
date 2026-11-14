@@ -230,6 +230,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout SubForgeProcessor::createPar
     params.push_back (floatParam ("squarePwm", "Square PWM", { 0.0f, 1.0f }, 0.0f, "", 3));
     params.push_back (floatParam ("squareSag", "Square Sag", { 0.0f, 1.0f }, 0.0f, "", 3));
 
+    // Added after 1.3.0, so last in the list and version 4. Off by default; a project without it plays as before.
+    params.push_back (floatParam ("accentSnap", "Accent Snap", { 0.0f, 1.0f }, 0.0f, "", 4));
+    // After accentSnap, also version 4. Off by default: a project without it plays as before.
+    params.push_back (std::make_unique<AudioParameterBool> (ParameterID { "accentSlide", 4 }, "Accent Slide", false));
+
     return { params.begin(), params.end() };
 }
 
@@ -246,6 +251,8 @@ subforge::BassParams SubForgeProcessor::readParams() const
     p.wheelAmount = get ("wheelAmount");
     p.aftertouchDest = (int) get ("aftertouchDest");
     p.aftertouchAmount = get ("aftertouchAmount");
+    p.accentSnap = get ("accentSnap");
+    p.accentSlide = get ("accentSlide") >= 0.5f;
     return p;
 }
 
@@ -445,7 +452,7 @@ void SubForgeProcessor::setStateInformation (const void* data, int sizeInBytes)
                 if (auto* b = dynamic_cast<juce::AudioParameterBool*> (p))
                     b->setValueNotifyingHost (b->get() ? 1.0f : 0.0f);
             // A project saved before these parameters existed must not keep the values this instance had.
-            for (auto* id : { "squareWidth", "squarePwm", "squareSag" })
+            for (auto* id : { "squareWidth", "squarePwm", "squareSag", "accentSnap", "accentSlide" })
                 if (! state.getChildWithProperty ("id", id).isValid())
                     if (auto* param = apvts.getParameter (id))
                         param->setValueNotifyingHost (param->getDefaultValue());

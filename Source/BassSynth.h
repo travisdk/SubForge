@@ -32,6 +32,29 @@ inline constexpr int kNumLfoSyncs = (int) std::size (kLfoSyncBeats);
 // Velocities at or above this count as accented.
 constexpr float kAccentVelocity = 100.0f / 127.0f;
 
+// "Accent Snap": the further it is turned up, the more
+//  - an accented note's filter envelope shortens to a time constant of 60 ms (a classic accent is gone within about 200 ms)
+//    while a plain note's decay grows,
+//  - the accent pulse gets sharper (it falls twice as fast as the envelope) and passes through a lag (a capacitor that
+//    charges through a resistor and discharges more slowly), a share that also grows with the resonance,
+//  - the accent's loudness follows the pulse (as the classic accent adds its sweep circuit's output to the volume),
+//  - the sweep capacitor lets go sooner.
+// Snap only changes the shape of accents that are triggered as before: a slid note keeps the envelope and accent of the note it slides from.
+// Envelope times in this file are the time to -60 dB, which is 6.9 time constants.
+constexpr float kAccentDecayMs = 60.0f * 6.9f;   // -60 dB time of the accented envelope: time constant 60 ms
+constexpr float kAccentLagChargeMs = 25.0f;      // time constant of the lag while it charges: the top comes after about 27 ms
+constexpr float kAccentLagDischargeMs = 20.0f;  // and while it discharges
+constexpr float kAccentLagMaxGain = 20.0f;
+constexpr float kAccentSnapGain = 0.5f;          // extra accent loudness at Snap 100 % (the accent adds 0.5 x ACC, plus this x ACC)
+constexpr float kAccentSweepDischargeMs = 40.0f; // the sweep capacitor's discharge at Snap 100 % (400 ms at 0)
+// For contrast, a plain note's filter decay grows with Accent Snap by up to this factor: at Filter Decay
+// maximum (3000 ms, time constant 435 ms) and Snap 100 % its time constant ends up at 2000 ms.
+constexpr float kPlainDecayStretch = 4.6f;
+// "ACC SLIDE": an accented note that is slid into (legato, so no new attack) lets the running envelope take
+// the accent: the filter envelope rises again and the accent's cutoff and loudness are added, all over about this long
+// so that nothing clicks. Off, a slid note keeps the accent of the note it slides from, as before.
+constexpr float kAccentSlideSmoothMs = 8.0f;
+
 struct BassParams
 {
     int wave = 0;          // 0 saw, 1 square, 2 pulse 25%, 3 sine, 4 triangle
@@ -57,6 +80,8 @@ struct BassParams
     float velocitySens = 0.5f;
     float accent = 0.0f;
     float accentSweep = 0.0f;   // 0 = plain accent, 1 = consecutive accents build up (classic acid sweep)
+    float accentSnap = 0.0f;    // 0..1, 0 = plain accent; up: accented filter envelope shortens (time constant 60 ms) and the pulse gets a resonance-dependent lag
+    bool accentSlide = false;   // an accent on a slid-into (legato) note lifts the running envelope instead of being ignored
     int wheelDest = kModLfoDepth; // mod wheel and aftertouch routing, amounts -1..1
     float wheelAmount = 0.5f;
     int aftertouchDest = kModCutoff;
@@ -613,6 +638,9 @@ public:
         pitchEnv = 0.0f;
         clickEnv = 0.0f;
         sweepState = 0.0f;
+        lagState = 0.0f;
+        slideSoft = false;
+        filterAttackMs = 1.0f;
         outputDcBlocker.s = 0.0f;
         tailSettled = true;
     }
@@ -621,7 +649,7 @@ public:
     {
         params = p;
         amp.set (fs, p.attackMs, p.decayMs, p.sustain, p.releaseMs);
-        filterEnv.set (fs, 1.0f, p.filterDecayMs, 0.0f, p.filterDecayMs);
+        setFilterEnvelope();
         glideCoef = p.glideMs <= 0.0f ? 0.0f : std::exp (-1.0f / (p.glideMs * 0.001f * fs));
         detuneRatio = std::exp2 (p.detuneCents / 1200.0f);
         pitchEnvCoef = Envelope::coefFor (p.pitchEnvDecayMs, fs);
@@ -629,7 +657,32 @@ public:
         modSmoothCoef = std::exp (-1.0f / (0.01f * fs));
         sweepChargeCoef = std::exp (-1.0f / (0.02f * fs));
         sweepDischargeCoef = std::exp (-1.0f / (0.4f * fs));
+        if (p.accentSnap > 0.0f) // with Snap up the accent is gone within the note, so the capacitor lets go sooner
+            sweepDischargeCoef = std::exp (-1.0f / (0.4f * std::pow (kAccentSweepDischargeMs / 400.0f, p.accentSnap) * fs));
+        lagChargeCoef = std::exp (-1.0f / (kAccentLagChargeMs * 0.001f * fs));
+        lagDischargeCoef = std::exp (-1.0f / (kAccentLagDischargeMs * 0.001f * fs));
+        slideSmoothCoef = std::exp (-1.0f / (kAccentSlideSmoothMs * 0.001f * fs));
         distortion.setTone (p.distTone);
+    }
+
+    // The filter envelope's decay: the knob's value. With Accent Snap up, a plain note's decay grows (in equal
+    // ratios) by up to kPlainDecayStretch, and an accented note's moves towards kAccentDecayMs, never above the
+    // knob. The lag then gets a gain that brings an isolated accent pulse back to full height, so the
+    // Accent knob keeps its meaning.
+    void setFilterEnvelope()
+    {
+        float decayMs = params.filterDecayMs;
+        if (params.accentSnap > 0.0f && ! accented && decayMs > 0.0f)
+            decayMs *= std::pow (kPlainDecayStretch, params.accentSnap);
+        else if (params.accentSnap > 0.0f && accented && decayMs > 0.0f)
+        {
+            decayMs *= std::pow (std::min (decayMs, kAccentDecayMs) / decayMs, params.accentSnap);
+            // a pulse exp(-t/d) charging a lag with time constant c peaks where it crosses the lag
+            const float d = std::max (decayMs, 1.0f) * 0.001f / 6.9f / (1.0f + params.accentSnap), c = kAccentLagChargeMs * 0.001f;
+            const float peakTime = std::abs (c - d) < 1.0e-6f ? d : d * c * std::log (c / d) / (c - d);
+            lagGain = std::min (std::exp (peakTime / d), kAccentLagMaxGain);
+        }
+        filterEnv.set (fs, filterAttackMs, decayMs, 0.0f, decayMs);
     }
 
     // Call once per block before rendering. Locks a synced LFO to the host
@@ -644,6 +697,10 @@ public:
             lfo.phase = (float) (cycles - std::floor (cycles));
         }
     }
+
+    // How far the accent currently opens the filter (before the Accent knob); for measuring in tests.
+    float accentShape() const { return accentShapeNow; }
+    float filterEnvelope() const { return accentEnvelopeNow; } // the filter envelope itself, likewise
 
     void setPitchBend (float semitones) { bend = semitones; }
     void setModWheel (float value) { wheelTarget = value; }      // 0..1
@@ -663,6 +720,9 @@ public:
             currentNote = targetNote;
             velScale = 1.0f - params.velocitySens * (1.0f - velocity);
             accented = velocity >= kAccentVelocity;
+            slideSoft = false;
+            filterAttackMs = 1.0f;
+            setFilterEnvelope();
             if (! amp.isActive())
             {
                 osc1.reset();
@@ -680,6 +740,17 @@ public:
             filterEnv.noteOn();
             pitchEnv = 1.0f;
             clickEnv = 1.0f;
+        }
+        else if (params.accentSlide && velocity >= kAccentVelocity)
+        {
+            // An accent on a slid-into note: no retrigger (amp, pitch, click and oscillators run on), but the filter envelope
+            // rises again from where it is, and the accent's cutoff, loudness and Snap decay apply as for any accented note.
+            velScale = 1.0f - params.velocitySens * (1.0f - velocity);
+            accented = true;
+            slideSoft = true;
+            filterAttackMs = kAccentSlideSmoothMs;
+            setFilterEnvelope();
+            filterEnv.noteOn();
         }
     }
 
@@ -712,6 +783,7 @@ public:
         const float envOctaves = params.envAmount * 7.0f;
         const float maxCutoff = std::min (20000.0f, 0.45f * fs);
         const float accentTarget = accented ? params.accent : 0.0f;
+        const float levelSmoothCoef = slideSoft ? slideSmoothCoef : noteSmoothCoef; // slower while a slid-into accent comes in
 
         const float syncBeats = kLfoSyncBeats[std::clamp (params.lfoSync, 0, kNumLfoSyncs - 1)];
         const float lfoHz = syncBeats > 0.0f ? tempoBpm / 60.0f / syncBeats : params.lfoRateHz;
@@ -734,8 +806,8 @@ public:
             wheelValue = wheelTarget + (wheelValue - wheelTarget) * modSmoothCoef;
             aftertouchValue = aftertouchTarget + (aftertouchValue - aftertouchTarget) * modSmoothCoef;
             smoothContinuousParams();
-            velScaleSmoothed = velScale + (velScaleSmoothed - velScale) * noteSmoothCoef;
-            accentSmoothed = accentTarget + (accentSmoothed - accentTarget) * noteSmoothCoef;
+            velScaleSmoothed = velScale + (velScaleSmoothed - velScale) * levelSmoothCoef;
+            accentSmoothed = accentTarget + (accentSmoothed - accentTarget) * levelSmoothCoef;
 
             // Filter mode and distortion type change while the output is faded
             // out, so the jump between them does not click.
@@ -822,9 +894,23 @@ public:
 
             // Accent sweep: accented envelopes charge a slow-discharging "capacitor",
             // so accents in quick succession open the filter further and further.
-            const float accentInput = accented ? envValue : 0.0f;
+            // Accent Snap: the pulse is the envelope of an accented note, a share of it (Snap times the
+            // resonance) passing through the lag. The lag only charges from a higher pulse, as through a diode.
+            float pulse = envValue;
+            const bool snap = params.accentSnap > 0.0f;
+            if (snap)
+            {
+                // the pulse falls faster than the envelope: with Snap at 100 % it is the envelope squared (half the time constant)
+                const float direct = accented ? envValue * ((1.0f - params.accentSnap) + params.accentSnap * envValue) : 0.0f;
+                lagState += direct > lagState ? (direct - lagState) * (1.0f - lagChargeCoef) : -lagState * (1.0f - lagDischargeCoef);
+                const float share = params.accentSnap * resonance;
+                pulse = (1.0f - share) * direct + share * lagGain * lagState;
+            }
+            const float accentInput = snap ? pulse : (accented ? envValue : 0.0f);
+            accentEnvelopeNow = envValue;
             sweepState += (accentInput - sweepState) * (1.0f - (accentInput > sweepState ? sweepChargeCoef : sweepDischargeCoef));
-            const float accentShape = (1.0f - params.accentSweep) * envValue + params.accentSweep * 1.6f * sweepState;
+            const float accentShape = (1.0f - params.accentSweep) * pulse + params.accentSweep * 1.6f * sweepState;
+            accentShapeNow = accentShape;
 
             const float logFc = logCutoff + envOctaves * fe + accentSmoothed * 3.0f * accentShape + lfoOctaves * lfoValue
                                 + params.keyTrack * (pitch - 36.0f) / 12.0f + mod[kModCutoff] * 4.0f;
@@ -843,7 +929,12 @@ public:
                 clickEnv *= clickCoef;
             }
 
-            const float voice = y * amp.next() * velScaleSmoothed * (1.0f + accentSmoothed * 0.5f);
+            // The accent's loudness: a constant 50 % of the Accent knob; with Snap up it follows the accent pulse instead
+            // (the classic accent adds the output of its sweep circuit to the volume), and with more of it.
+            float accentLoudness = accentSmoothed * 0.5f;
+            if (params.accentSnap > 0.0f)
+                accentLoudness = accentSmoothed * (0.5f + kAccentSnapGain * params.accentSnap) * ((1.0f - params.accentSnap) + params.accentSnap * std::min (accentShape, 1.5f));
+            const float voice = y * amp.next() * velScaleSmoothed * (1.0f + accentLoudness);
             out[i] = postProcess (voice, distDrive);
         }
     }
@@ -918,9 +1009,13 @@ private:
     float targetNote = 36.0f, currentNote = 36.0f;
     float glideCoef = 0.0f, detuneRatio = 1.0f, bend = 0.0f, velScale = 1.0f;
     bool accented = false;
+    bool slideSoft = false;           // ACC SLIDE: the accent level glides in slowly (set by a slid-into accent, cleared by a new note)
+    float filterAttackMs = 1.0f;      // the filter envelope's attack: 1 ms, longer for a slid-into accent
+    float slideSmoothCoef = 0.0f;
     float wheelTarget = 0.0f, wheelValue = 0.0f, aftertouchTarget = 0.0f, aftertouchValue = 0.0f;
     float modSmoothCoef = 0.0f, vibratoPhase = 0.0f;
     float sweepState = 0.0f, sweepChargeCoef = 0.0f, sweepDischargeCoef = 0.0f;
+    float lagState = 0.0f, lagChargeCoef = 0.0f, lagDischargeCoef = 0.0f, lagGain = 1.0f, accentShapeNow = 0.0f, accentEnvelopeNow = 0.0f;
     float logCutoff = 8.6f, cutoffSmoothCoef = 0.0f;
     float pitchEnv = 0.0f, pitchEnvCoef = 0.0f;
     float clickEnv = 0.0f, clickCoef = 0.0f, clickState = 0.0f, clickLowpass = 0.5f;

@@ -10,6 +10,12 @@ tag the commit (`vX.Y.Z`).
 
 ## [Unreleased]
 
+### Changed
+- Slots can now be dragged straight into the DAW on Linux too (tested in Bitwig
+  and REAPER, as CLAP and VST®3). Exported MIDI files get a plain file name
+  without spaces: `SubForge-B-Chicago-Jack.mid`, with æ, ø and å written as ae,
+  oe and aa.
+
 ## [1.3.0] – 2026-10-28
 
 ### Added

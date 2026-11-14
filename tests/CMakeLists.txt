@@ -3,7 +3,7 @@
 
 # Unit tests, run with ctest. All but test_loading are JUCE-free and test the DSP,
 # sequencer, presets and patterns on their own.
-foreach (name presets patterns sequencer filter_curve oscillator voice levels)
+foreach (name midi_filename presets patterns sequencer filter_curve oscillator voice levels)
     add_executable (test_${name} test_${name}.cpp)
     target_include_directories (test_${name} PRIVATE ${PROJECT_SOURCE_DIR}/Source)
     target_compile_features (test_${name} PRIVATE cxx_std_17)

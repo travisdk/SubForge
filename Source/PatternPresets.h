@@ -34,7 +34,7 @@ public:
     void markEdited(); // a step was changed in the grid
     void copySlot (int from, int to);
 
-    // A slot as a one-pass MIDI clip, "SubForge B - Chicago Jack.mid" in the MIDI
+    // A slot as a one-pass MIDI clip, "SubForge-B-Chicago-Jack.mid" in the MIDI
     // folder (next to the pattern folder), replacing an earlier export of the same
     // name. Returns the file, or a default File if it could not be written.
     juce::File exportMidi (int slotIndex);

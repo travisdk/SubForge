@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 
 #include "PatternPresets.h"
+#include "MidiFileName.h"
 #include "PresetFiles.h"
 
 using namespace subforge;
@@ -204,15 +205,8 @@ juce::File PatternPresets::exportMidi (int slotIndex)
     midiFile.addTrack (sequence);
 
     // file name without spaces or special characters (some hosts refuse those in a dragged file)
-    juce::String fileName;
-    for (auto c : name)
-    {
-        if (juce::CharacterFunctions::isLetterOrDigit (c) && c < 128)
-            fileName << c;
-        else if (! fileName.endsWithChar ('-'))
-            fileName << '-';
-    }
-    const auto file = midiFolder().getChildFile (fileName.trimCharactersAtEnd ("-") + ".mid");
+    const juce::String fileName = midiFileStem (name.toStdString());
+    const auto file = midiFolder().getChildFile (fileName + ".mid");
     if (! midiFolder().createDirectory())
         return {};
     juce::FileOutputStream stream (file);

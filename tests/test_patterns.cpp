@@ -3,6 +3,7 @@
 
 // Factory patterns, the compact text form and the project-state string form.
 #include "PatternLibrary.h"
+#include "Patches.h"
 #include "TestUtils.h"
 
 #include <cmath>
@@ -20,7 +21,32 @@ static bool samePattern (const Pattern& a, const Pattern& b)
 
 int main()
 {
-    CHECK (kNumFactoryPatterns == 62);
+    CHECK (kNumFactoryPatterns == 67);
+
+    // the five Accent Snap patterns come last, one for each sound preset of the same name (each preset is last in
+    // its own list too); they have accents and slides on the same steps, and no slide goes to the same note
+    for (int n = 0; n < 5; ++n)
+    {
+        const auto& factory = kFactoryPatterns[kNumFactoryPatterns - 5 + n];
+        CHECK (std::string (factory.name) == kPresets[kNumPresets - 5 + n].name);
+        Pattern p;
+        CHECK (parseCompactPattern (factory.steps, p));
+        int accentAndSlide = 0, accentOnSlidTo = 0;
+        for (int i = 0; i < kMaxSteps; ++i)
+        {
+            const auto step = p.get (i);
+            if (step.gate && step.accent && step.slide)
+                ++accentAndSlide;
+            if (step.gate && step.slide && i + 1 < kMaxSteps)
+            {
+                const auto next = p.get (i + 1);
+                CHECK (next.gate && next.note != step.note); // a slide goes to a different note
+                accentOnSlidTo += next.accent ? 1 : 0;
+            }
+        }
+        CHECK (accentAndSlide >= 2);
+        CHECK (accentOnSlidTo >= 2);
+    }
 
     for (const auto& factory : kFactoryPatterns)
     {

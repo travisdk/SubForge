@@ -45,7 +45,8 @@ public:
 
 private:
     subforge::PatchValues currentPatch() const;
-    void applyPatch (const subforge::PatchValues&);
+    // Sets the first numParams parameters of the patch. Randomize and Mutate stop before Accent Snap and Accent on Slide.
+    void applyPatch (const subforge::PatchValues&, int numParams = subforge::kNumPatchParams);
     bool loadFile (const juce::File&);
     void changed() { onChange(); }
 

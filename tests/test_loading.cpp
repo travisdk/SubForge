@@ -313,6 +313,28 @@ int main()
         CHECK (changedOnSquare > 100);
     }
 
+    // Randomize and Mutate never touch Accent Snap or Accent on Slide, set to either value
+    {
+        SubForgeProcessor processor;
+        SoundPresets presets (processor.apvts, prefs, [] {});
+        auto setPlain = [&processor] (const char* id, float value)
+        {
+            subforge::files::setParameterValue (*processor.apvts.getParameter (id), value);
+        };
+        for (const bool on : { false, true })
+            for (int i = 0; i < 100; ++i)
+            {
+                setPlain ("accentSnap", on ? 0.4f : 0.0f);
+                setPlain ("accentSlide", on ? 1.0f : 0.0f);
+                if (i % 2 == 0)
+                    presets.randomize();
+                else
+                    presets.mutate();
+                CHECK (juce::approximatelyEqual (plainValue (processor, "accentSnap"), on ? 0.4f : 0.0f));
+                CHECK (juce::approximatelyEqual (plainValue (processor, "accentSlide"), on ? 1.0f : 0.0f));
+            }
+    }
+
     // a name of only characters a file name can't hold is not saved as a hidden, nameless file
     {
         SubForgeProcessor processor;

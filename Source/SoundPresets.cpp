@@ -129,9 +129,9 @@ PatchValues SoundPresets::currentPatch() const
     return values;
 }
 
-void SoundPresets::applyPatch (const PatchValues& values)
+void SoundPresets::applyPatch (const PatchValues& values, int numParams)
 {
-    for (int i = 0; i < kNumPatchParams; ++i)
+    for (int i = 0; i < numParams; ++i)
         files::setParameterValue (*state.getParameter (kPatchParamIds[i]), values[(size_t) i]);
     files::setParameterValue (*state.getParameter ("volume"), normalizedVolumeDb (values));
 }
@@ -159,7 +159,7 @@ void SoundPresets::load (int index)
 
 void SoundPresets::randomize()
 {
-    applyPatch (randomPatch (rng));
+    applyPatch (randomPatch (rng), pAccentSnap); // Snap and Accent on Slide stay as they are
     currentName = "Random " + juce::String (++randomCount);
     changed();
 }
@@ -170,7 +170,7 @@ void SoundPresets::mutate()
     std::normal_distribution<float> nudge (0.0f, 0.07f);
 
     auto values = currentPatch();
-    for (int i = 0; i < kNumPatchParams; ++i)
+    for (int i = 0; i < pAccentSnap; ++i) // Snap and Accent on Slide stay as they are
     {
         auto* param = state.getParameter (kPatchParamIds[i]);
         auto& value = values[(size_t) i];
@@ -194,7 +194,7 @@ void SoundPresets::mutate()
         }
     }
 
-    applyPatch (values);
+    applyPatch (values, pAccentSnap);
     if (! currentName.endsWith ("*"))
         currentName << " *";
     changed();

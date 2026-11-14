@@ -154,6 +154,14 @@ inline const FactoryPattern kFactoryPatterns[] = {
     { "Acid - Seven Wobble",        "0a 12 0s 0 - 12a 3 - - - - - - - - -",              7,  0.5f },
     { "Acid - Seven Square Stab",   "0a 0 12s 0 0a - 12 - - - - - - - - -",              7,  0.5f },
     { "Acid - Acid Shrieker",       "12a 0 24 12s 0 12 - 24a 12 0s 12 0 - 12a 24 12",    16, 0.5f },
+
+    // Accent Snap and Accent on Slide (1.4.0): one pattern for each sound preset of the same name, with
+    // accents and slides on the same steps and no slide to the same note
+    { "Snap Bite",                  "0a 0 12 0 0a 3 0 12as 10a 0 7 0as 12a 0 5as 3",     16, 0.5f },
+    { "Glide Lift",                 "0a 0 0s 3a 0as 7s 5as 0 0a 0 12as 10a 7 0s 3a 5",   16, 0.5f },
+    { "Rising Sweep",               "0a 3as 7as 12a 0 0 7s 5 0a 12as 10as 7a 0 3 5s 7",  16, 0.5f },
+    { "Snap Glide",                 "0a 12as 0 0s 3a 0 12as 10 0a 7 0as 12a 5 0 7s 5a",  16, 0.5f },
+    { "Half Snap",                  "0a - 0as 3s 7a 0 12as 10 - 0a 3 0as 5a - 7s 3",     16, 0.5f },
 };
 
 inline constexpr int kNumFactoryPatterns = (int) (sizeof (kFactoryPatterns) / sizeof (kFactoryPatterns[0]));

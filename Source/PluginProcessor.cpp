@@ -251,8 +251,6 @@ subforge::BassParams SubForgeProcessor::readParams() const
     p.wheelAmount = get ("wheelAmount");
     p.aftertouchDest = (int) get ("aftertouchDest");
     p.aftertouchAmount = get ("aftertouchAmount");
-    p.accentSnap = get ("accentSnap");
-    p.accentSlide = get ("accentSlide") >= 0.5f;
     return p;
 }
 

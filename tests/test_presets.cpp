@@ -13,8 +13,9 @@ using namespace subforge;
 
 int main()
 {
-    constexpr int kNumEarlierPresets = 109; // before the square shaping presets, which come last
-    CHECK (kNumPresets == 115);
+    constexpr int kNumEarlierPresets = 109; // before the square shaping presets
+    constexpr int kNumSquarePresetsEnd = 115; // after them come the five Accent Snap presets, which come last
+    CHECK (kNumPresets == 120);
 
     std::set<std::string> names;
     for (const auto& preset : kPresets)
@@ -26,11 +27,13 @@ int main()
         CHECK (volume >= -36.0f && volume <= 6.0f);
     }
 
-    // the width is the last parameter, and no factory preset changes it
-    CHECK (std::string (kPatchParamIds[kNumPatchParams - 3]) == "squareWidth");
-    CHECK (std::string (kPatchParamIds[kNumPatchParams - 2]) == "squarePwm");
-    CHECK (std::string (kPatchParamIds[kNumPatchParams - 1]) == "squareSag");
-    CHECK (pSquareSag == kNumPatchParams - 1);
+    // the square shaping parameters and then Snap and Accent on Slide come last, and no earlier factory preset changes them
+    CHECK (std::string (kPatchParamIds[kNumPatchParams - 5]) == "squareWidth");
+    CHECK (std::string (kPatchParamIds[kNumPatchParams - 4]) == "squarePwm");
+    CHECK (std::string (kPatchParamIds[kNumPatchParams - 3]) == "squareSag");
+    CHECK (std::string (kPatchParamIds[kNumPatchParams - 2]) == "accentSnap");
+    CHECK (std::string (kPatchParamIds[kNumPatchParams - 1]) == "accentSlide");
+    CHECK (pSquareSag == kNumPatchParams - 3 && pAccentSlide == kNumPatchParams - 1);
     for (int i = 0; i < kNumEarlierPresets; ++i)
     {
         const auto v = kPresets[i].values();
@@ -38,9 +41,16 @@ int main()
         CHECK (v[pSquarePwm] == 0.0f);
         CHECK (v[pSquareSag] == 0.0f);
     }
+    // Snap is 0 and Accent on Slide off in every preset from before 1.4.0
+    for (int i = 0; i < kNumSquarePresetsEnd; ++i)
+    {
+        const auto v = kPresets[i].values();
+        CHECK (v[pAccentSnap] == 0.0f);
+        CHECK (v[pAccentSlide] == 0.0f);
+    }
 
     // the new ones are squares that use PWM or Sag, within the ranges of the knobs
-    for (int i = kNumEarlierPresets; i < kNumPresets; ++i)
+    for (int i = kNumEarlierPresets; i < kNumSquarePresetsEnd; ++i)
     {
         const auto v = kPresets[i].values();
         CHECK (v[pWave] == 1.0f);
@@ -53,6 +63,27 @@ int main()
         const float gain = std::pow (10.0f, normalizedVolumeDb (v) / 20.0f);
         CHECK (peak * gain <= 0.9f);
         CHECK (std::abs (rms * gain - 0.2f) < 0.05f || peak * gain > 0.85f);
+    }
+
+    // the five Accent Snap presets: Snap and Accent on Slide as named, within range, and a sound at the same level as the others
+    {
+        struct Expected { const char* name; float snap; bool slide; };
+        const Expected expected[] = { { "Snap Bite", 1.0f, false }, { "Glide Lift", 0.0f, true }, { "Rising Sweep", 0.2f, true },
+                                      { "Snap Glide", 1.0f, true }, { "Half Snap", 0.4f, true } };
+        for (int n = 0; n < 5; ++n)
+        {
+            const auto& preset = kPresets[kNumSquarePresetsEnd + n];
+            CHECK (std::string (preset.name) == expected[n].name);
+            const auto v = preset.values();
+            CHECK (v[pAccentSnap] == expected[n].snap);
+            CHECK ((v[pAccentSlide] >= 0.5f) == expected[n].slide);
+            CHECK (v[pAccent] >= 0.6f && v[pSquareWidth] == 0.5f && v[pSquarePwm] == 0.0f && v[pSquareSag] == 0.0f);
+            const auto [rms, peak] = measureLevel (v);
+            const float gain = std::pow (10.0f, normalizedVolumeDb (v) / 20.0f);
+            CHECK (peak * gain <= 0.9f);
+            CHECK (std::abs (rms * gain - 0.2f) < 0.05f || peak * gain > 0.85f);
+        }
+        CHECK (std::string (kPresets[kNumPresets - 5].name) == "Snap Bite");
     }
 
     std::mt19937 rng (1);

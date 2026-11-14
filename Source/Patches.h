@@ -27,6 +27,7 @@ enum PatchParam
     pDistType, pDistDrive, pDistTone, pDistMix,
     pAccentSweep,
     pSquareWidth, pSquarePwm, pSquareSag,
+    pAccentSnap, pAccentSlide, // added in 1.4.0; Randomize and Mutate leave them as they are
     kNumPatchParams
 };
 
@@ -43,7 +44,8 @@ inline constexpr const char* kPatchParamIds[kNumPatchParams] = {
     "pitchEnv", "pitchDecay", "click",
     "lfoShape", "lfoSync", "lfoRate", "lfoDepth", "lfoRetrig",
     "distType", "distDrive", "distTone", "distMix",
-    "accentSweep", "squareWidth", "squarePwm", "squareSag"
+    "accentSweep", "squareWidth", "squarePwm", "squareSag",
+    "accentSnap", "accentSlide"
 };
 
 using PatchValues = std::array<float, kNumPatchParams>;
@@ -51,8 +53,8 @@ using PatchValues = std::array<float, kNumPatchParams>;
 // Neutral settings for the extra parameters, so presets that leave them out
 // sound as before: LP24, no key track/accent/pitch env/click, LFO depth 0, distortion off.
 // Columns: filterMode keyTrack accent | pitchEnv pitchDecay click | lfoShape lfoSync lfoRate lfoDepth lfoRetrig
-//          | distType distDrive distTone distMix | accentSweep | squareWidth squarePwm squareSag
-inline constexpr std::array<float, kNumExtraParams> kExtraDefaults { 0, 0, 0, 0, 60, 0, 0, 7, 2, 0, 0, 0, 0.5f, 0.5f, 1, 0, 0.5f, 0, 0 };
+//          | distType distDrive distTone distMix | accentSweep | squareWidth squarePwm squareSag | accentSnap accentSlide
+inline constexpr std::array<float, kNumExtraParams> kExtraDefaults { 0, 0, 0, 0, 60, 0, 0, 7, 2, 0, 0, 0, 0.5f, 0.5f, 1, 0, 0.5f, 0, 0, 0, 0 };
 
 // Factory presets list their extras up to accentSweep. Parameters from pSquareWidth on are
 // not listed: every factory preset gets their default. Keep this pointing at the first
@@ -66,7 +68,7 @@ struct Preset
     const char* name;
     std::array<float, kNumCoreParams> core;
     std::array<float, kNumListedExtraParams> extra = listedDefaults();
-    // squareWidth squarePwm squareSag; presets that leave them out keep the defaults (50 %, 0 %, 0 %)
+    // squareWidth squarePwm squareSag accentSnap accentSlide; presets that leave them out keep the defaults (50 %, 0 %, 0 %, 0 %, off)
     std::array<float, kNumPatchParams - pSquareWidth> shape = shapeDefaults();
 
     static constexpr std::array<float, kNumListedExtraParams> listedDefaults()
@@ -300,6 +302,24 @@ inline const Preset kPresets[] = {
     { "Off-Centre Acid",   { 1,  0,  0, 0.00f, 0,   220, 0.76f, 0.68f, 300, 0.25f,   1,  450, 0.60f,  40,   60, 0.6f },
                            { 0, 0.20f, 0.60f,   0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.5f },
                            { 0.43f, 0.0f, 0.35f } },
+
+    // Accent Snap and Accent on Slide, added in 1.4.0 (they need 1.4.0 or later to sound as intended): the last two
+    // values are Snap and Accent on Slide (0 = off, 1 = on), after Width, PWM and Sag. Each has a pattern of the same name.
+    { "Snap Bite",        { 0,  0,  0, 0.00f, 0,   260, 0.80f, 0.68f, 300, 0.25f,   1,  450, 0.60f,  40,   40, 0.6f },
+                          { 3, 0.20f, 0.80f,   0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.15f },
+                          { 0.50f, 0.0f, 0.0f, 1.0f, 0.0f } },
+    { "Glide Lift",       { 0,  0,  0, 0.10f, 0,   240, 0.78f, 0.62f, 250, 0.25f,   1,  500, 0.60f,  40,   70, 0.6f },
+                          { 0, 0.20f, 0.70f,   0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.50f },
+                          { 0.50f, 0.0f, 0.0f, 0.0f, 1.0f } },
+    { "Rising Sweep",     { 0,  0,  0, 0.00f, 0,   200, 0.85f, 0.70f, 500, 0.30f,   1,  600, 0.60f,  40,   50, 0.6f },
+                          { 3, 0.20f, 0.85f,   0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   1, 0.30f, 0.5f, 0.45f, 0.85f },
+                          { 0.50f, 0.0f, 0.0f, 0.2f, 1.0f } },
+    { "Snap Glide",       { 1,  0,  0, 0.20f, 0,   330, 0.82f, 0.70f, 350, 0.25f,   1,  450, 0.60f,  40,   60, 0.6f },
+                          { 3, 0.20f, 0.80f,   0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.30f },
+                          { 0.50f, 0.0f, 0.0f, 1.0f, 1.0f } },
+    { "Half Snap",        { 0,  0,  0, 0.20f, 0,   280, 0.80f, 0.66f, 280, 0.25f,   1,  500, 0.60f,  40,   55, 0.6f },
+                          { 0, 0.20f, 0.75f,   0,  60, 0.00f,   0,  7, 2, 0.00f, 0,   0, 0.5f, 0.5f, 1.0f,   0.50f },
+                          { 0.50f, 0.0f, 0.0f, 0.4f, 1.0f } },
 };
 
 inline constexpr int kNumPresets = (int) (sizeof (kPresets) / sizeof (kPresets[0]));
@@ -342,6 +362,8 @@ inline BassParams toBassParams (const PatchValues& v, float gain)
     p.squareWidth = v[pSquareWidth];
     p.squarePwm = v[pSquarePwm];
     p.squareSag = v[pSquareSag];
+    p.accentSnap = v[pAccentSnap];
+    p.accentSlide = v[pAccentSlide] >= 0.5f;
     p.gain = gain;
     return p;
 }
@@ -479,6 +501,10 @@ inline PatchValues randomPatch (std::mt19937& rng)
         if (! chance (0.6f))
             v[pSquareSag] = 0.2f + 0.6f * r();
     }
+
+    // Accent Snap and Accent on Slide are not randomized: SoundPresets leaves the two knobs as they are
+    v[pAccentSnap] = 0.0f;
+    v[pAccentSlide] = 0.0f;
     return v;
 }
 
